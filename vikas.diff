@@ -1,0 +1,4336 @@
+diff --git a/include/myst/buf.h b/include/myst/buf.h
+index 9685544e..55f88ea2 100644
+--- a/include/myst/buf.h
++++ b/include/myst/buf.h
+@@ -8,15 +8,19 @@
+ #include <stdint.h>
+ 
+ // clang-format off
+-#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0 }
++#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0, 0 }
+ // clang-format on
+ 
++#define MYST_BUF_PAGE_ALIGNED 1
++#define MYST_BUF_ACTIVE_MAPPING 2
++
+ typedef struct myst_buf
+ {
+     uint8_t* data;
+     size_t size;
+     size_t cap;
+     size_t offset;
++    int flags;
+ } myst_buf_t;
+ 
+ void myst_buf_release(myst_buf_t* buf);
+@@ -52,4 +56,8 @@ int myst_buf_unpack_strings(
+     const char*** strings,
+     size_t* count);
+ 
++bool myst_buf_has_active_mmap(myst_buf_t* buf);
++
++int myst_buf_set_mmap_active(myst_buf_t* buf, bool active);
++
+ #endif /* _MYST_BUF_H */
+diff --git a/include/myst/eraise.h b/include/myst/eraise.h
+index 1477f8ff..83b6352e 100644
+--- a/include/myst/eraise.h
++++ b/include/myst/eraise.h
+@@ -31,6 +31,18 @@
+         }                                                            \
+     } while (0)
+ 
++#define ECHECK_LABEL(ERRNUM, LABEL)                                  \
++    do                                                               \
++    {                                                                \
++        typeof(ERRNUM) _r_ = ERRNUM;                                 \
++        if (_r_ < 0)                                                 \
++        {                                                            \
++            ret = (typeof(ret))_r_;                                  \
++            myst_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
++            goto LABEL;                                              \
++        }                                                            \
++    } while (0)
++
+ #define ECHECK_QUIET(ERRNUM) \
+     do                       \
+     {                        \
+diff --git a/include/myst/fs.h b/include/myst/fs.h
+index a79ab5b9..8b3472ca 100644
+--- a/include/myst/fs.h
++++ b/include/myst/fs.h
+@@ -7,6 +7,7 @@
+ #include <dirent.h>
+ #include <fcntl.h>
+ #include <limits.h>
++#include <stdbool.h>
+ #include <sys/stat.h>
+ #include <sys/statfs.h>
+ #include <sys/types.h>
+@@ -187,6 +188,14 @@ struct myst_fs
+ 
+     /* Recursively remove directory tree pointed at by pathname */
+     int (*fs_release_tree)(myst_fs_t* fs, const char* pathname);
++
++    /* Used for supporting POSIX shared memory */
++    int (*fs_file_data_start_addr)(
++        myst_fs_t* fs,
++        myst_file_t* file,
++        void** addr_out);
++    int (
++        *fs_file_mapping_notify)(myst_fs_t* fs, myst_file_t* file, bool active);
+ };
+ 
+ int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
+diff --git a/include/myst/mmanutils.h b/include/myst/mmanutils.h
+index 9e2b5222..9ad71124 100644
+--- a/include/myst/mmanutils.h
++++ b/include/myst/mmanutils.h
+@@ -5,6 +5,8 @@
+ #define _MYST_MMANUTILS_H
+ 
+ #include <myst/buf.h>
++#include <myst/fs.h>
++#include <myst/list.h>
+ #include <myst/mman.h>
+ #include <myst/refstr.h>
+ #include <sys/mman.h>
+@@ -12,6 +14,15 @@
+ 
+ #define MYST_FDMAPPING_USED 0x1ca0597f
+ 
++typedef struct mman_file_handle
++{
++    myst_list_node_t base;
++    myst_fs_t* fs;
++    myst_file_t* file;
++    ino_t inode;
++    int npages; // # of pages sharing this mapping
++} mman_file_handle_t;
++
+ /*
+ defines a file-page to memory-page mapping
+ The mapping entries in the fdmappings vector are populated at mmap, and cleaned
+@@ -19,10 +30,9 @@ up at munmap.
+ */
+ typedef struct myst_fdmapping
+ {
+-    uint32_t used;           /* whether entry is used */
+-    int32_t fd;              /* duplicated fd */
+-    uint64_t offset;         /* offset of page within file */
+-    myst_refstr_t* pathname; /* full pathname associated with fd */
++    uint32_t used;   /* whether entry is used */
++    uint64_t offset; /* offset of page within backing file */
++    mman_file_handle_t* mman_file_handle;
+ } myst_fdmapping_t;
+ 
+ int myst_setup_mman(void* data, size_t size);
+@@ -39,6 +49,8 @@ long myst_mmap(
+ 
+ int myst_munmap(void* addr, size_t length);
+ 
++int myst_munmap_and_pids_clear_atomic(void* addr, size_t length);
++
+ long myst_syscall_brk(void* addr);
+ 
+ void* myst_mremap(
+@@ -91,8 +103,32 @@ bool myst_is_bad_addr(const void* addr, size_t size, int prot);
+ #define myst_is_bad_addr_read_write(addr, size) \
+     (myst_is_bad_addr(addr, size, PROT_READ | PROT_WRITE))
+ 
++typedef enum
++{
++    NONE,
++    PRIVATE,
++    SHARED
++} map_type_t;
++
++/* checks if process owns memory range [addr,addr+length). By default checks
++ * both private and shared mappings. Can be configured to just check private
++ * mappings with `private_only` flag. */
++map_type_t myst_process_owns_mem_range(
++    const void* addr,
++    size_t length,
++    bool private_only);
++
+ void myst_mman_lock(void);
+ 
+ void myst_mman_unlock(void);
+ 
++bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2);
++
++long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
++
++void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
++
++const char* myst_mman_prot_to_string(int prot);
++const char* myst_mman_flags_to_string(int flags);
++
+ #endif /* _MYST_MMANUTILS_H */
+diff --git a/include/myst/mount.h b/include/myst/mount.h
+index 39863ddd..a1659f69 100644
+--- a/include/myst/mount.h
++++ b/include/myst/mount.h
+@@ -6,6 +6,7 @@
+ 
+ #include <limits.h>
+ #include <myst/fs.h>
++#include <stdbool.h>
+ 
+ /* Mount a file system onto a target path */
+ int myst_mount(
+diff --git a/include/myst/ramfs.h b/include/myst/ramfs.h
+index fb03ca97..253bc1e4 100644
+--- a/include/myst/ramfs.h
++++ b/include/myst/ramfs.h
+@@ -46,7 +46,8 @@ typedef struct _vcallback
+ 
+ int myst_init_ramfs(
+     myst_mount_resolve_callback_t resolve_cb,
+-    myst_fs_t** fs_out);
++    myst_fs_t** fs_out,
++    int device_num);
+ 
+ int myst_ramfs_set_buf(
+     myst_fs_t* fs,
+@@ -72,4 +73,5 @@ int myst_write_stateful_virtual_file(
+ 
+ int set_overrides_for_special_fs(myst_fs_t* fs);
+ 
++#define MYST_POSIX_SHMFS_DEV_NUM 26
+ #endif /* _MYST_RAMFS_H */
+diff --git a/include/myst/sharedmem.h b/include/myst/sharedmem.h
+new file mode 100644
+index 00000000..0858bf11
+--- /dev/null
++++ b/include/myst/sharedmem.h
+@@ -0,0 +1,63 @@
++// Copyright (c) Microsoft Corporation.
++// Licensed under the MIT License.
++
++#ifndef _MYST_POSIXSHMMAN_H
++#define _MYST_POSIXSHMMAN_H
++
++#include <myst/buf.h>
++#include <myst/fs.h>
++#include <myst/mmanutils.h>
++
++int shmfs_setup();
++
++int shmfs_teardown();
++
++typedef struct shared_mapping shared_mapping_t;
++
++bool myst_is_posix_shm_file_handle(int fd, int flags);
++
++bool myst_is_address_within_shmem(
++    const void* addr,
++    const size_t len,
++    shared_mapping_t** sm_out);
++
++/* register regular file or anonymous MAP_SHARED mapping */
++int myst_shmem_register_mapping(
++    int fd,
++    void* addr,
++    size_t length,
++    size_t offset);
++
++long myst_posix_shm_handle_mmap(
++    int fd,
++    void* addr,
++    size_t length,
++    off_t offset,
++    int flags);
++
++int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem);
++
++int myst_shmem_handle_release_mappings(pid_t pid);
++
++int myst_shmem_share_mappings(pid_t childpid);
++
++bool myst_shmem_can_mremap(
++    shared_mapping_t* sm,
++    void* old_addr,
++    size_t old_size);
++
++void myst_shmem_mremap_update(
++    shared_mapping_t* sm,
++    void* new_addr,
++    size_t new_size);
++
++bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length);
++
++bool myst_addr_within_process_owned_shmem(
++    const void* addr,
++    const size_t length,
++    pid_t pid);
++
++size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle);
++
++#endif /* _MYST_POSIXSHMMAN_H */
+diff --git a/kernel/devfs.c b/kernel/devfs.c
+index 53bb615f..3ffd59e2 100644
+--- a/kernel/devfs.c
++++ b/kernel/devfs.c
+@@ -235,7 +235,7 @@ int devfs_setup()
+ {
+     int ret = 0;
+ 
+-    if (myst_init_ramfs(myst_mount_resolve, &_devfs) != 0)
++    if (myst_init_ramfs(myst_mount_resolve, &_devfs, 0) != 0)
+     {
+         myst_eprintf("failed initialize the dev file system\n");
+         ERAISE(-EINVAL);
+diff --git a/kernel/enter.c b/kernel/enter.c
+index f42d4c1f..cf9e12a7 100644
+--- a/kernel/enter.c
++++ b/kernel/enter.c
+@@ -38,6 +38,7 @@
+ #include <myst/procfs.h>
+ #include <myst/pubkey.h>
+ #include <myst/ramfs.h>
++#include <myst/sharedmem.h>
+ #include <myst/signal.h>
+ #include <myst/stack.h>
+ #include <myst/strings.h>
+@@ -256,7 +257,7 @@ static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
+         ERAISE(-EINVAL);
+     }
+ 
+-    if (myst_init_ramfs(myst_mount_resolve, &fs) != 0)
++    if (myst_init_ramfs(myst_mount_resolve, &fs, 0) != 0)
+     {
+         myst_eprintf("cannot initialize file system: %s\n", target);
+         ERAISE(-EINVAL);
+@@ -306,7 +307,7 @@ static int _setup_ramfs(void)
+ {
+     int ret = 0;
+ 
+-    if (myst_init_ramfs(myst_mount_resolve, &_fs) != 0)
++    if (myst_init_ramfs(myst_mount_resolve, &_fs, 0) != 0)
+     {
+         myst_eprintf("failed initialize the RAM file system\n");
+         ERAISE(-EINVAL);
+@@ -823,6 +824,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
+     /* Setup devfs */
+     devfs_setup();
+ 
++    /* Setup POSIX Shared Memory fs */
++    shmfs_setup();
++
+     /* Create top-level proc entries */
+     create_proc_root_entries();
+ 
+@@ -1018,6 +1022,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
+     /* Tear down the dev file system */
+     devfs_teardown();
+ 
++    /* Tear down the posix shm file system */
++    shmfs_teardown();
++
+     /* Tear down the RAM file system */
+     _teardown_ramfs();
+ 
+diff --git a/kernel/exec.c b/kernel/exec.c
+index 8a624fe9..31b338a2 100644
+--- a/kernel/exec.c
++++ b/kernel/exec.c
+@@ -28,6 +28,7 @@
+ #include <myst/reloc.h>
+ #include <myst/round.h>
+ #include <myst/setjmp.h>
++#include <myst/sharedmem.h>
+ #include <myst/signal.h>
+ #include <myst/spinlock.h>
+ #include <myst/strings.h>
+diff --git a/kernel/lockfs.c b/kernel/lockfs.c
+index 4be22ca1..70cfc3b8 100644
+--- a/kernel/lockfs.c
++++ b/kernel/lockfs.c
+@@ -607,6 +607,33 @@ done:
+     return ret;
+ }
+ 
++static int _fs_file_data_start_addr(
++    myst_fs_t* fs,
++    myst_file_t* file,
++    void** addr_out)
++{
++    int ret = 0;
++    LOCK();
++    ret = (*lockfs->fs->fs_file_data_start_addr)(lockfs->fs, file, addr_out);
++    UNLOCK();
++
++done:
++    return ret;
++}
++
++static int _fs_file_mapping_notify(
++    myst_fs_t* fs,
++    myst_file_t* file,
++    bool active)
++{
++    int ret = 0;
++    LOCK();
++    ret = (*lockfs->fs->fs_file_mapping_notify)(lockfs->fs, file, active);
++    UNLOCK();
++done:
++    return ret;
++}
++
+ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
+ {
+     int ret = 0;
+@@ -668,6 +695,8 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
+         .fs_fdatasync = _fs_fdatasync,
+         .fs_fsync = _fs_fsync,
+         .fs_release_tree = _fs_release_tree,
++        .fs_file_data_start_addr = _fs_file_data_start_addr,
++        .fs_file_mapping_notify = _fs_file_mapping_notify,
+     };
+ 
+     if (lockfs_out)
+diff --git a/kernel/mman.c b/kernel/mman.c
+index 62e06041..00f0e735 100644
+--- a/kernel/mman.c
++++ b/kernel/mman.c
+@@ -921,6 +921,9 @@ static int _mmap(
+             goto done;
+         }
+ 
++        // ATTN: We always coalesce if there is an allocated region adjacent. Is
++        // this safe when adjacent region is owned by different process or has
++        // different protection attributes?
+         if (left && _end(left) == start)
+         {
+             /* Coalesce with LEFT neighbor */
+diff --git a/kernel/mmanutils.c b/kernel/mmanutils.c
+index 07acc964..ec587067 100644
+--- a/kernel/mmanutils.c
++++ b/kernel/mmanutils.c
+@@ -7,7 +7,6 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/mman.h>
+-
+ #include <unistd.h>
+ 
+ #include <myst/atexit.h>
+@@ -26,8 +25,10 @@
+ #include <myst/procfs.h>
+ #include <myst/refstr.h>
+ #include <myst/round.h>
++#include <myst/sharedmem.h>
+ #include <myst/strings.h>
+ #include <myst/syscall.h>
++#include <myst/syslog.h>
+ #include <myst/trace.h>
+ 
+ MYST_PRINTF_FORMAT(2, 3)
+@@ -79,20 +80,6 @@ static vectors_t _get_vectors(void)
+     return v;
+ }
+ 
+-static int _fd_to_pathname(int fd, char pathname[PATH_MAX])
+-{
+-    int ret = 0;
+-    myst_fdtable_t* fdtable = myst_fdtable_current();
+-    myst_fs_t* fs;
+-    myst_file_t* file;
+-
+-    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
+-    ECHECK((*fs->fs_realpath)(fs, file, pathname, PATH_MAX));
+-
+-done:
+-    return ret;
+-}
+-
+ int myst_setup_mman(void* data, size_t size)
+ {
+     int ret = -1;
+@@ -130,6 +117,11 @@ int myst_teardown_mman(void)
+     return 0;
+ }
+ 
++static __inline__ size_t _min_size(size_t x, size_t y)
++{
++    return x < y ? x : y;
++}
++
+ /* get the page index of the given address and check for bounds violations */
+ static ssize_t _get_page_index(const void* addr, size_t length)
+ {
+@@ -140,7 +132,7 @@ static ssize_t _get_page_index(const void* addr, size_t length)
+     const uint64_t addr_end;
+     const size_t mman_end;
+ 
+-    if (!addr || !length)
++    if (!addr && !length)
+         ERAISE(-EINVAL);
+ 
+     if (((uint64_t)addr % PAGE_SIZE) || (length % PAGE_SIZE))
+@@ -197,84 +189,114 @@ size_t _skip_zero_pids(const uint32_t* pids, size_t i, size_t n)
+     return i + (p - start);
+ }
+ 
+-static void _free_fdmappings_pathnames(void* arg)
+-{
+-    uint8_t* addr = (uint8_t*)_mman.map;
+-    size_t length = ((uint8_t*)_mman.end) - addr;
+-    size_t index;
+-    vectors_t v = _get_vectors();
+-
+-    (void)arg;
+-
+-    myst_round_up(length, PAGE_SIZE, &length);
+-    index = _get_page_index(addr, length);
+-    assert(index >= 0);
+-    size_t count = length / PAGE_SIZE;
+-    size_t n = index + count;
+-
+-    for (size_t i = index; i < n; i++)
+-    {
+-        if ((i = _skip_unused_fdmappings(v.fdmappings, i, n)) == n)
+-        {
+-            /* there are no more in-use fd-mappings */
+-            break;
+-        }
+-
+-        myst_fdmapping_t* p = &v.fdmappings[i];
++static myst_list_t mman_file_handles;
++static myst_once_t _free_mman_file_handles_atexit_once;
+ 
+-        if (p->pathname)
+-        {
+-            myst_refstr_unref(p->pathname);
+-            p->pathname = NULL;
+-        }
+-    }
++static void _free_mman_file_handles_atexit(void)
++{
++    myst_atexit((void (*)(void*))myst_list_free, &mman_file_handles);
+ }
+ 
+-static myst_once_t _free_fdmappings_pathnames_atexit_once;
+-
+-static void _free_fdmappings_pathnames_atexit(void)
++static ino_t _get_inode(myst_fs_t* fs, myst_file_t* file)
+ {
+-    myst_atexit(_free_fdmappings_pathnames, NULL);
++    assert(fs && file);
++    struct stat statbuf;
++    fs->fs_fstat(fs, file, &statbuf);
++    return statbuf.st_ino;
+ }
+ 
+-static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
++long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out)
+ {
+-    int ret = 0;
+-    int dupfd;
+-    bool locked = false;
+-    size_t index;
+-    vectors_t v = _get_vectors();
++    long ret = 0;
++    myst_fs_t* fs;
++    myst_file_t *file, *file_out;
++    mman_file_handle_t* file_handle = NULL;
++    myst_fdtable_t* fdtable = myst_fdtable_current();
+     struct locals
+     {
+         char pathname[PATH_MAX];
++        char suffix[PATH_MAX];
+     };
+     struct locals* locals = NULL;
+-    myst_refstr_t* pathname = NULL;
+ 
+-    if (fd < 0 || offset < 0 || !addr || !length)
++    if (!file_handle_out)
+         ERAISE(-EINVAL);
+ 
+-    if (!(locals = calloc(1, sizeof(struct locals))))
++    *file_handle_out = NULL;
++
++    if (!(locals = malloc(sizeof(struct locals))))
+         ERAISE(-ENOMEM);
+ 
+-    /* register the cleanup function for fd-mapping pathnames with atxit() */
++    if (!(file_handle = calloc(1, sizeof(mman_file_handle_t))))
++        ERAISE(-ENOMEM);
++
++    /* register the cleanup function for mman owned file handles with atexit()
++     */
+     myst_once(
+-        &_free_fdmappings_pathnames_atexit_once,
+-        _free_fdmappings_pathnames_atexit);
++        &_free_mman_file_handles_atexit_once, _free_mman_file_handles_atexit);
+ 
+-    ECHECK(_fd_to_pathname(fd, locals->pathname));
++    // get a dup file handle which the mman will use
++    // for msync and /proc/[pid]/maps
++    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
++    ECHECK((*fs->fs_dup)(fs, file, &file_out));
+ 
+-    /* make a reference-counted version of the pathname */
+-    if (!(pathname = myst_refstr_dup(locals->pathname)))
+-        ERAISE(-ENOMEM);
++    file_handle->fs = fs;
++    file_handle->file = file_out;
++    file_handle->inode = _get_inode(fs, file);
++    myst_list_prepend(&mman_file_handles, &file_handle->base);
++
++    *file_handle_out = file_handle;
++    file_handle = NULL;
++
++done:
+ 
+-    /* duplicate fd */
+-    if ((dupfd = myst_syscall_dup(fd)) == -1)
+-        ERAISE(dupfd);
++    if (locals)
++        free(locals);
++
++    if (file_handle)
++        free(file_handle);
++
++    return ret;
++}
++
++void myst_mman_file_handle_put(mman_file_handle_t* file_handle)
++{
++    assert(file_handle);
++    if (--file_handle->npages <= 0)
++    {
++        myst_list_remove(&mman_file_handles, &file_handle->base);
++        file_handle->fs->fs_close(file_handle->fs, file_handle->file);
++        free(file_handle);
++    }
++}
++
++bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
++{
++    if (!f1 && !f2)
++        return true;
++    if (!f1 || !f2)
++        return false;
++    if (f1->fs == f2->fs && f1->inode == f2->inode)
++        return true;
++    return false;
++}
++
++static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
++{
++    int ret = 0;
++    bool locked = false;
++    size_t index;
++    vectors_t v = _get_vectors();
++    mman_file_handle_t* file_handle;
++
++    if (fd < 0 || offset < 0 || !addr || !length)
++        ERAISE(-EINVAL);
+ 
+     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+     ECHECK((index = _get_page_index(addr, length)));
+ 
++    ECHECK(myst_mman_file_handle_get(fd, &file_handle));
++
+     _rlock(&locked);
+     {
+         const size_t count = length / PAGE_SIZE;
+@@ -284,20 +306,26 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
+         {
+             myst_fdmapping_t* p = &v.fdmappings[i];
+ 
++            assert(
++                (p->used && p->mman_file_handle) ||
++                (!p->used && !p->mman_file_handle));
++
+             // The musl libc program loader maps an ELF image onto memory and
+             // then calls mmap() on the second page of that memory to change
+             // permissions. It is unclear why mprotect() could not be used but
+             // we allow mapping over an existing file mapping for this reason.
+-            if (p->used == MYST_FDMAPPING_USED)
++            // Avoid overwriting file handle if the fdmapping entry also points
++            // to the same file.
++            if (!p->used ||
++                !mman_file_handle_eq(p->mman_file_handle, file_handle))
+             {
+-                myst_refstr_unref(p->pathname);
+-                p->pathname = NULL;
++                if (p->mman_file_handle)
++                    myst_mman_file_handle_put(p->mman_file_handle);
++                p->mman_file_handle = file_handle;
++                file_handle->npages++;
+             }
+-
+             p->used = MYST_FDMAPPING_USED;
+-            p->fd = dupfd;
+             p->offset = off;
+-            myst_refstr_ref(p->pathname = pathname);
+             off += PAGE_SIZE;
+         }
+     }
+@@ -307,10 +335,199 @@ done:
+ 
+     _runlock(&locked);
+ 
+-    if (locals)
+-        free(locals);
++    // if file handle was not used
++    if (!file_handle->npages)
++        myst_mman_file_handle_put(file_handle);
++
++    return ret;
++}
++
++typedef struct fdlist
++{
++    mman_file_handle_t* mman_file_handle;
++    struct fdlist* next;
++} fdlist_t;
++
++fdlist_t* get_tail(fdlist_t* node)
++{
++    fdlist_t* prev = NULL;
++    while (node)
++    {
++        prev = node;
++        node = node->next;
++    }
++    return prev;
++}
++
++/* release msync mappings that are contained in the range [addr:addr+length] */
++static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
++{
++    int ret = 0;
++    size_t index;
++    vectors_t v = _get_vectors();
++    bool locked = false;
++    fdlist_t* head = NULL;
++
++    if (head_out)
++        *head_out = NULL;
++
++    if (!addr || !length || !head_out)
++        ERAISE(-EINVAL);
++
++    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
++    ECHECK((index = _get_page_index(addr, length)));
++
++    _rlock(&locked);
++    {
++        const size_t count = length / PAGE_SIZE;
++
++        for (size_t i = index; i < index + count; i++)
++        {
++            /* remove any fd-mapping (it is okay if it does exist) */
++            myst_fdmapping_t* p = &v.fdmappings[i];
++
++            assert(
++                (p->used && p->mman_file_handle) ||
++                (!p->used && !p->mman_file_handle));
++
++            if (p->used == MYST_FDMAPPING_USED)
++            {
++                if (p->mman_file_handle->npages > 1)
++                {
++                    myst_mman_file_handle_put(p->mman_file_handle);
++                }
++                // if last page, defer filesystem close as this can cause mman
++                // and lockfs locks to deadlock. file handles are appended to a
++                // list which is closed later when outside of the mman lock.
++                else
++                {
++                    fdlist_t* fd_node;
++
++                    if ((fd_node = calloc(1, sizeof(fdlist_t))) == NULL)
++                    {
++                        _runlock(&locked);
++                        ERAISE(-ENOMEM);
++                    }
++
++                    fd_node->mman_file_handle = p->mman_file_handle;
++
++                    if (!head)
++                        head = fd_node;
++                    else
++                    {
++                        fd_node->next = head;
++                        head = fd_node;
++                    }
++                }
++            }
+ 
+-    myst_refstr_unref(pathname);
++            // clear fd mapping
++            memset(p, 0, sizeof(myst_fdmapping_t));
++        }
++    }
++    _runlock(&locked);
++
++    *head_out = head;
++    head = NULL;
++
++done:
++
++    while (head)
++    {
++        fdlist_t* next = head->next;
++        free(head);
++        head = next;
++    }
++
++    return ret;
++}
++
++static void _close_file_handles(fdlist_t* head)
++{
++    while (head)
++    {
++        fdlist_t* next = head->next;
++        myst_mman_file_handle_put(head->mman_file_handle);
++        free(head);
++        head = next;
++    }
++}
++
++static int _move_file_mapping(
++    void* old_addr,
++    size_t old_size,
++    void* new_addr,
++    size_t new_size)
++{
++    int ret = 0;
++    bool locked = false;
++
++    if (!old_addr || !old_size || !new_addr || !new_size)
++        ERAISE(-EINVAL);
++
++    if (old_addr == new_addr)
++    {
++        // Case: Grow in-place
++        if (old_size <= new_size)
++            goto done;
++        else // Shrink in-place
++        {
++            fdlist_t* file_handle_head;
++
++            size_t num_reclaim_pages =
++                myst_round_down_to_page_size(old_size - new_size);
++            uint64_t reclaim_start_addr = (uint64_t)new_addr + new_size;
++            ECHECK(myst_round_up(
++                reclaim_start_addr, PAGE_SIZE, &reclaim_start_addr));
++            _remove_file_mappings(
++                (void*)reclaim_start_addr,
++                num_reclaim_pages,
++                &file_handle_head);
++            _close_file_handles(file_handle_head);
++        }
++    }
++    else // mapping got moved
++    {
++        assert(old_size < new_size);
++
++        size_t old_index, new_index, i, j;
++        vectors_t v = _get_vectors();
++
++        ECHECK(myst_round_up(old_size, PAGE_SIZE, &old_size));
++        ECHECK((old_index = _get_page_index(old_addr, old_size)));
++        ECHECK(myst_round_up(new_size, PAGE_SIZE, &new_size));
++        ECHECK((new_index = _get_page_index(new_addr, new_size)));
++
++        _rlock(&locked);
++        {
++            const size_t count = old_size / PAGE_SIZE;
++
++            for (i = old_index, j = new_index; i < old_index + count; i++, j++)
++            {
++                myst_fdmapping_t* p = &v.fdmappings[i];
++                myst_fdmapping_t* q = &v.fdmappings[j];
++
++                assert(
++                    (p->used && p->mman_file_handle) ||
++                    (!p->used && !p->mman_file_handle));
++                assert(!q->used && !q->mman_file_handle);
++
++                if (p->used)
++                {
++                    q->used = MYST_FDMAPPING_USED;
++                    q->offset = p->offset;
++                    q->mman_file_handle = p->mman_file_handle;
++
++                    // clear fdmapping for old page
++                    memset(p, 0, sizeof(myst_fdmapping_t));
++                }
++            }
++        }
++        _runlock(&locked);
++    }
++
++done:
++    _runlock(&locked);
+ 
+     return ret;
+ }
+@@ -371,30 +588,12 @@ done:
+     return ret;
+ }
+ 
+-long myst_mmap(
+-    void* addr,
+-    size_t length,
+-    int prot,
+-    int flags,
+-    int fd,
+-    off_t offset)
++static int _mmap_fd_checks(int prot, int flags, int fd)
+ {
+-    long ret = -1;
+-
+-    /* fail if length is zero. Note that the page-alignment will
+-     * be enforced by myst_mman_mprotect and myst_mman_mmap */
+-    if (!length)
+-        ERAISE(-EINVAL);
+-
+-    /* check for invalid PROT bits */
+-    if (prot & (~MYST_PROT_MMAP_MASK))
+-        ERAISE(-EINVAL);
++    long ret = 0;
+ 
+-    /* Linux ignores fd when the MAP_ANONYMOUS flag is present */
+-    if (flags & MAP_ANONYMOUS)
+-        fd = -1;
+     /* fail if fd is negative when the MAP_ANONYMOUS flag is not present */
+-    else if (fd < 0)
++    if (!(flags & MAP_ANONYMOUS) && fd < 0)
+         ERAISE(-EBADF);
+ 
+     /* check file permissions upfront */
+@@ -429,7 +628,43 @@ long myst_mmap(
+             ERAISE(-EACCES);
+     }
+ 
+-    if (fd >= 0 && addr)
++done:
++    return ret;
++}
++
++long myst_mmap(
++    void* addr,
++    size_t length,
++    int prot,
++    int flags,
++    int fd,
++    off_t offset)
++{
++    long ret = -1;
++
++    /* fail if length is zero. Note that the page-alignment will
++     * be enforced by myst_mman_mprotect and myst_mman_mmap */
++    if (!length)
++        ERAISE(-EINVAL);
++
++    /* check for invalid PROT bits */
++    if (prot & (~MYST_PROT_MMAP_MASK))
++        ERAISE(-EINVAL);
++
++    /* Linux ignores fd when the MAP_ANONYMOUS flag is present */
++    if (flags & MAP_ANONYMOUS)
++        fd = -1;
++
++    ECHECK(_mmap_fd_checks(prot, flags, fd));
++
++    /* Check if posix shm file */
++    /* addr hint is not allowed for POSIX shm memory */
++    if (fd >= 0 && !addr && myst_is_posix_shm_file_handle(fd, flags))
++    {
++        ECHECK((
++            ret = myst_posix_shm_handle_mmap(fd, addr, length, offset, flags)));
++    }
++    else if (fd >= 0 && addr)
+     {
+         // ATTN: call mmap or mremap here so that this range refers to
+         // a mapped region.
+@@ -459,6 +694,8 @@ long myst_mmap(
+         ECHECK(
+             myst_mman_mmap(&_mman, addr, length, prot, tflags, (void**)&ret));
+ 
++        // ATTN: For failures in the rest of the function, do we need to return
++        // the allocated memory
+         if (fd >= 0 && !addr)
+         {
+             // ATTN: Use the error code returned by lower-level functions. This
+@@ -486,6 +723,9 @@ long myst_mmap(
+             if (!(prot & MYST_PROT_WRITE))
+                 ECHECK(myst_mman_mprotect(&_mman, (void*)ret, length, prot));
+         }
++
++        if (ret && (flags & MAP_SHARED))
++            ECHECK(myst_shmem_register_mapping(fd, (void*)ret, length, offset));
+     }
+ 
+     void* end = (void*)(ret + length);
+@@ -505,138 +745,78 @@ void* myst_mremap(
+ {
+     void* p;
+     int r;
++    shared_mapping_t* shm_mapping;
+ 
+     if (new_address)
+         return (void*)-EINVAL;
+ 
++    if (myst_is_address_within_shmem(old_address, old_size, &shm_mapping))
++    {
++        if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
++        {
++            MYST_WLOG("Unsupported mremap operation detected. For shared "
++                      "mappings, mremap is only allowed if there is a single "
++                      "user of the mapping.\n");
++            return (void*)-EINVAL;
++        }
++    }
++
+     r = myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
+ 
+     if (r != 0)
+         return (void*)(long)r;
+ 
++    // fixup shared mapping
++    if (shm_mapping)
++    {
++        myst_shmem_mremap_update(shm_mapping, p, new_size);
++    }
++
++    if ((r = _move_file_mapping(old_address, old_size, p, new_size)) != 0)
++        return (void*)(long)r;
++
+     return p;
+ }
+ 
+ int myst_mprotect(const void* addr, const size_t len, const int prot)
+ {
++    shared_mapping_t* shm_mapping;
++
+     if (!addr)
+         return -EINVAL;
+ 
+     /* check for invalid PROT bits */
+     if (prot & (~MYST_PROT_MPROTECT_MASK))
+         return -EINVAL;
++
+     /* PROT cannot have both PROT_GROWSDOWN and MYST_PROT_GROWSUP bits set */
+     if ((prot & MYST_PROT_GROWSDOWN) && (prot & MYST_PROT_GROWSUP))
+         return -EINVAL;
+ 
+-    /* Current implementation for mprotect ignore bits beyond
+-       PROT_READ|PROT_WRITE|PROT_EXEC
+-    */
+-    return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
+-}
+-
+-typedef struct fdlist
+-{
+-    int fd;
+-    struct fdlist* next;
+-} fdlist_t;
++    // we don't support changing protection left of addr
++    assert(!(prot & MYST_PROT_GROWSDOWN));
+ 
+-fdlist_t* get_tail(fdlist_t* node)
+-{
+-    fdlist_t* prev = NULL;
+-    while (node)
++    if (myst_is_address_within_shmem(addr, len, &shm_mapping))
+     {
+-        prev = node;
+-        node = node->next;
+-    }
+-    return prev;
+-}
+-
+-/* release msync mappings that are contained in the range [addr:addr+length] */
+-static int _remove_file_mappings(void* addr, size_t length, fdlist_t** head_out)
+-{
+-    int ret = 0;
+-    size_t index;
+-    vectors_t v = _get_vectors();
+-    bool locked = false;
+-    fdlist_t* head = NULL;
+-
+-    if (head_out)
+-        *head_out = NULL;
+-
+-    if (!addr || !length || !head_out)
+-        ERAISE(-EINVAL);
+-
+-    ECHECK(myst_round_up(length, PAGE_SIZE, &length));
+-    ECHECK((index = _get_page_index(addr, length)));
+-
+-    _rlock(&locked);
+-    {
+-        const size_t count = length / PAGE_SIZE;
+-        int prev_cleared_fd = -1;
+-
+-        for (size_t i = index; i < index + count; i++)
++        if (!myst_shmem_can_mprotect(shm_mapping, (void*)addr, len))
+         {
+-            /* remove any fd-mapping (it is okay if it does exist) */
+-            myst_fdmapping_t* p = &v.fdmappings[i];
+-
+-            /* add fd's for in-use mappings to a list. add only for the first
+-             * page of
+-             * interval mapped with same fd. The fd list will be closed by the
+-             * caller outside the mman lock. */
+-            if (p->used == MYST_FDMAPPING_USED && p->fd != prev_cleared_fd)
+-            {
+-                fdlist_t* fd_node;
+-
+-                if ((fd_node = calloc(1, sizeof(fdlist_t))) == NULL)
+-                {
+-                    _runlock(&locked);
+-                    ERAISE(-ENOMEM);
+-                }
+-
+-                fd_node->fd = prev_cleared_fd = p->fd;
+-                if (!head)
+-                    head = fd_node;
+-                else
+-                {
+-                    fd_node->next = head;
+-                    head = fd_node;
+-                }
+-            }
+-
+-            // clear fd mapping
+-            p->used = 0;
+-            p->fd = 0;
+-            p->offset = 0;
+-            myst_refstr_unref(p->pathname);
+-            p->pathname = NULL;
++            MYST_WLOG("Unsupported mprotect operation detected. For shared "
++                      "mappings, mprotect is only allowed if there is a single "
++                      "user of the mapping. Mystikos relies on host for page "
++                      "protection. On x86-64 and Linux, page protection is per "
++                      "address space. As we "
++                      "are single process on the host, supporting mprotect for "
++                      "memory shared between two process threads becomes "
++                      "difficult.\n");
++            return -EINVAL;
+         }
+     }
+-    _runlock(&locked);
+ 
+-    *head_out = head;
+-    head = NULL;
+-
+-done:
+-
+-    while (head)
+     {
+-        fdlist_t* next = head->next;
+-        free(head);
+-        head = next;
+-    }
+-
+-    return ret;
+-}
+-
+-static void _close_file_handles(fdlist_t* head)
+-{
+-    while (head)
+-    {
+-        fdlist_t* next = head->next;
+-        myst_syscall_close(head->fd);
+-        free(head);
+-        head = next;
++        /* Current implementation for mprotect ignore bits beyond
++            PROT_READ|PROT_WRITE|PROT_EXEC
++        */
++        return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
+     }
+ }
+ 
+@@ -676,6 +856,25 @@ done:
+     return ret;
+ }
+ 
++int myst_munmap_and_pids_clear_atomic(void* addr, size_t length)
++{
++    int ret = 0;
++    fdlist_t* head = NULL;
++    bool locked = false;
++
++    _rlock(&locked);
++    ECHECK(__myst_munmap(addr, length, &head));
++    myst_mman_pids_set(addr, length, 0);
++    _runlock(&locked);
++
++    // close file handles outside of mman lock
++    _close_file_handles(head);
++
++done:
++    _runlock(&locked);
++    return ret;
++}
++
+ long myst_syscall_brk(void* addr)
+ {
+     void* ptr = NULL;
+@@ -708,6 +907,10 @@ int myst_release_process_mappings(pid_t pid)
+     if (pid <= 0)
+         ERAISE(-EINVAL);
+ 
++    /* Release shared memory mappings for this process */
++    myst_shmem_handle_release_mappings(pid);
++
++    /* Scan entire pids vector range for process-owned MAP_PRIVATE memory */
+     {
+         uint8_t* addr = (uint8_t*)_mman.map;
+         size_t length = ((uint8_t*)_mman.end) - addr;
+@@ -753,14 +956,6 @@ int myst_release_process_mappings(pid_t pid)
+                     size_t m = 1;
+                     size_t len;
+ 
+-                    myst_fdmapping_t* p = &v.fdmappings[i];
+-
+-                    if (p->pathname)
+-                    {
+-                        myst_refstr_unref(p->pathname);
+-                        p->pathname = NULL;
+-                    }
+-
+                     /* count consecutive pages with same pid */
+                     for (size_t j = i + 1; j < n; j++)
+                     {
+@@ -768,15 +963,6 @@ int myst_release_process_mappings(pid_t pid)
+                         {
+                             break;
+                         }
+-
+-                        myst_fdmapping_t* p = &v.fdmappings[j];
+-
+-                        if (p->pathname)
+-                        {
+-                            myst_refstr_unref(p->pathname);
+-                            p->pathname = NULL;
+-                        }
+-
+                         m++;
+                     }
+ 
+@@ -894,7 +1080,6 @@ int proc_pid_maps_vcallback(
+     struct locals
+     {
+         char realpath[PATH_MAX];
+-        char maps_entry[48 + PATH_MAX];
+     }* locals = NULL;
+     myst_process_t* process;
+ 
+@@ -927,22 +1112,23 @@ int proc_pid_maps_vcallback(
+         ECHECK((index = _get_page_index(addr, length)));
+         size_t count = length / PAGE_SIZE;
+ 
++        size_t last_page_idx_plus_one = index + count;
+         assert(index < v.pids_count);
+-        assert(index + count <= v.pids_count);
++        assert(last_page_idx_plus_one == v.pids_count);
+ 
+         _rlock(&locked);
+         {
+-            for (size_t i = index; i < index + count;)
++            for (size_t i = index; i < last_page_idx_plus_one;)
+             {
+                 if (v.pids[i] == (uint32_t)pid)
+                 {
+-                    size_t n = 1;
+-                    size_t len;
+-                    int fd = v.fdmappings[i].fd;
++                    size_t n = 1; // tracks page span with same traits
++                    mman_file_handle_t* file_handle =
++                        v.fdmappings[i].mman_file_handle;
+ 
+                     uint32_t used = v.fdmappings[i].used;
+                     uint64_t offset = v.fdmappings[i].offset;
+-                    myst_refstr_t* pathname = v.fdmappings[i].pathname;
++
+                     int prot = 0;
+                     bool consistent = false;
+                     char* str;
+@@ -955,7 +1141,7 @@ int proc_pid_maps_vcallback(
+                     }
+ 
+                     /* count consecutive pages with same traits */
+-                    for (size_t j = i + 1; j < index + count; j++)
++                    for (size_t j = i + 1; j < last_page_idx_plus_one; j++)
+                     {
+                         int tmp_prot = 0;
+ 
+@@ -966,8 +1152,9 @@ int proc_pid_maps_vcallback(
+                         if (v.fdmappings[j].used != used)
+                             break;
+ 
+-                        /* if the fd changes */
+-                        if (v.fdmappings[j].fd != fd)
++                        /* if the file changes */
++                        if (!mman_file_handle_eq(
++                                v.fdmappings[j].mman_file_handle, file_handle))
+                             break;
+ 
+                         if (myst_mman_get_prot(
+@@ -986,19 +1173,23 @@ int proc_pid_maps_vcallback(
+                         n++;
+                     }
+ 
+-                    len = n * PAGE_SIZE;
+-
+-                    if (!used)
+-                        fd = -1;
++                    if (used)
++                    {
++                        ECHECK(file_handle->fs->fs_realpath(
++                            file_handle->fs,
++                            file_handle->file,
++                            locals->realpath,
++                            PATH_MAX));
++                    }
+ 
+                     /* format the output */
+                     if (_format_proc_maps_entry(
+                             addr,
+-                            len,
++                            n * PAGE_SIZE,
+                             prot,
+                             flags,
+                             offset,
+-                            (pathname ? pathname->data : ""),
++                            (used ? locals->realpath : ""),
+                             &str) == 0)
+                     {
+                         if (myst_buf_insert(vbuf, 0, str, strlen(str)) < 0)
+@@ -1007,8 +1198,8 @@ int proc_pid_maps_vcallback(
+                     }
+ 
+                     i += n;
+-                    addr += len;
+-                    length -= len;
++                    addr += n * PAGE_SIZE;
++                    length -= n * PAGE_SIZE;
+                 }
+                 else
+                 {
+@@ -1035,7 +1226,11 @@ done:
+     return ret;
+ }
+ 
+-static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
++static int _sync_file(
++    mman_file_handle_t* file_handle,
++    off_t offset,
++    const void* addr,
++    size_t length)
+ {
+     int ret = 0;
+     const uint8_t* p = (const uint8_t*)addr;
+@@ -1044,7 +1239,8 @@ static int _sync_file(int fd, off_t offset, const void* addr, size_t length)
+ 
+     while (r > 0)
+     {
+-        ssize_t n = pwrite(fd, p, r, o);
++        ssize_t n = (file_handle->fs->fs_pwrite)(
++            file_handle->fs, file_handle->file, p, r, o);
+ 
+         if (n == 0)
+             break;
+@@ -1095,12 +1291,16 @@ int myst_msync(void* addr, size_t length, int flags)
+             {
+                 ECHECK(myst_mman_get_prot(
+                     &_mman, page, PAGE_SIZE, &prot, &consistent));
++
+                 if (prot & PROT_WRITE)
++                {
++                    size_t num_bytes_to_write = _min_size(PAGE_SIZE, length);
+                     ECHECK(_sync_file(
+-                        p->fd,
++                        p->mman_file_handle,
+                         p->offset,
+                         page,
+-                        length > PAGE_SIZE ? PAGE_SIZE : length));
++                        num_bytes_to_write));
++                }
+             }
+ 
+             page += PAGE_SIZE;
+@@ -1226,6 +1426,41 @@ ssize_t myst_mman_pids_test(const void* addr, size_t length, pid_t pid)
+     return _handle_mman_pids_op(MMAN_PIDS_OP_TEST, addr, length, pid);
+ }
+ 
++map_type_t myst_process_owns_mem_range(
++    const void* addr,
++    size_t length,
++    bool private_only)
++{
++    pid_t pid = myst_getpid();
++    uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
++
++    /*
++    Account for memory range covered due to rounding down start address.
++    Example case: p1 owns 0x1000-0x2000
++    Query for: 0x1001, 4096 = false
++    Query for: 0x1001, 4095 = true
++    */
++    length += (uint64_t)addr % PAGE_SIZE;
++
++    /* Round up the length (including the zero case) to PAGE_SIZE. If length is
++     * 0, still check if the page pointed by addr is owned by the process.
++     */
++    if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
++        return NONE;
++
++    /* check for MAP_PRIVATE mappings */
++    ssize_t test_ret = myst_mman_pids_test((const void*)page_addr, length, pid);
++    if (test_ret == (ssize_t)length)
++        return PRIVATE;
++
++    if (!private_only)
++        /* check for MAP_SHARED mappings */
++        if (myst_addr_within_process_owned_shmem((void*)page_addr, length, pid))
++            return SHARED;
++
++    return NONE;
++}
++
+ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
+ {
+     bool ret = true;
+@@ -1242,15 +1477,7 @@ bool myst_is_bad_addr(const void* addr, size_t length, int prot)
+         /* pid test is only supported if the nobrk option is enabled as
+          * the pid vector does not track memory allocated via brk */
+ 
+-        uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
+-
+-        /* round up the length (including the zero case) to PAGE_SIZE */
+-        if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
+-            goto done;
+-
+-        /* check if the pages within the address range are unmapped (i.e.,
+-         * associated pid is zero). */
+-        if (myst_mman_pids_test((const void*)page_addr, length, 0) > 0)
++        if (!myst_process_owns_mem_range(addr, length, NULL))
+             goto done;
+ 
+         /* check for the page permissions */
+@@ -1295,3 +1522,51 @@ void myst_mman_unlock(void)
+ {
+     myst_rspin_unlock(&_mman.lock);
+ }
++
++const char* myst_mman_prot_to_string(int prot)
++{
++    switch (prot)
++    {
++        case 0:
++            return "PROT_NONE";
++        case 1:
++            return "PROT_READ";
++        case 2:
++            return "PROT_WRITE";
++        case 3:
++            return "PROT_READ|PROT_WRITE";
++        case 4:
++            return "PROT_EXEC";
++        case 5:
++            return "PROT_READ|PROT_EXEC";
++        case 7:
++            return "PROT_READ|PROT_WRITE|PROT_EXEC";
++        default:
++            return "unknown";
++    }
++}
++
++const char* myst_mman_flags_to_string(int flags)
++{
++    switch (flags)
++    {
++        case MYST_MAP_SHARED:
++            return "MAP_SHARED";
++        case MYST_MAP_PRIVATE:
++            return "MAP_PRIVATE";
++        case MYST_MAP_FIXED:
++            return "MAP_FIXED";
++        case MYST_MAP_ANONYMOUS:
++            return "MAP_ANONYMOUS";
++        case MYST_MAP_SHARED | MYST_MAP_ANONYMOUS:
++            return "MAP_SHARED|MAP_ANONYMOUS";
++        case MYST_MAP_FIXED | MYST_MAP_PRIVATE:
++            return "MAP_FIXED|MAP_PRIVATE";
++        case MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
++            return "MAP_ANONYMOUS|MYST_PRIVATE";
++        case MYST_MAP_FIXED | MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
++            return "MAP_FIXED|MAP_ANONYMOUS|MYST_PRIVATE";
++        default:
++            return "unknown";
++    }
++}
+diff --git a/kernel/mount.c b/kernel/mount.c
+index 969f81d5..dbff8e6b 100644
+--- a/kernel/mount.c
++++ b/kernel/mount.c
+@@ -179,7 +179,7 @@ int myst_mount(
+         /* Find the file system onto which the mount will occur */
+         ECHECK(myst_mount_resolve(target, locals->suffix, &parent));
+ 
+-        ECHECK((*parent->fs_stat)(parent, target, &buf));
++        ECHECK((*parent->fs_stat)(parent, locals->suffix, &buf));
+ 
+         if (!S_ISDIR(buf.st_mode))
+             ERAISE(-ENOTDIR);
+@@ -485,7 +485,7 @@ long myst_syscall_mount(
+             ERAISE(-EINVAL);
+ 
+         /* create a new ramfs instance */
+-        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs));
++        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs, 0));
+ 
+         /* perform the mount */
+         ECHECK(myst_mount(fs, source, target, is_auto));
+diff --git a/kernel/procfs.c b/kernel/procfs.c
+index 0bc272b6..211dc33d 100644
+--- a/kernel/procfs.c
++++ b/kernel/procfs.c
+@@ -39,7 +39,7 @@ int procfs_setup()
+ {
+     int ret = 0;
+ 
+-    if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
++    if (myst_init_ramfs(myst_mount_resolve, &_procfs, 0) != 0)
+     {
+         myst_eprintf("failed initialize the proc file system\n");
+         ERAISE(-EINVAL);
+diff --git a/kernel/ramfs.c b/kernel/ramfs.c
+index daf4be63..86d26fe7 100644
+--- a/kernel/ramfs.c
++++ b/kernel/ramfs.c
+@@ -28,6 +28,7 @@
+ #include <myst/spinlock.h>
+ #include <myst/strings.h>
+ #include <myst/syscall.h>
++#include <myst/syslog.h>
+ #include <myst/thread.h>
+ #include <myst/trace.h>
+ #include <myst/uid_gid.h>
+@@ -59,6 +60,7 @@ typedef struct ramfs
+     myst_mount_resolve_callback_t resolve;
+     size_t ninodes;
+     myst_fs_t* lockfs;
++    int device_num;
+ } ramfs_t;
+ 
+ static bool _ramfs_valid(const ramfs_t* ramfs)
+@@ -254,6 +256,9 @@ static int _inode_new(
+     inode->gid = myst_syscall_getegid();
+     inode->uid = myst_syscall_geteuid();
+ 
++    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(mode))
++        inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
++
+     /* The root directory is its own parent */
+     if (!parent)
+         parent = inode;
+@@ -1116,6 +1121,16 @@ done:
+     return ret;
+ }
+ 
++static bool is_posix_shmfs_active_file(ramfs_t* ramfs, inode_t* inode)
++{
++    assert(ramfs && _ramfs_valid(ramfs));
++    assert(inode && _inode_valid(inode));
++    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(inode->mode) &&
++        inode->buf.flags & MYST_BUF_ACTIVE_MAPPING)
++        return true;
++    return false;
++}
++
+ static ssize_t _fs_write(
+     myst_fs_t* fs,
+     myst_file_t* file,
+@@ -1163,6 +1178,13 @@ static ssize_t _fs_write(
+ 
+         if (new_offset > _file_size(file))
+         {
++            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
++            {
++                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
++                          "a posix shared memory file with active mappings.");
++                ERAISE(-EINVAL);
++            }
++
+             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
+                 ERAISE(-ENOMEM);
+         }
+@@ -1283,6 +1305,13 @@ static ssize_t _fs_pwrite(
+ 
+         if (new_offset > _file_size(file))
+         {
++            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
++            {
++                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
++                          "a posix shared memory file with active mappings.");
++                ERAISE(-EINVAL);
++            }
++
+             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
+                 ERAISE(-ENOMEM);
+         }
+@@ -1368,35 +1397,39 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
+ {
+     int ret = 0;
+     ramfs_t* ramfs = (ramfs_t*)fs;
++    inode_t* inode;
+ 
+     if (!_ramfs_valid(ramfs) || !_file_valid(file))
+         ERAISE(-EINVAL);
+ 
+     assert(file->shared->inode);
+-    assert(_inode_valid(file->shared->inode));
+-    assert(file->shared->inode->nopens > 0);
++    assert(_inode_valid((inode = file->shared->inode)));
++    assert(inode->nopens > 0);
+ 
+     if (--file->shared->use_count == 0)
+     {
+         /* If a virtual file has a close-callback, call it */
+-        if (file->shared->inode->v_cb.close_cb)
+-            file->shared->inode->v_cb.close_cb(file);
++        if (inode->v_cb.close_cb)
++            inode->v_cb.close_cb(file);
+ 
+         /* For open-time virtual files, release the virtual file
+         data on close */
+-        if (file->shared->inode->v_cb.open_cb)
++        if (inode->v_cb.open_cb)
+             myst_buf_release(&file->shared->vbuf);
+ 
+-        file->shared->inode->nopens--;
++        inode->nopens--;
+ 
++        bool active_mmaps =
++            (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
++             myst_buf_has_active_mmap(&inode->buf));
+         /* handle case where file was deleted while open */
+-        if (file->shared->inode->nopens == 0 && file->shared->inode->nlink == 0)
++        if (!active_mmaps && inode->nlink == 0 && inode->nopens == 0)
+         {
+-            _inode_free(ramfs, file->shared->inode);
++            _inode_free(ramfs, inode);
+         }
+         else
+         {
+-            _update_timestamps(file->shared->inode, ACCESS);
++            _update_timestamps(inode, ACCESS);
+         }
+ 
+         memset(file->shared, 0xdd, sizeof(myst_file_t));
+@@ -1464,7 +1497,7 @@ done:
+     return ret;
+ }
+ 
+-static int _stat(inode_t* inode, struct stat* statbuf)
++static int _stat(ramfs_t* ramfs, inode_t* inode, struct stat* statbuf)
+ {
+     int ret = 0;
+     struct stat buf;
+@@ -1486,7 +1519,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
+     }
+ 
+     memset(&buf, 0, sizeof(buf));
+-    buf.st_dev = 0;
++    buf.st_dev = ramfs->device_num;
+     buf.st_ino = (ino_t)inode;
+     buf.st_mode = inode->mode;
+     buf.st_nlink = inode->nlink;
+@@ -1532,7 +1565,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
+         ECHECK((ret = tfs->fs_stat(tfs, locals->suffix, statbuf)));
+         goto done;
+     }
+-    ERAISE(_stat(inode, statbuf));
++    ERAISE(_stat(ramfs, inode, statbuf));
+ 
+ done:
+ 
+@@ -1568,7 +1601,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
+         ECHECK(tfs->fs_lstat(tfs, locals->suffix, statbuf));
+         goto done;
+     }
+-    ERAISE(_stat(inode, statbuf));
++    ERAISE(_stat(ramfs, inode, statbuf));
+ 
+ done:
+ 
+@@ -1587,7 +1620,7 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
+         ERAISE(-EINVAL);
+ 
+     assert(_inode_valid(file->shared->inode));
+-    ERAISE(_stat(file->shared->inode, statbuf));
++    ERAISE(_stat(ramfs, file->shared->inode, statbuf));
+ 
+ done:
+     return ret;
+@@ -1729,7 +1762,12 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
+     // Delete the inode immediately if it's a symbolic link
+     // or nobody owned. The deletion is delayed to _fs_close
+     // if file is still linked or opened by someone.
+-    if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
++    // For shm files, cleanup also needs to wait for existing mappings related
++    // to the file to be unmapped.
++    if (S_ISLNK(inode->mode) ||
++        (!(ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
++           myst_buf_has_active_mmap(&inode->buf)) &&
++         inode->nlink == 0 && inode->nopens == 0))
+     {
+         _inode_free(ramfs, inode);
+     }
+@@ -1855,6 +1893,30 @@ done:
+     return ret;
+ }
+ 
++static int _truncate(ramfs_t* ramfs, inode_t* inode, size_t length)
++{
++    int ret = 0;
++
++    /* truncate does not apply to virtual files */
++    if (_is_virtual_inode(inode))
++        ERAISE(-EINVAL);
++
++    if (is_posix_shmfs_active_file(ramfs, inode))
++    {
++        MYST_WLOG("Unsupported Operation: Attempt was made to truncate "
++                  "a posix shared memory file with active mappings.");
++        ERAISE(-EINVAL);
++    }
++
++    if (myst_buf_resize(&inode->buf, length) != 0)
++        ERAISE(-ENOMEM);
++
++    _update_timestamps(inode, CHANGE | MODIFY);
++
++done:
++    return ret;
++}
++
+ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
+ {
+     int ret = 0;
+@@ -1885,14 +1947,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
+     if (S_ISDIR(inode->mode))
+         ERAISE(-EISDIR);
+ 
+-    /* truncate does not apply to virtual files */
+-    if (_is_virtual_inode(inode))
+-        ERAISE(-EINVAL);
+-
+-    if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
+-        ERAISE(-ENOMEM);
+-
+-    _update_timestamps(inode, CHANGE | MODIFY);
++    ECHECK(_truncate(ramfs, inode, (size_t)length));
+ 
+ done:
+ 
+@@ -1906,6 +1961,7 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
+ {
+     int ret = 0;
+     ramfs_t* ramfs = (ramfs_t*)fs;
++    uint32_t access;
+ 
+     if (!_ramfs_valid(ramfs) || !_file_valid(file) || length < 0)
+         ERAISE(-EINVAL);
+@@ -1913,17 +1969,15 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
+     if (S_ISDIR(file->shared->inode->mode))
+         ERAISE(-EISDIR);
+ 
+-    if (file->shared->access == O_PATH)
++    access = file->shared->access;
++
++    if (access == O_PATH)
+         ERAISE(-EBADF);
+ 
+-    /* truncate does not apply to virtual files */
+-    if (_is_virtual_inode(file->shared->inode))
++    if (!((access & O_RDWR) || (access & O_WRONLY)))
+         ERAISE(-EINVAL);
+ 
+-    if (myst_buf_resize(&file->shared->inode->buf, (size_t)length) != 0)
+-        ERAISE(-ENOMEM);
+-
+-    _update_timestamps(file->shared->inode, CHANGE | MODIFY);
++    ECHECK(_truncate(ramfs, file->shared->inode, (size_t)length));
+ 
+ done:
+     return ret;
+@@ -2875,9 +2929,75 @@ done:
+     return ret;
+ }
+ 
++static int _fs_file_data_start_addr(
++    myst_fs_t* fs,
++    myst_file_t* file,
++    void** addr_out)
++{
++    int ret = 0;
++    ramfs_t* ramfs = (ramfs_t*)fs;
++
++    if (!_ramfs_valid(ramfs) || !_file_valid(file))
++        ERAISE(-EINVAL);
++
++    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
++    {
++        if (!addr_out)
++            ERAISE(-EINVAL);
++
++        *addr_out = NULL;
++
++        /* memory for shm files are allocated on first ftruncate, or via writing
++        to the file(Pytorch multiprocessing does this). Fail if process mmaps
++        before that */
++        if (!(*addr_out = file->shared->inode->buf.data))
++            ERAISE(-ENOEXEC);
++    }
++    else
++    {
++        ERAISE(-ENOTSUP);
++    }
++
++done:
++    return ret;
++}
++
++static int _fs_file_mapping_notify(
++    myst_fs_t* fs,
++    myst_file_t* file,
++    bool active)
++{
++    int ret = 0;
++    ramfs_t* ramfs = (ramfs_t*)fs;
++
++    if (!_ramfs_valid(ramfs) || !_file_valid(file))
++        ERAISE(-EINVAL);
++
++    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
++    {
++        inode_t* inode = file->shared->inode;
++        ECHECK(myst_buf_set_mmap_active(&inode->buf, active));
++
++        // Cleanup only if there are no active mmaps,
++        // inode has been unlinked, and no file handles
++        if (!active && !inode->nlink && !inode->nopens)
++        {
++            _inode_free(ramfs, inode);
++        }
++    }
++    else
++    {
++        ERAISE(-ENOTSUP);
++    }
++
++done:
++    return ret;
++}
++
+ static int _init_ramfs(
+     myst_mount_resolve_callback_t resolve_cb,
+-    myst_fs_t** fs_out)
++    myst_fs_t** fs_out,
++    int device_num)
+ {
+     int ret = 0;
+     ramfs_t* ramfs = NULL;
+@@ -2940,6 +3060,8 @@ static int _init_ramfs(
+         .fs_fdatasync = _fs_fsync_and_fdatasync,
+         .fs_fsync = _fs_fsync_and_fdatasync,
+         .fs_release_tree = _fs_release_tree,
++        .fs_file_data_start_addr = _fs_file_data_start_addr,
++        .fs_file_mapping_notify = _fs_file_mapping_notify,
+     };
+     // clang-format on
+     inode_t* root_inode = NULL;
+@@ -2960,6 +3082,7 @@ static int _init_ramfs(
+     ramfs->root = root_inode;
+     ramfs->resolve = resolve_cb;
+     myst_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
++    ramfs->device_num = device_num;
+     root_inode = NULL;
+ 
+     *fs_out = &ramfs->base;
+@@ -2978,14 +3101,15 @@ done:
+ 
+ int myst_init_ramfs(
+     myst_mount_resolve_callback_t resolve_cb,
+-    myst_fs_t** fs_out)
++    myst_fs_t** fs_out,
++    int device_num)
+ {
+     int ret = 0;
+     myst_fs_t* ramfs = NULL;
+     myst_fs_t* lockfs;
+ 
+     /* always wrap ramfs inside lockfs */
+-    ECHECK(_init_ramfs(resolve_cb, &ramfs));
++    ECHECK(_init_ramfs(resolve_cb, &ramfs, device_num));
+     ECHECK(myst_lockfs_init(ramfs, &lockfs));
+     ((ramfs_t*)ramfs)->lockfs = lockfs;
+     ramfs = NULL;
+diff --git a/kernel/sharedmem.c b/kernel/sharedmem.c
+new file mode 100644
+index 00000000..5df6e043
+--- /dev/null
++++ b/kernel/sharedmem.c
+@@ -0,0 +1,774 @@
++// Copyright (c) Microsoft Corporation.
++// Licensed under the MIT License.
++#include <myst/atexit.h>
++#include <myst/eraise.h>
++#include <myst/file.h>
++#include <myst/fs.h>
++#include <myst/list.h>
++#include <myst/mount.h>
++#include <myst/once.h>
++#include <myst/panic.h>
++#include <myst/printf.h>
++#include <myst/process.h>
++#include <myst/ramfs.h>
++#include <myst/round.h>
++#include <myst/rspinlock.h>
++#include <myst/sharedmem.h>
++#include <myst/syscall.h>
++#include <myst/syslog.h>
++#include <stdbool.h>
++#include <sys/mman.h>
++
++//#define TRACE
++/**
++ * POSIX Shared Memory
++ *
++ * Leverage ramfs to implement POSIX Shared Memory semantics.
++ *
++ * Simple usage example:
++ *
++ * int fd = shm_open("foo", O_CREAT|O_RDWR , (S_IRUSR|S_IWUSR));
++ * ftruncate(fd, SHM_SIZE);
++ * char *addr = mmap(0, SHM_SIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
++ *
++ * For mmap's related to files opened via shm_open, pointer to the underlying
++ * file buffer is returned. ramfs files use myst_buf_t to store the data.
++ *
++ * Because a pointer to myst_buf_t is passed to the userspace, buffer resize
++ * operations can be supported safely only when there are no active mappings
++ * against the corresponding shmfs file.
++ *
++ */
++
++typedef struct proc_w_count
++{
++    myst_list_node_t base;
++    pid_t pid;
++    int nmaps; // per-process refcount. process can mmap shm region multiple
++               // times.
++} proc_w_count_t;
++
++typedef enum
++{
++    SHMEM_NONE,
++    SHMEM_ANON,
++    SHMEM_REG_FILE,
++    SHMEM_POSIX_SHM
++} shmem_type_t;
++
++typedef struct shared_mapping
++{
++    myst_list_node_t base;
++    myst_list_t sharers; // processes sharing this mapping
++    void* start_addr;
++    size_t length;
++    mman_file_handle_t* file_handle;
++    size_t offset;
++    shmem_type_t type;
++} shared_mapping_t;
++
++static myst_list_t _shared_mappings;
++static myst_rspinlock_t _shared_mappings_lock;
++static myst_fs_t* _posix_shmfs;
++
++static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid);
++
++int shmfs_setup()
++{
++    int ret = 0;
++
++    if (myst_init_ramfs(
++            myst_mount_resolve, &_posix_shmfs, MYST_POSIX_SHMFS_DEV_NUM) != 0)
++    {
++        myst_eprintf("failed initialize the shm file system\n");
++        ERAISE(-EINVAL);
++    }
++
++    ECHECK(set_overrides_for_special_fs(_posix_shmfs));
++
++    if (mkdir("/dev/shm", 0777) != 0)
++    {
++        myst_eprintf("cannot create mount point for shmfs\n");
++        ERAISE(-EINVAL);
++    }
++
++    if (myst_mount(_posix_shmfs, "/", "/dev/shm", false) != 0)
++    {
++        myst_eprintf("cannot mount shm file system\n");
++        ERAISE(-EINVAL);
++    }
++
++done:
++    return ret;
++}
++
++int shmfs_teardown()
++{
++    if ((*_posix_shmfs->fs_release)(_posix_shmfs) != 0)
++    {
++        myst_eprintf("failed to release shmfs\n");
++        return -1;
++    }
++
++    return 0;
++}
++
++#ifdef TRACE
++static const char* shmem_type_to_string(shmem_type_t mem_type)
++{
++    switch (mem_type)
++    {
++        case SHMEM_NONE:
++            return "SHMEM_NONE";
++        case SHMEM_ANON:
++            return "ANON";
++        case SHMEM_REG_FILE:
++            return "REG_FILE";
++        case SHMEM_POSIX_SHM:
++            return "POSIX_SHM_FILE";
++        default:
++            return "UNKNOWN";
++    }
++}
++static void _dump_shared_mappings(char* msg)
++{
++    if (msg)
++        printf("\n%s\n", msg);
++
++    myst_rspin_lock(&_shared_mappings_lock);
++    shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
++    if (sm)
++    {
++        printf("Shared memory mappings: \n");
++        printf("==================================== \n");
++    }
++    else
++    {
++        printf("No shared mappings.\n");
++    }
++    while (sm)
++    {
++        printf(
++            "start_addr=%p length=%ld nusers=%ld type=%s\n",
++            sm->start_addr,
++            sm->type == SHMEM_POSIX_SHM
++                ? myst_mman_backing_file_size(sm->file_handle)
++                : sm->length,
++            sm->sharers.size,
++            shmem_type_to_string(sm->type));
++        printf("sharer pids: [ ");
++        {
++            proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
++            while (pn)
++            {
++                printf(" [pid=%d nmaps=%d] ", pn->pid, pn->nmaps);
++                pn = (proc_w_count_t*)pn->base.next;
++            }
++            printf("]\n");
++        }
++
++        sm = (shared_mapping_t*)sm->base.next;
++        printf("==================================== \n\n");
++    }
++    myst_rspin_unlock(&_shared_mappings_lock);
++}
++#endif
++
++static bool _is_posix_shm_mapping(shared_mapping_t* sm)
++{
++    if (sm && sm->type == SHMEM_POSIX_SHM)
++    {
++        assert(sm->file_handle->fs == _posix_shmfs);
++        return true;
++    }
++    return false;
++}
++
++static int _get_ptr_to_file_data(int fd, void** addr_out)
++{
++    int ret = 0;
++    myst_fdtable_t* fdtable = myst_fdtable_current();
++    myst_fs_t* fs;
++    myst_file_t* file;
++
++    ECHECK(myst_fdtable_get_file(fdtable, fd, &fs, &file));
++    ECHECK((*fs->fs_file_data_start_addr)(fs, file, addr_out));
++
++done:
++    return ret;
++}
++
++bool myst_is_posix_shm_file_handle(int fd, int flags)
++{
++    if (fd >= 0 && (flags & MAP_SHARED))
++    {
++        struct stat buf;
++        if (myst_syscall_fstat(fd, &buf) == 0 &&
++            buf.st_dev == MYST_POSIX_SHMFS_DEV_NUM)
++            return true;
++    }
++    return false;
++}
++
++static int _notify_shmfs_active(mman_file_handle_t* file_handle, bool active)
++{
++    assert(file_handle && _posix_shmfs == file_handle->fs);
++    return (*_posix_shmfs->fs_file_mapping_notify)(
++        _posix_shmfs, file_handle->file, active);
++}
++
++size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)
++{
++    assert(file_handle);
++    struct stat statbuf;
++    assert(
++        (file_handle->fs->fs_fstat)(
++            file_handle->fs, file_handle->file, &statbuf) == 0);
++    return statbuf.st_size;
++}
++
++static proc_w_count_t* _lookup_sharers_by_proc(shared_mapping_t* sm, pid_t pid)
++{
++    proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
++    while (pn)
++    {
++        if (pn->pid == pid)
++            return pn;
++        pn = (proc_w_count_t*)pn->base.next;
++    }
++    return NULL;
++}
++
++static bool _unref_proc_from_sharers(shared_mapping_t* sm, pid_t pid)
++{
++    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
++    if (pn)
++    {
++        if (--pn->nmaps == 0)
++        {
++            myst_list_remove(&sm->sharers, &pn->base);
++            free(pn);
++        }
++        return true;
++    }
++    return false;
++}
++
++static bool _remove_proc_from_sharers(shared_mapping_t* sm, pid_t pid)
++{
++    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
++    if (pn)
++    {
++        myst_list_remove(&sm->sharers, &pn->base);
++        free(pn);
++        return true;
++    }
++    return false;
++}
++
++static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
++{
++    int ret = 0;
++    proc_w_count_t* pn = _lookup_sharers_by_proc(sm, pid);
++
++    if (!pn)
++    {
++        if (!(pn = calloc(1, sizeof(proc_w_count_t))))
++        {
++            myst_rspin_unlock(&_shared_mappings_lock);
++            ERAISE(-ENOMEM);
++        }
++        pn->pid = pid;
++        pn->nmaps = 1;
++        myst_list_append(&sm->sharers, &pn->base);
++        pn = NULL;
++    }
++    else
++    {
++        pn->nmaps++;
++        pn = NULL;
++    }
++
++done:
++
++    if (pn)
++        free(pn);
++
++    return ret;
++}
++
++static int _lookup_shmem_map(
++    const void* start_addr,
++    const size_t len,
++    shared_mapping_t** sm_out)
++{
++    int ret = 0;
++
++    if (sm_out)
++        *sm_out = NULL;
++
++    void* end_addr = (char*)start_addr + len;
++    shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
++    while (sm)
++    {
++        size_t rounded_up_sm_length =
++            sm->type == SHMEM_POSIX_SHM
++                ? myst_mman_backing_file_size(sm->file_handle)
++                : sm->length;
++        myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
++        void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
++
++        bool start_addr_within_range =
++            (sm->start_addr <= start_addr && start_addr < sm_end_addr);
++        bool end_addr_within_range =
++            (sm->start_addr < end_addr && end_addr <= sm_end_addr);
++
++        if (start_addr_within_range && end_addr_within_range)
++        {
++            *sm_out = sm;
++            goto done;
++        }
++        else if (start_addr_within_range || end_addr_within_range)
++        {
++            // partial overlap with shared memory region. some address range
++            // specified by input params is either before or after this shared
++            // memory mapping.
++            //           [sssssssssssssssssss]
++            // [uuuuuuuuuuuuuuuuu]
++            // or
++            //           [sssssssssssssssssss]
++            //                          [uuuuuuuuuuuuuuuuu]
++            MYST_ELOG(
++                "Memory range specified by user partially overlaps with a "
++                "shared memory region.\naddr=%p length=%ld\n",
++                start_addr,
++                len);
++            myst_panic("Unsupported.\n");
++        }
++        // else no overlap at all, keep searching
++        sm = (shared_mapping_t*)sm->base.next;
++    }
++
++done:
++    return ret;
++}
++
++bool myst_is_address_within_shmem(
++    const void* addr,
++    const size_t length,
++    shared_mapping_t** sm_out)
++{
++    if (sm_out)
++        *sm_out = NULL;
++    myst_rspin_lock(&_shared_mappings_lock);
++    shared_mapping_t* sm;
++    _lookup_shmem_map(addr, length, &sm);
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++    if (sm)
++    {
++        if (sm_out)
++            *sm_out = sm;
++        return true;
++    }
++
++    return false;
++}
++
++bool myst_addr_within_process_owned_shmem(
++    const void* addr,
++    const size_t length,
++    pid_t pid)
++{
++    shared_mapping_t* sm;
++    if (!pid)
++        pid = myst_getpid();
++
++    if (myst_is_address_within_shmem(addr, length, &sm) &&
++        _lookup_sharers_by_proc(sm, pid))
++        return true;
++
++    return false;
++}
++
++long myst_posix_shm_handle_mmap(
++    int fd,
++    void* addr,
++    size_t length,
++    off_t offset,
++    int flags)
++{
++    long ret = -1;
++    void* buf_data_addr;
++    mman_file_handle_t* file_handle;
++
++#ifdef TRACE
++    _dump_shared_mappings("mmap entry");
++#endif
++
++    /* addr hint is not supported*/
++    if (addr)
++        ERAISE(-ENOTSUP);
++
++    if (offset != 0)
++    {
++        MYST_ELOG(
++            "\nPOSIX SHM files don't allow non-zero offset for mmap(). "
++            "\nActual offset=%ld.\nExpected "
++            "offset=0.",
++            offset);
++        myst_panic("Unsupported");
++    }
++
++    if (!(flags & MAP_SHARED) || offset % PAGE_SIZE)
++        ERAISE(-EINVAL);
++
++    // get a file handle
++    ECHECK(myst_mman_file_handle_get(fd, &file_handle));
++
++    // get pointer to the start of the data portion of the file
++    ECHECK(_get_ptr_to_file_data(fd, &buf_data_addr));
++
++    // check [offset, offset+length] range is within file limits
++    {
++        size_t backing_file_size = myst_mman_backing_file_size(file_handle);
++
++        void* file_end_addr = (char*)buf_data_addr + backing_file_size;
++        void* request_end_addr = (char*)buf_data_addr + offset + length;
++
++        if ((size_t)offset > backing_file_size ||
++            request_end_addr > file_end_addr)
++            ERAISE(-ENXIO);
++
++        if (length < backing_file_size)
++        {
++            MYST_ELOG(
++                "\nPOSIX SHM files don't allow mapping the file "
++                "partially.\nActual length=%ld.\nExpected length=%ld.",
++                length,
++                backing_file_size);
++            myst_panic("Unsupported");
++        }
++    }
++
++    // get or create shared mapping
++    myst_rspin_lock(&_shared_mappings_lock);
++    shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
++
++    // Check for existing mapping
++    while (sm)
++    {
++        if (mman_file_handle_eq(sm->file_handle, file_handle))
++        {
++            assert(sm->start_addr == buf_data_addr);
++            ECHECK_LABEL(_add_proc_to_sharers(sm, myst_getpid()), unlock);
++            myst_rspin_unlock(&_shared_mappings_lock);
++            ret = (long)((int8_t*)sm->start_addr + offset);
++            goto done;
++        }
++        sm = (shared_mapping_t*)sm->base.next;
++    }
++
++    // Create a new shared mapping
++    shared_mapping_t* new_sm;
++    {
++        if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
++        {
++            myst_rspin_unlock(&_shared_mappings_lock);
++            ERAISE(-ENOMEM);
++        }
++        new_sm->file_handle = file_handle;
++        new_sm->start_addr = buf_data_addr;
++        new_sm->type = SHMEM_POSIX_SHM;
++        // notify fs that mapping is active
++        ECHECK_LABEL(_notify_shmfs_active(new_sm->file_handle, true), unlock);
++        ECHECK_LABEL(_add_proc_to_sharers(new_sm, myst_getpid()), unlock);
++
++        myst_list_append(&_shared_mappings, &new_sm->base);
++        new_sm->file_handle->npages++; // mark file handle active
++        ret = (long)((char*)new_sm->start_addr + offset);
++        new_sm = NULL;
++    }
++
++unlock:
++    if (new_sm)
++        free(new_sm);
++
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++done:
++
++    // if failed or found existing mapping
++    if (file_handle && !file_handle->npages)
++    {
++        myst_mman_file_handle_put(file_handle);
++    }
++#ifdef TRACE
++    _dump_shared_mappings("mmap exit");
++#endif
++
++    return ret;
++}
++
++int myst_shmem_register_mapping(
++    int fd,
++    void* addr,
++    size_t length,
++    size_t offset)
++{
++    int ret = 0;
++    shared_mapping_t* new_sm = NULL;
++    mman_file_handle_t* file_handle = NULL;
++    myst_rspin_lock(&_shared_mappings_lock);
++    // Create a new shared mapping
++    {
++        if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
++        {
++            myst_rspin_unlock(&_shared_mappings_lock);
++            ERAISE(-ENOMEM);
++        }
++        new_sm->start_addr = addr;
++        new_sm->length = length;
++        new_sm->type = fd == -1 ? SHMEM_ANON : SHMEM_REG_FILE;
++        ECHECK_LABEL(_add_proc_to_sharers(new_sm, myst_getpid()), unlock);
++        if (new_sm->type == SHMEM_REG_FILE)
++        {
++            new_sm->offset = offset;
++            ECHECK(myst_mman_file_handle_get(fd, &file_handle));
++            new_sm->file_handle = file_handle;
++            new_sm->file_handle->npages = 1; // mark as in-use
++        }
++        myst_list_append(&_shared_mappings, &new_sm->base);
++        new_sm = NULL;
++    }
++
++unlock:
++
++    if (new_sm)
++        free(new_sm);
++
++    if (file_handle && !file_handle->npages)
++    {
++        myst_mman_file_handle_put(file_handle);
++    }
++
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++#ifdef TRACE
++    _dump_shared_mappings("regular mmap exit");
++#endif
++
++done:
++    return ret;
++}
++
++static __inline__ size_t _min_size(size_t x, size_t y)
++{
++    return x < y ? x : y;
++}
++
++static int __shm_unmap(shared_mapping_t* sm, void* addr, size_t length)
++{
++    int ret = 0;
++    if (_is_posix_shm_mapping(sm))
++    {
++        _notify_shmfs_active(sm->file_handle, false);
++        myst_mman_file_handle_put(sm->file_handle);
++    }
++    else
++    {
++        if (sm->type == SHMEM_REG_FILE)
++        {
++            size_t file_size = myst_mman_backing_file_size(sm->file_handle);
++
++            if (sm->offset < file_size)
++            {
++                ECHECK(myst_msync(
++                    addr, _min_size(file_size - sm->offset, length), MS_SYNC));
++            }
++            myst_mman_file_handle_put(sm->file_handle);
++        }
++        ECHECK(myst_munmap(addr, length));
++    }
++
++done:
++    return ret;
++}
++
++int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
++{
++    int ret = 0;
++
++    if (!is_shmem)
++        ERAISE(-EINVAL);
++
++    *is_shmem = false;
++
++    myst_rspin_lock(&_shared_mappings_lock);
++    {
++        shared_mapping_t* sm;
++        // lookup fails for munmaps overlapping partially with a shared memory
++        // object
++        ECHECK_LABEL(_lookup_shmem_map(addr, length, &sm), unlock);
++        if (sm)
++        {
++            if (sm->start_addr != addr && sm->length != length)
++            {
++                MYST_ELOG(
++                    "Partial munmaps of shared memory are not "
++                    "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
++                    "length=%ld\n",
++                    addr,
++                    length,
++                    sm->start_addr,
++                    sm->length);
++                myst_panic("Unsupported.\n");
++            }
++
++            *is_shmem = true;
++            if (!_unref_proc_from_sharers(sm, myst_getpid()))
++            {
++                // if pid is not in sharers, process is trying to munmap memory
++                // not associated with it
++                ERAISE(-EINVAL);
++            }
++            // For last reference to shared mapping, delete mapping
++            if (sm->sharers.size == 0)
++            {
++                ECHECK_LABEL(__shm_unmap(sm, addr, length), unlock);
++                myst_list_remove(&_shared_mappings, &sm->base);
++#ifdef TRACE
++                _dump_shared_mappings("Shared memory munmap:");
++#endif
++                free(sm);
++            }
++        }
++    }
++unlock:
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++done:
++
++    return ret;
++}
++
++int myst_shmem_handle_release_mappings(pid_t pid)
++{
++#ifdef TRACE
++    printf("pid=%d\n", pid);
++    _dump_shared_mappings("At process release entry");
++#endif
++
++    myst_rspin_lock(&_shared_mappings_lock);
++    {
++        shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
++        while (sm)
++        {
++            if (_remove_proc_from_sharers(sm, pid))
++            {
++                // For last reference to shared mapping, delete mapping
++                if (sm->sharers.size == 0)
++                {
++                    assert(__shm_unmap(sm, sm->start_addr, sm->length) == 0);
++                    myst_list_remove(&_shared_mappings, &sm->base);
++                    void* next_sm = sm->base.next;
++                    free(sm);
++                    sm = next_sm;
++                    continue;
++                }
++            }
++            sm = (shared_mapping_t*)sm->base.next;
++        }
++    }
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++#ifdef TRACE
++    _dump_shared_mappings("At process release exit");
++#endif
++
++    return 0;
++}
++
++int myst_shmem_share_mappings(pid_t childpid)
++{
++    int ret = 0;
++    pid_t self = myst_getpid();
++
++    myst_rspin_lock(&_shared_mappings_lock);
++    {
++        shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
++        while (sm)
++        {
++            proc_w_count_t* pn = _lookup_sharers_by_proc(sm, self);
++            if (pn)
++                ECHECK(_add_proc_to_sharers(sm, childpid));
++            sm = (shared_mapping_t*)sm->base.next;
++        }
++    }
++
++done:
++    myst_rspin_unlock(&_shared_mappings_lock);
++
++    return ret;
++}
++
++bool myst_shmem_can_mremap(
++    shared_mapping_t* sm,
++    void* old_addr,
++    size_t old_size)
++{
++    assert(sm);
++
++    if (sm->start_addr != old_addr && sm->length != old_size)
++    {
++        MYST_ELOG(
++            "Partial mremaps of shared memory are not "
++            "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
++            "length=%ld\n",
++            old_addr,
++            old_size,
++            sm->start_addr,
++            sm->length);
++        myst_panic("Unsupported.\n");
++    }
++
++    if (sm->type == SHMEM_POSIX_SHM)
++        MYST_WLOG("mremap is not supported for POSIX shared memory");
++    else if (
++        (sm->type == SHMEM_REG_FILE || sm->type == SHMEM_ANON) &&
++        sm->sharers.size == 1)
++        return true;
++    return false;
++}
++
++bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length)
++{
++    assert(sm);
++
++    if (sm->start_addr != addr && sm->length != length)
++    {
++        MYST_ELOG(
++            "Partial mprotect of shared memory are not "
++            "allowed.\nActual: addr=%p length=%ld\nExpected: addr=%p "
++            "length=%ld\n",
++            addr,
++            length,
++            sm->start_addr,
++            sm->length);
++        myst_panic("Unsupported.\n");
++    }
++
++    if (sm->sharers.size == 1)
++        return true;
++    return false;
++}
++
++void myst_shmem_mremap_update(
++    shared_mapping_t* sm,
++    void* new_addr,
++    size_t new_size)
++{
++    assert(sm && new_addr && new_size);
++    sm->start_addr = new_addr;
++    sm->length = new_size;
++}
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index 2ea69695..23aa6146 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -73,6 +73,7 @@
+ #include <myst/realpath.h>
+ #include <myst/round.h>
+ #include <myst/setjmp.h>
++#include <myst/sharedmem.h>
+ #include <myst/signal.h>
+ #include <myst/sockdev.h>
+ #include <myst/spinlock.h>
+@@ -3558,12 +3559,14 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
+ 
+     _strace(
+         n,
+-        "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
++        "addr=%lx length=%zu(%lx) prot=%d(%s) flags=%d(%s) fd=%d offset=%lu",
+         (long)addr,
+         length,
+         length,
+         prot,
++        myst_mman_prot_to_string(prot),
+         flags,
++        myst_mman_flags_to_string(flags),
+         fd,
+         offset);
+ 
+@@ -3581,15 +3584,15 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
+     {
+         if (flags & MAP_FIXED)
+         {
+-            pid_t pid = myst_getpid();
+-
+-            size_t rounded_up_length;
+-            if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
++            // addr hint with MAP_FIXED not supported for shared mappings
++            if (flags & MAP_SHARED)
++            {
++                MYST_WLOG("MAP_FIXED is not supported for shared mappings");
+                 return (_return(n, -EINVAL));
++            }
+ 
+-            /* if calling process does not own this mapping */
+-            if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
+-                (ssize_t)rounded_up_length)
++            /* Caller should own the memory range */
++            if (!myst_process_owns_mem_range(addr, length, true))
+                 return (_return(n, -EINVAL));
+         }
+         else
+@@ -3608,7 +3611,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
+     {
+         ret = -ENOMEM;
+     }
+-    else if (ret > 0)
++    else if (ret > 0 && !(flags & MAP_SHARED))
+     {
+         pid_t pid = myst_getpid();
+         void* ptr = (void*)ret;
+@@ -3631,11 +3634,16 @@ static long _SYS_mprotect(long n, long params[6])
+ 
+     _strace(
+         n,
+-        "addr=%lx length=%zu(%lx) prot=%d",
++        "addr=%lx length=%zu(%lx) prot=%d(%s)",
+         (long)addr,
+         length,
+         length,
+-        prot);
++        prot,
++        myst_mman_prot_to_string(prot));
++
++    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
++    if (!myst_process_owns_mem_range(addr, length, NULL))
++        return (_return(n, -EINVAL));
+ 
+     return (_return(n, (long)myst_mprotect(addr, length, prot)));
+ }
+@@ -3670,6 +3678,19 @@ static long _SYS_munmap(
+         }
+     }
+ 
++    /* Handle MAP_SHARED unmapping */
++    {
++        bool is_shmem;
++        if (myst_shmem_handle_munmap(addr, length, &is_shmem) < 0)
++            return (_return(n, -EINVAL));
++
++        if (is_shmem)
++            return (_return(n, 0));
++    }
++
++    if (!myst_process_owns_mem_range(addr, length, true))
++        return (_return(n, -EINVAL));
++
+     long ret = (long)myst_munmap(addr, length);
+ 
+     if (ret == 0)
+@@ -3835,6 +3856,7 @@ static long _SYS_mremap(long n, long params[6])
+     int flags = (int)params[3];
+     void* new_address = (void*)params[4];
+     long ret;
++    map_type_t old_map_type = NONE;
+ 
+     _strace(
+         n,
+@@ -3849,20 +3871,14 @@ static long _SYS_mremap(long n, long params[6])
+         flags,
+         new_address);
+ 
+-    {
+-        const pid_t pid = myst_getpid();
+-        myst_assume(pid > 0);
+-
+-        /* fail if the calling process does not own this mapping */
+-        if (myst_mman_pids_test(old_address, old_size, pid) !=
+-            (ssize_t)old_size)
+-            return (_return(n, -EINVAL));
+-    }
++    if (!(old_map_type =
++              myst_process_owns_mem_range(old_address, old_size, NULL)))
++        return (_return(n, -EINVAL));
+ 
+     ret =
+         (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
+ 
+-    if (ret >= 0)
++    if (old_map_type != SHARED && ret >= 0)
+     {
+         const pid_t pid = myst_getpid();
+ 
+@@ -3886,6 +3902,9 @@ static long _SYS_msync(long n, long params[6])
+ 
+     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+ 
++    if (!myst_process_owns_mem_range(addr, length, NULL))
++        return (_return(n, -EINVAL));
++
+     return (_return(n, myst_msync(addr, length, flags)));
+ }
+ 
+@@ -4037,7 +4056,7 @@ static long _SYS_myst_clone(long n, long params[6])
+         n,
+         "fn=%p "
+         "child_stack=%p "
+-        "flags=%x "
++        "flags=%x (%s) "
+         "arg=%p "
+         "ptid=%p "
+         "newtls=%p "
+@@ -4045,6 +4064,7 @@ static long _SYS_myst_clone(long n, long params[6])
+         fn,
+         child_stack,
+         flags,
++        flags & CLONE_VFORK ? "CLONE_VFORK" : "CLONE_THREAD",
+         arg,
+         ptid,
+         newtls,
+@@ -4913,7 +4933,7 @@ static long _SYS_mlock(long n, long params[6])
+ static long _SYS_prctl(long n, long params[6])
+ {
+     int option = (int)params[0];
+-    long ret = 0;
++    long ret = -EINVAL;
+ 
+     _strace(n, "option=%d", option);
+ 
+@@ -4926,6 +4946,7 @@ static long _SYS_prctl(long n, long params[6])
+         // ATTN: Linux requires a 16-byte buffer:
+         const size_t n = 16;
+         myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
++        ret = 0;
+     }
+     else if (option == PR_SET_NAME)
+     {
+@@ -4935,9 +4956,11 @@ static long _SYS_prctl(long n, long params[6])
+ 
+         ret = myst_set_thread_name(myst_thread_self(), arg2);
+     }
+-    else
++    else if (option == PR_SET_PDEATHSIG)
+     {
+-        ret = -EINVAL;
++        // TODO: Send signal passed as arg2 to the calling process if and when
++        // its parent dies.
++        ret = 0;
+     }
+ 
+     return (_return(n, ret));
+diff --git a/kernel/syslog.c b/kernel/syslog.c
+index 7b72799f..6f272b7f 100644
+--- a/kernel/syslog.c
++++ b/kernel/syslog.c
+@@ -51,7 +51,7 @@ void __myst_vsyslog(
+             break;
+     }
+ 
+-    myst_eprintf("mytikos: %s: ", name);
++    myst_eprintf("mystikos: %s: ", name);
+ 
+     if (file && line && func)
+         myst_eprintf("%s(%u): %s(): ", file, line, func);
+diff --git a/kernel/thread.c b/kernel/thread.c
+index 8d2c9ff8..5fb9e8b0 100644
+--- a/kernel/thread.c
++++ b/kernel/thread.c
+@@ -29,6 +29,7 @@
+ #include <myst/printf.h>
+ #include <myst/procfs.h>
+ #include <myst/setjmp.h>
++#include <myst/sharedmem.h>
+ #include <myst/signal.h>
+ #include <myst/spinlock.h>
+ #include <myst/stack.h>
+@@ -1089,20 +1090,14 @@ static long _run_thread(void* arg_)
+             size_t i = thread->unmap_on_exit_used;
+             while (i)
+             {
+-                if (!myst_munmap(
+-                        thread->unmap_on_exit[i - 1].ptr,
+-                        thread->unmap_on_exit[i - 1].size))
+-                {
+-                    /* App process might have invoked SYS_mmap, which marks the
+-                     * memory as owned by the calling app process, and then
+-                     * SYS_myst_unmap_on_exit on the memory region. Clear the
+-                     * pid vector to make sure the unmapped memory is marked as
+-                     * not owned by any app process */
+-                    myst_mman_pids_set(
+-                        thread->unmap_on_exit[i - 1].ptr,
+-                        thread->unmap_on_exit[i - 1].size,
+-                        0);
+-                }
++                /* App process might have invoked SYS_mmap, which marks the
++                 * memory as owned by the calling app process, and then
++                 * SYS_myst_unmap_on_exit on the memory region. Clear the
++                 * pid vector to make sure the unmapped memory is marked as
++                 * not owned by any app process */
++                myst_munmap_and_pids_clear_atomic(
++                    thread->unmap_on_exit[i - 1].ptr,
++                    thread->unmap_on_exit[i - 1].size);
+                 i--;
+             }
+         }
+@@ -1419,6 +1414,9 @@ static long _syscall_clone_vfork(
+             free(self_path);
+         }
+ 
++        /* Child inherits parent's shared memory mappings */
++        ECHECK(myst_shmem_share_mappings(child_process->pid));
++
+         ECHECK(_get_entry_stack(child_thread));
+     }
+ 
+diff --git a/scripts/appbuilder b/scripts/appbuilder
+index 1e40d02c..abb0aae9 100755
+--- a/scripts/appbuilder
++++ b/scripts/appbuilder
+@@ -191,6 +191,7 @@ get_image()
+         # 27 concurent image builds. If more is desired, then Docker's default-address-pool will need
+         # to be changed to include more ip addresses.
+         docker network create $NETWORK_NAME
++        docker build $DOCKER_BUILD_MODE --iidfile $TEMP_IMAGE_IIDFILE -f $DOCKER_FILE --network $NETWORK_NAME $EXTRA_ARGS .
+         $(dirname $0)/myst-retry docker build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --network ${NETWORK_NAME} ${EXTRA_ARGS} .
+         docker_network_remove
+         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
+diff --git a/solutions/cpython-tests/test_config_v3.10.2/tests.failed.unhandled.syscalls b/solutions/cpython-tests/test_config_v3.10.2/tests.failed.unhandled.syscalls
+index 64ba0b8f..b8c4631b 100644
+--- a/solutions/cpython-tests/test_config_v3.10.2/tests.failed.unhandled.syscalls
++++ b/solutions/cpython-tests/test_config_v3.10.2/tests.failed.unhandled.syscalls
+@@ -4,3 +4,7 @@ test_shutil		SYS_listxattr
+ test_signal		SYS_rt_sigtimedwait
+ test_unicode_file		SYS_listxattr
+ test_wait3		Segmentation fault
++test_multiprocessing_fork           Python import lock issue
++test_multiprocessing_forkserver     Python import lock issue
++test_multiprocessing_main_handling  Python import lock issue
++test_multiprocessing_spawn          UDS socket dup issue with multiple processes
+\ No newline at end of file
+diff --git a/solutions/cpython-tests/test_config_v3.10.2/tests.passed b/solutions/cpython-tests/test_config_v3.10.2/tests.passed
+index f6128c48..164a5fcd 100644
+--- a/solutions/cpython-tests/test_config_v3.10.2/tests.passed
++++ b/solutions/cpython-tests/test_config_v3.10.2/tests.passed
+@@ -203,10 +203,6 @@ test_module
+ test_modulefinder
+ test_msilib
+ test_multibytecodec
+-test_multiprocessing_fork
+-test_multiprocessing_forkserver
+-test_multiprocessing_main_handling
+-test_multiprocessing_spawn
+ test_named_expressions
+ test_netrc
+ test_nis
+diff --git a/solutions/numpy_core_tests/Makefile b/solutions/numpy_core_tests/Makefile
+index 5268758c..743e5350 100644
+--- a/solutions/numpy_core_tests/Makefile
++++ b/solutions/numpy_core_tests/Makefile
+@@ -13,8 +13,6 @@ all: rootfs
+ 
+ appdir:
+ 	$(APPBUILDER) Dockerfile
+-	# Remove the test that depends on mmap(MAP_SHARED...).
+-	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_memmap.py
+ 	# Remove the test that fails due to rng
+ 	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_multiarray.py
+ 	# Removing test failing due to no SYS_listxattr support
+diff --git a/solutions/pytorch_tests/Makefile b/solutions/pytorch_tests/Makefile
+index c72f7a9f..11321e94 100644
+--- a/solutions/pytorch_tests/Makefile
++++ b/solutions/pytorch_tests/Makefile
+@@ -102,7 +102,6 @@ and not test_EmbeddingBag_discontiguous \
+ and not test_EmbeddingBag_mean \
+ and not test_EmbeddingBag_sparse \
+ and not test_EmbeddingBag_sum \
+-and not test_share_memory \
+ and not test_avg_pool2d_nhwc_cpu_float32 \
+ and not test_avg_pool2d_nhwc_cpu_float64 \
+ and not test_max_pool2d_nhwc_cpu_float32 \
+@@ -111,7 +110,7 @@ and not test_cross_entropy_loss_precision \
+ and not test_l1_loss_correct"
+ run-test-nn: rootfs
+ 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
+-	grep -q -E '1323 passed.*1437 skipped.*42 deselected.*3 xfailed' $@.out
++	grep -q -E '1324 passed.*1437 skipped.*41 deselected.*3 xfailed' $@.out
+ 
+ .PHONY: run-test-nn-8g
+ run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
+@@ -136,8 +135,27 @@ run-test-torch: rootfs
+ 	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
+ 	grep -q -E '693 passed.*527 skipped.*3 deselected' $@.out
+ 
++.PHONY: run-test-mp-spawn
++run-test-mp-spawn: EXCLUDE_TESTS = "not test_success_func \
++and not test_success_single_arg_func \
++and not test_exception_single_func \
++and not test_exception_all_func \
++and not test_terminate_signal_func \
++and not test_terminate_exit_func \
++and not test_success_first_then_exception_func \
++and not test_nested_child_body \
++and not test_infinite_task \
++and not test_process_exit \
++and not test_nested \
++and not ForkTest"
++run-test-mp-spawn: rootfs
++	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
++	/usr/local/bin/python -m pytest -v \
++	/workspace/pytorch/test/test_multiprocessing_spawn.py \
++	-k $(EXCLUDE_TESTS)
++
+ .PHONY: run-core-tests
+-run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
++run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch run-test-mp-spawn
+ 
+ .PHONY: run
+ _run: run-core-tests
+@@ -146,8 +164,10 @@ run:
+ 	$(RUNTEST) make -C $(CURDIR) _run
+ 
+ .PHONY: one
++TEST=test_nn
++SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
+ one: rootfs
+-	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
++	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
+ 
+ .PHONY: gdb
+ gdb: rootfs
+diff --git a/solutions/pytorch_tests/README.md b/solutions/pytorch_tests/README.md
+index bc9ee00c..fe6e321a 100644
+--- a/solutions/pytorch_tests/README.md
++++ b/solutions/pytorch_tests/README.md
+@@ -8,7 +8,7 @@ PyTorch validation are run against the Python [Unit Tests](https://github.com/py
+ 
+ | #  | NAME  | ROOT CAUSE  |
+ |---|---|---|
+-| 1  | test_RNG_after_pickle  | lacking **shm** support  |
++| 1  | test_RNG_after_pickle  | abstract namespace uds support  |
+ | 2  | test_from_file  | **tmpfs**  |
+ | 3  | test_torch_from_file  | **tmpfs**  |
+ 
+@@ -26,10 +26,9 @@ PyTorch validation are run against the Python [Unit Tests](https://github.com/py
+ 
+ ### 3. test_nn.py - Tests for NN operators and their automatic differentiation.
+ - **host**: 1361 passed, 1441 skipped, 3 xfailed, 138 warnings
+-- **myst**: 29 failed, 1323 passed, 1437 skipped, 42 deselected, 3 xfailed, 138 warnings
++- **myst**: 29 failed, 1324 passed, 1437 skipped, 41 deselected, 3 xfailed, 138 warnings
+ 
+ | #  | NAME  | ROOT CAUSE  |
+ |---|---|---|
+ | 1-24  | test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int32_float32</br>test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int32_int64_float32</br>test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int32_float32</br>test_EmbeddingBag_empty_per_sample_weights_and_offsets_cpu_int64_int64_float32</br>test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int32_int64_float32</br>test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_new_offsets_cpu_int64_int64_float32</br>test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32</br>test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int32_int64_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int32_float32</br>test_EmbeddingBag_per_sample_weights_and_offsets_cpu_int64_int64_float32</br>test_embedding_bag_device_cpu_int32_int32_float32</br>test_embedding_bag_device_cpu_int32_int64_float32</br>test_embedding_bag_device_cpu_int64_int32_float32</br>test_embedding_bag_device_cpu_int64_int64_float32</br>test_embedding_bag_non_contiguous_weight_cpu_int32_int32_float32</br>test_embedding_bag_non_contiguous_weight_cpu_int32_int64_float32</br>test_embedding_bag_non_contiguous_weight_cpu_int64_int32_float32</br>test_embedding_bag_non_contiguous_weight_cpu_int64_int64_float32</br>  | **float precision error - needs further investigation**  |
+ | 25-28  | test_EmbeddingBag_discontiguous</br>test_EmbeddingBag_mean</br>test_EmbeddingBag_sparse</br>test_EmbeddingBag_sum</br>  | **Segmentation fault - needs further investigation**  |
+-| 29  | test_share_memory  | lacking **shm** support  |
+\ No newline at end of file
+diff --git a/solutions/pytorch_tests/config.json b/solutions/pytorch_tests/config.json
+index 955192cc..ed2bbcc6 100644
+--- a/solutions/pytorch_tests/config.json
++++ b/solutions/pytorch_tests/config.json
+@@ -12,5 +12,6 @@
+     "MemorySize": "2g",
+     "HostApplicationParameters": true,
+     "ForkMode": "pseudo_wait_for_exit_exec",
+-    "NoBrk": true
++    "NoBrk": true,
++    "ThreadStackSize": "1m"
+ }
+diff --git a/solutions/pytorch_tests/config8g.json b/solutions/pytorch_tests/config8g.json
+index 0bcac791..e578b715 100644
+--- a/solutions/pytorch_tests/config8g.json
++++ b/solutions/pytorch_tests/config8g.json
+@@ -10,6 +10,7 @@
+ 
+     // The heap size of the user application. Increase this setting if your app experienced OOM.
+     "MemorySize": "8g",
++    "ThreadStackSize": "1m",
+     "HostApplicationParameters": true,
+     "ForkMode": "pseudo_wait_for_exit_exec",
+     "NoBrk": true
+diff --git a/tests/Makefile b/tests/Makefile
+index 9c154a20..2341e87f 100644
+--- a/tests/Makefile
++++ b/tests/Makefile
+@@ -138,6 +138,8 @@ DIRS += glibc
+ endif
+ 
+ DIRS += appenv
++DIRS += map_shared
++DIRS += posix-shm
+ 
+ .PHONY: $(DIRS)
+ 
+diff --git a/tests/elf/Makefile b/tests/elf/Makefile
+index 400cad0a..1adab765 100644
+--- a/tests/elf/Makefile
++++ b/tests/elf/Makefile
+@@ -35,4 +35,4 @@ test1:
+ 
+ test2:
+ 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs $(IMAGE)
+-	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) $(IMAGE)
++	@ $(RUNTEST) $(MYST_EXEC) --nobrk rootfs /bin/$(PROGRAM) $(IMAGE)
+diff --git a/tests/ltp/build.mak b/tests/ltp/build.mak
+index 741efd76..2bce78c8 100644
+--- a/tests/ltp/build.mak
++++ b/tests/ltp/build.mak
+@@ -22,6 +22,7 @@ all:
+ build:
+ 	$(MAKE) -C ./lib FILTER_OUT_DIRS="$(FILTER)"
+ 	$(MAKE) -C ./testcases/kernel/syscalls FILTER_OUT_DIRS="$(FILTER)"
++	$(MAKE) -C ./testcases/open_posix_testsuite FILTER_OUT_DIRS="$(FILTER)"
+ 
+ native-all:
+ 	$(MAKE) native-config
+diff --git a/tests/ltp/ext2fs_fs_tests_passed.txt b/tests/ltp/ext2fs_fs_tests_passed.txt
+index 474c7a0e..bd7fbd91 100644
+--- a/tests/ltp/ext2fs_fs_tests_passed.txt
++++ b/tests/ltp/ext2fs_fs_tests_passed.txt
+@@ -167,3 +167,34 @@
+ /ltp/testcases/kernel/syscalls/write/write02
+ /ltp/testcases/kernel/syscalls/writev/writev01
+ /ltp/testcases/kernel/syscalls/writev/writev02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/ext2fs_tests_other_errors.txt b/tests/ltp/ext2fs_tests_other_errors.txt
+index 54979d6f..e52ca60c 100644
+--- a/tests/ltp/ext2fs_tests_other_errors.txt
++++ b/tests/ltp/ext2fs_tests_other_errors.txt
+@@ -705,3 +705,11 @@
+ /ltp/testcases/kernel/syscalls/writev/writev05
+ /ltp/testcases/kernel/syscalls/writev/writev06
+ /ltp/testcases/kernel/syscalls/writev/writev07
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test
+diff --git a/tests/ltp/ext2fs_tests_passed.txt b/tests/ltp/ext2fs_tests_passed.txt
+index 01194134..9d543198 100644
+--- a/tests/ltp/ext2fs_tests_passed.txt
++++ b/tests/ltp/ext2fs_tests_passed.txt
+@@ -372,3 +372,34 @@
+ /ltp/testcases/kernel/syscalls/write/write02
+ /ltp/testcases/kernel/syscalls/writev/writev01
+ /ltp/testcases/kernel/syscalls/writev/writev02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/hostfs_fs_tests_passed.txt b/tests/ltp/hostfs_fs_tests_passed.txt
+index a876e0ea..434bc0b2 100644
+--- a/tests/ltp/hostfs_fs_tests_passed.txt
++++ b/tests/ltp/hostfs_fs_tests_passed.txt
+@@ -178,3 +178,34 @@
+ /ltp/testcases/kernel/syscalls/write/write02
+ /ltp/testcases/kernel/syscalls/writev/writev01
+ /ltp/testcases/kernel/syscalls/writev/writev02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/hostfs_tests_other_errors.txt b/tests/ltp/hostfs_tests_other_errors.txt
+index ce68e5ef..d7822ddd 100644
+--- a/tests/ltp/hostfs_tests_other_errors.txt
++++ b/tests/ltp/hostfs_tests_other_errors.txt
+@@ -691,3 +691,11 @@
+ /ltp/testcases/kernel/syscalls/writev/writev05
+ /ltp/testcases/kernel/syscalls/writev/writev06
+ /ltp/testcases/kernel/syscalls/writev/writev07
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test
+diff --git a/tests/ltp/hostfs_tests_passed.txt b/tests/ltp/hostfs_tests_passed.txt
+index 9f0d7e3a..422300ec 100644
+--- a/tests/ltp/hostfs_tests_passed.txt
++++ b/tests/ltp/hostfs_tests_passed.txt
+@@ -383,3 +383,34 @@
+ /ltp/testcases/kernel/syscalls/write/write02
+ /ltp/testcases/kernel/syscalls/writev/writev01
+ /ltp/testcases/kernel/syscalls/writev/writev02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/ramfs_fs_tests_passed.txt b/tests/ltp/ramfs_fs_tests_passed.txt
+index e1721d1e..8deff8bc 100644
+--- a/tests/ltp/ramfs_fs_tests_passed.txt
++++ b/tests/ltp/ramfs_fs_tests_passed.txt
+@@ -151,3 +151,34 @@
+ /ltp/testcases/kernel/syscalls/utime/utime03
+ /ltp/testcases/kernel/syscalls/write/write01
+ /ltp/testcases/kernel/syscalls/write/write02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/ramfs_tests_other_errors.txt b/tests/ltp/ramfs_tests_other_errors.txt
+index 2ada227e..24f6a896 100644
+--- a/tests/ltp/ramfs_tests_other_errors.txt
++++ b/tests/ltp/ramfs_tests_other_errors.txt
+@@ -724,3 +724,11 @@
+ /ltp/testcases/kernel/syscalls/writev/writev05
+ /ltp/testcases/kernel/syscalls/writev/writev06
+ /ltp/testcases/kernel/syscalls/writev/writev07
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test
+diff --git a/tests/ltp/ramfs_tests_passed.txt b/tests/ltp/ramfs_tests_passed.txt
+index da1b0cb5..0896f585 100644
+--- a/tests/ltp/ramfs_tests_passed.txt
++++ b/tests/ltp/ramfs_tests_passed.txt
+@@ -352,3 +352,34 @@
+ /ltp/testcases/kernel/syscalls/waitpid/waitpid12
+ /ltp/testcases/kernel/syscalls/write/write01
+ /ltp/testcases/kernel/syscalls/write/write02
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
+diff --git a/tests/ltp/tests_alltests.txt b/tests/ltp/tests_alltests.txt
+index 92fbe7dd..463a46ac 100644
+--- a/tests/ltp/tests_alltests.txt
++++ b/tests/ltp/tests_alltests.txt
+@@ -1342,3 +1342,42 @@
+ /ltp/testcases/kernel/syscalls/writev/writev05
+ /ltp/testcases/kernel/syscalls/writev/writev06
+ /ltp/testcases/kernel/syscalls/writev/writev07
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_13-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_14-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_15-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_16-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_17-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_18-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_20-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_21-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_22-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_25-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_26-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_28-3.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_37-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_38-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_41-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_1-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_11-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_2-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_3-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_5-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_6-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test
++/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test
+diff --git a/tests/map_shared/Makefile b/tests/map_shared/Makefile
+new file mode 100644
+index 00000000..c2584bbb
+--- /dev/null
++++ b/tests/map_shared/Makefile
+@@ -0,0 +1,47 @@
++TOP=$(abspath ../..)
++include $(TOP)/defs.mak
++
++APPDIR = appdir
++CFLAGS = -fPIC -g -lrt
++LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
++PROG=map-shared
++ifdef STRACE
++OPTS += --strace
++endif
++
++OPTS += --nobrk --fork-mode pseudo_wait_for_exit_exec
++
++all: myst rootfs
++
++rootfs: $(PROG).c
++	mkdir -p $(APPDIR)/bin
++	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(PROG) $(PROG).c $(LDFLAGS)
++	$(MYST) mkcpio $(APPDIR) rootfs
++
++tests:
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) empty-file
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) basic
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) share
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) restricted-mremap
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) restricted-mprotect
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) partial-ops-unsupported
++
++
++TEST=basic
++one:
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) $(TEST)
++
++gdb:
++	$(MYST_GDB) --args $(MYST_EXEC) rootfs /bin/$(PROG) $(OPTS)
++
++myst:
++	$(MAKE) -C $(TOP)/tools/myst
++
++clean:
++	rm -rf $(APPDIR) rootfs export ramfs
++
++build-native:
++	gcc -o $(PROG) -g $(PROG).c -lrt
++
++run-native:
++	./$(PROG) $(TEST)
+diff --git a/tests/map_shared/map-shared.c b/tests/map_shared/map-shared.c
+new file mode 100644
+index 00000000..e3e24fa9
+--- /dev/null
++++ b/tests/map_shared/map-shared.c
+@@ -0,0 +1,297 @@
++#define _GNU_SOURCE
++#include <assert.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <sys/utsname.h>
++#include <sys/wait.h>
++#include <unistd.h>
++
++#define FILE_SIZE 10
++#ifndef PATH_MAX
++#define PATH_MAX 4096
++#endif
++#ifndef PAGE_SIZE
++#define PAGE_SIZE 4096
++#endif
++#define MYST_POSIX_SHM_DEV_NUM 26
++#define ROUNDUP(x, n) ((x + n - 1) & ~(n - 1))
++
++static void printUsage()
++{
++    printf("Usage: TEST [SHM-NAME]\n");
++}
++
++bool myst_run;
++static bool is_running_on_myst()
++{
++    struct utsname buf;
++    uname(&buf);
++    return !strncmp(buf.version, "Mystikos", 8);
++}
++
++int main(int argc, char* argv[])
++{
++    if (argc < 2)
++    {
++        printUsage();
++        exit(1);
++    }
++
++    myst_run = is_running_on_myst();
++    char* data_file_name = "/tmp/shm-fun-1";
++    if (argc == 3)
++    {
++        data_file_name = argv[2];
++    }
++
++    if (strcmp(argv[1], "basic") == 0)
++    {
++        int fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        assert(ftruncate(fd, FILE_SIZE) != -1);
++
++        char* addr =
++            mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        assert(addr != MAP_FAILED);
++
++        printf("addr=%p\n", addr);
++        printf("mem before copy: %s\n", addr);
++        strcpy(addr, "hellowrld");
++        printf("mem after copy: %s\n", addr);
++        assert(!strcmp(addr, "hellowrld"));
++
++        /* Check we don't write beyond mapped range [offset, offset+length] into
++         * the file */
++        {
++            strcpy(addr, "astringlongerthan10characters");
++            // sync whole page
++            assert(msync(addr, PAGE_SIZE, MS_ASYNC) == 0);
++            char buf[20];
++            int nbytes = read(fd, buf, 10);
++            printf("nbytes in file=%d\n", nbytes);
++            // assert file did not grow beyond the limits specificied in mmap()
++            // call.
++            assert(nbytes == 10);
++            if (nbytes)
++                printf("data: %s\n", buf);
++        }
++
++        assert(unlink(data_file_name) != -1);
++    }
++    else if (strcmp(argv[1], "empty-file") == 0)
++    {
++        int fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        char* addr =
++            mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        printf("addr=%p errno=%d\n", addr, errno);
++
++        /* Linux allows mapping a zero-sized file or generally beyond the end of
++           file. However accessing the memory generates a SIGBUS. Mystikos can't
++           serve SIGBUS. We can only guarantee modifications for that range will
++           not be reflected back in file.
++        */
++        if (myst_run)
++        {
++            printf("mem before copy: %s\n", addr);
++            strcpy(addr, "astringlongerthan10characters");
++            printf("mem after copy: %s\n", addr);
++            assert(!strcmp(addr, "astringlongerthan10characters"));
++        }
++
++        assert(munmap(addr, FILE_SIZE) == 0);
++
++        if (myst_run)
++        {
++            // read file
++            char buf[20];
++            int nbytes = read(fd, buf, 10);
++            printf("nbytes in file=%d\n", nbytes);
++            // assert file did not grow
++            assert(nbytes == 0);
++            if (nbytes)
++                printf("data: %s\n", buf);
++        }
++
++        assert(unlink(data_file_name) == 0);
++    }
++    else if (strcmp(argv[1], "share") == 0)
++    {
++        char* addr;
++        int fd = -1;
++
++        {
++            fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++            assert(fd >= 0);
++
++            assert(ftruncate(fd, FILE_SIZE) != -1);
++
++            addr =
++                mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++            assert(addr != MAP_FAILED);
++
++            close(fd);
++
++            printf("addr=%p contents before fork=%s\n", addr, addr);
++            assert(!strcmp(addr, "")); // assert zero-filled-memory
++        }
++
++        pid_t pid = fork();
++        assert(pid != -1);
++
++        if (pid == 0) // child writes to shared memory
++        {
++            strcpy(addr, "wrldhello");
++            assert(munmap(addr, FILE_SIZE) == 0);
++        }
++        else // parent waits on child and then verifies write
++        {
++            waitpid(pid, NULL, 0);
++            printf("addr=%p contents after fork=%s\n", addr, addr);
++            assert(!strcmp(addr, "wrldhello"));
++            exit(0);
++        }
++    }
++    else if (strcmp(argv[1], "restricted-mremap") == 0)
++    {
++        int fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++        assert(ftruncate(fd, FILE_SIZE) != -1);
++
++        char* addr =
++            mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++
++        // check mremap() is allowed if single user
++        {
++            char* new_addr =
++                mremap(addr, FILE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
++            assert(new_addr != MAP_FAILED);
++        }
++
++        // check mremap() is not allowed if multiple users
++        {
++            pid_t pid = fork();
++            assert(pid != -1);
++
++            if (pid == 0)
++            {
++                char* new_addr =
++                    mremap(addr, FILE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
++                assert(new_addr == MAP_FAILED);
++            }
++            else
++            {
++                waitpid(pid, NULL, 0);
++                exit(0);
++            }
++        }
++
++        assert(unlink(data_file_name) != -1);
++    }
++    else if (strcmp(argv[1], "restricted-mprotect") == 0)
++    {
++        int fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++        assert(ftruncate(fd, FILE_SIZE) != -1);
++
++        char* addr =
++            mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++
++        // check mprotect() is allowed if single user
++        {
++            int ret = mprotect(addr, FILE_SIZE, PROT_READ);
++            assert(ret == 0);
++        }
++
++        // check mprotect() is not allowed if multiple users
++        {
++            pid_t pid = fork();
++            assert(pid != -1);
++
++            if (pid == 0)
++            {
++                int ret = mprotect(addr, FILE_SIZE, PROT_READ);
++                assert(ret != 0 && errno == EINVAL);
++            }
++            else
++            {
++                waitpid(pid, NULL, 0);
++                exit(0);
++            }
++        }
++
++        assert(unlink(data_file_name) != -1);
++    }
++    else if (strcmp(argv[1], "partial-ops-unsupported") == 0)
++    {
++        char* addr;
++        int fd = open(data_file_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++        assert(ftruncate(fd, 2 * PAGE_SIZE) != -1);
++
++        // musl checks for page alignment of offset
++        addr = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 15);
++        printf("misaligned offset addr=%p errno=%s\n", addr, strerror(errno));
++        assert(addr == MAP_FAILED && errno == EINVAL);
++
++        addr =
++            mmap(0, 2 * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        assert(addr != MAP_FAILED);
++
++        // check failure of partial mremap
++        {
++            pid_t pid = fork();
++            assert(pid != -1);
++
++            if (pid == 0)
++            {
++                // partial mremap should throw SIGSEGV
++                mremap(
++                    addr + PAGE_SIZE, PAGE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
++            }
++            else
++            {
++                int wstatus;
++                waitpid(pid, &wstatus, 0);
++                // check child was killed with SIGSEGV
++                printf("wstatus=%d\n", wstatus);
++                assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
++            }
++        }
++
++        // check failure of partial mprotect
++        {
++            pid_t pid = fork();
++            assert(pid != -1);
++
++            if (pid == 0)
++            {
++                // partial mprotect should throw SIGSEGV
++                mprotect(addr + PAGE_SIZE, PAGE_SIZE, PROT_READ);
++            }
++            else
++            {
++                int wstatus;
++                waitpid(pid, &wstatus, 0);
++                // check child was killed with SIGSEGV
++                printf("wstatus=%d\n", wstatus);
++                assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
++            }
++        }
++
++        assert(unlink(data_file_name) != -1);
++    }
++    else
++    {
++        printf("Unsupported test arg: %s\n", argv[1]);
++    }
++}
+diff --git a/tests/mprotect/main.c b/tests/mprotect/main.c
+index 97c7cdc4..3db7ac00 100644
+--- a/tests/mprotect/main.c
++++ b/tests/mprotect/main.c
+@@ -79,6 +79,24 @@ int main(int argc, const char* argv[])
+         printf("Error - mprotect() didn't take 0 length\n");
+         assert(0);
+     }
++
++    /* mprotect un-owned memory */
++    {
++        void* addr2 =
++            mmap(0, PAGE_SIZE, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
++        munmap(addr2, PAGE_SIZE);
++        if (!mprotect(addr2, PAGE_SIZE, PROT_READ | PROT_WRITE))
++        {
++            printf("Errorr - unowned mprotect() did not fail: %d\n", errno);
++            exit(1);
++        }
++        if (!mprotect(addr2, 0, PROT_READ | PROT_WRITE))
++        {
++            printf("Errorr - unowned mprotect() did not fail: %d\n", errno);
++            exit(1);
++        }
++    }
++
+     for (size_t i = 0; i < length; i++)
+     {
+         data = addr[i];
+diff --git a/tests/msync/msync.c b/tests/msync/msync.c
+index f2dd1cbc..646ef68c 100644
+--- a/tests/msync/msync.c
++++ b/tests/msync/msync.c
+@@ -92,7 +92,7 @@ static void test_msync()
+     struct stat st;
+ 
+     /* create a new file */
+-    assert((fd = open("/msync", O_CREAT | O_TRUNC | O_RDWR, 0666)) >= 0);
++    assert((fd = open("/tmp/msync", O_CREAT | O_TRUNC | O_RDWR, 0666)) >= 0);
+ 
+     /* create a file where each page is filled with a specific byte value */
+     for (size_t i = 0; i < num_pages; i++)
+@@ -109,7 +109,7 @@ static void test_msync()
+     /* map the file onto memory */
+     const size_t length = st.st_size;
+     const int prot = PROT_READ | PROT_WRITE;
+-    const int flags = MAP_PRIVATE | MAP_SHARED;
++    const int flags = MAP_PRIVATE;
+     uint8_t* addr = mmap(NULL, length, prot, flags, fd, 0);
+     assert(addr != MAP_FAILED);
+ 
+@@ -169,7 +169,7 @@ static void test_msync()
+ 
+     /* reopen the file and check that it has actually changed */
+     {
+-        assert((fd = open("/msync", O_RDONLY)) >= 0);
++        assert((fd = open("/tmp/msync", O_RDONLY)) >= 0);
+ 
+         for (size_t i = 0; i < num_pages; i++)
+         {
+diff --git a/tests/posix-shm/Makefile b/tests/posix-shm/Makefile
+new file mode 100644
+index 00000000..15ac16e3
+--- /dev/null
++++ b/tests/posix-shm/Makefile
+@@ -0,0 +1,47 @@
++TOP=$(abspath ../..)
++include $(TOP)/defs.mak
++
++APPDIR = appdir
++CFLAGS = -fPIC -g -lrt
++LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
++
++ifdef STRACE
++OPTS += --strace
++endif
++
++OPTS += --nobrk --fork-mode pseudo_wait_for_exit_exec
++
++all: myst rootfs
++
++rootfs: shm-fun.c
++	mkdir -p $(APPDIR)/bin
++	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/shm-fun shm-fun.c $(LDFLAGS)
++	$(MYST) mkcpio $(APPDIR) rootfs
++
++tests:
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun empty-file
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun basic
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun share
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun resize-backing-file
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun resize-memory
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun offset-tests
++
++
++TEST=basic
++one:
++	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/shm-fun $(TEST)
++
++gdb:
++	$(MYST_GDB) --args $(MYST_EXEC) rootfs /bin/shm-fun $(OPTS)
++
++myst:
++	$(MAKE) -C $(TOP)/tools/myst
++
++clean:
++	rm -rf $(APPDIR) rootfs export ramfs
++
++build-native:
++	gcc -o shm-fun -g shm-fun.c -lrt
++
++run-native:
++	./shm-fun $(TEST)
+diff --git a/tests/posix-shm/shm-fun.c b/tests/posix-shm/shm-fun.c
+new file mode 100644
+index 00000000..b7efc513
+--- /dev/null
++++ b/tests/posix-shm/shm-fun.c
+@@ -0,0 +1,322 @@
++#define _GNU_SOURCE
++#include <assert.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <stdbool.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
++#include <sys/stat.h>
++#include <sys/types.h>
++#include <sys/utsname.h>
++#include <sys/wait.h>
++#include <unistd.h>
++
++#define SHM_SIZE 10
++#ifndef PATH_MAX
++#define PATH_MAX 4096
++#endif
++#ifndef PAGE_SIZE
++#define PAGE_SIZE 4096
++#endif
++#define MYST_POSIX_SHM_DEV_NUM 26
++#define ROUNDUP(x, n) ((x + n - 1) & ~(n - 1))
++
++static void printUsage()
++{
++    printf("Usage: TEST [SHM-NAME]\n");
++}
++
++typedef enum
++{
++    NONE,
++    WSL, // Windows subsystem for Linux
++    LINUX,
++    MYSTIKOS
++} os_t;
++
++static os_t get_os_type()
++{
++    struct utsname buf;
++    uname(&buf);
++    if (!strncmp(buf.version, "Mystikos", 8))
++        return MYSTIKOS;
++    if (strstr(buf.version, "Microsoft") != NULL)
++        return WSL;
++    else if (!strncmp(buf.sysname, "Linux", 5))
++        return LINUX;
++    return NONE;
++}
++int main(int argc, char* argv[])
++{
++    if (argc < 2)
++    {
++        printUsage();
++        exit(1);
++    }
++
++    os_t os = get_os_type();
++    char* shm_name = "/shm-fun-1";
++    if (argc == 3)
++    {
++        shm_name = argv[2];
++    }
++
++    if (strcmp(argv[1], "basic") == 0)
++    {
++        int fd =
++            shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        assert(ftruncate(fd, SHM_SIZE) != -1);
++
++        char* addr =
++            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        assert(addr != MAP_FAILED);
++
++        printf("addr=%p\n", addr);
++        printf("mem before copy: %s\n", addr);
++        strcpy(addr, "hellowrld");
++        printf("mem after copy: %s\n", addr);
++        assert(!strcmp(addr, "hellowrld"));
++
++        {
++            struct stat statbuf;
++            assert(!fstat(fd, &statbuf));
++            printf("statbuf dev %ld\n", statbuf.st_dev);
++            printf("statbuf rdev %ld\n", statbuf.st_rdev);
++            printf("statbuf size %ld\n", statbuf.st_size);
++            // Device number is different on WSL - 9 and Linux - 26.
++            if (os == MYSTIKOS)
++                assert(statbuf.st_dev == MYST_POSIX_SHM_DEV_NUM);
++            assert(statbuf.st_size == SHM_SIZE);
++        }
++
++        assert(shm_unlink(shm_name) != -1);
++    }
++    else if (strcmp(argv[1], "empty-file") == 0)
++    {
++        int fd =
++            shm_open(shm_name, O_CREAT | O_EXCL | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        char* addr =
++            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        printf("addr=%p errno=%d\n", addr, errno);
++        // Linux allows mmap an empty file, but will deliver a SIGBUS if the
++        // memory was accessed.
++        if (os == MYSTIKOS || os == WSL)
++            assert(addr == MAP_FAILED && errno == ENOEXEC);
++    }
++    // Not a standalone test. Used by "share", which sets up the shm memory
++    // size.
++    else if (strcmp(argv[1], "write") == 0)
++    {
++        int fd = shm_open(shm_name, O_RDWR, 0);
++        assert(fd >= 0);
++
++        char* addr =
++            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++        assert(addr != MAP_FAILED);
++
++        printf("addr=%p contents before write=%s\n", addr, addr);
++        strcpy(addr, "wrldhello");
++        printf("addr=%p contents after write=%s\n", addr, addr);
++
++        munmap(addr, SHM_SIZE);
++        shm_unlink(shm_name);
++    }
++    else if (strcmp(argv[1], "share") == 0)
++    {
++        char* addr;
++        int fd = -1;
++
++        {
++            fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++            assert(fd >= 0);
++
++            assert(ftruncate(fd, SHM_SIZE) != -1);
++
++            addr = mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++            assert(addr != MAP_FAILED);
++
++            close(fd);
++
++            printf("addr=%p contents before fork=%s\n", addr, addr);
++            assert(!strcmp(addr, "")); // assert zero-filled-memory
++        }
++
++        pid_t pid = fork();
++        assert(pid != -1);
++
++        if (pid == 0) // child execve's self and writes to shared memory
++        {
++            // Check unmap of inherited posix shm object is successful
++            assert(munmap(addr, SHM_SIZE) == 0);
++
++            char buf[PATH_MAX];
++            readlink("/proc/self/exe", buf, PATH_MAX);
++            char* argVec[] = {buf, "write", 0};
++            char* envVec[] = {0};
++            execve(buf, argVec, envVec);
++        }
++        else // parent waits on child and then verifies write
++        {
++            waitpid(pid, NULL, 0);
++            printf("addr=%p contents after fork=%s\n", addr, addr);
++            assert(!strcmp(addr, "wrldhello"));
++            exit(0);
++        }
++    }
++    else if (strcmp(argv[1], "resize-backing-file") == 0)
++    {
++        int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        int ret;
++        assert((ret = ftruncate(fd, SHM_SIZE)) != -1);
++        printf("ftruncate(fd, %d) ret=%d errno=%d\n", SHM_SIZE, ret, errno);
++
++        char* addr =
++            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++
++        // test resizing of file fails if active mmap
++        {
++            // truncate file to size zero
++            ret = ftruncate(fd, 0);
++            printf(
++                "ftruncate(fd, %d) with active mmap ret=%d errno=%d\n",
++                0,
++                ret,
++                errno);
++            assert(ret != 0);
++
++            // grow backing file by writing to it
++            ret = write(fd, "hellowrldhellowrldhellowrldddd", 30);
++            printf("write(fd) with active mmap ret=%d errno=%d\n", ret, errno);
++            assert(ret == -1);
++        }
++
++        munmap(addr, SHM_SIZE);
++
++        // test resizing of file succeeds if no active mmap
++        {
++            // truncate file to size zero
++            ret = ftruncate(fd, 0);
++            printf(
++                "ftruncate(fd, %d) with active mmap ret=%d errno=%d\n",
++                0,
++                ret,
++                errno);
++            assert(ret == 0);
++
++            // grow backing file by writing to it
++            ret = write(fd, "hellowrldhellowrldhellowrldddd", 30);
++            printf("write(fd) with active mmap ret=%d errno=%d\n", ret, errno);
++            assert(ret == 30);
++        }
++
++        assert(shm_unlink(shm_name) != -1);
++    }
++    else if (strcmp(argv[1], "resize-memory") == 0)
++    {
++        int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        assert(ftruncate(fd, SHM_SIZE) != -1);
++
++        char* addr =
++            mmap(0, SHM_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++
++        {
++            char* new_addr =
++                mremap(addr, SHM_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
++
++            // Mystikos doesn't support mremap
++            if (os == MYSTIKOS)
++                assert(new_addr == MAP_FAILED && errno == EINVAL);
++
++            printf(
++                "addr=%p new_addr=%p errno=%s\n",
++                addr,
++                new_addr,
++                strerror(errno));
++        }
++
++        assert(shm_unlink(shm_name) != -1);
++    }
++    else if (strcmp(argv[1], "offset-tests") == 0)
++    {
++        char* addr;
++        int fd = shm_open(shm_name, O_CREAT | O_RDWR, (S_IRUSR | S_IWUSR));
++        assert(fd >= 0);
++
++        // set shm size to 2 pages
++        assert(ftruncate(fd, 2 * PAGE_SIZE) != -1);
++
++        // musl checks for page alignment of offset
++        addr = mmap(0, PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 15);
++        printf("misaligned offset addr=%p errno=%s\n", addr, strerror(errno));
++        assert(addr == MAP_FAILED && errno == EINVAL);
++
++        // check failure for non-zero offset
++        {
++            pid_t pid = fork();
++            assert(pid != -1);
++
++            if (pid == 0)
++            {
++                int fd = shm_open(shm_name, O_RDWR, 0);
++                // offset beyond end of file
++                // supported by Linux, unsupported by Mystikos
++                addr = mmap(
++                    0,
++                    PAGE_SIZE,
++                    PROT_READ | PROT_WRITE,
++                    MAP_SHARED,
++                    fd,
++                    3 * PAGE_SIZE);
++            }
++            else
++            {
++                int wstatus;
++                waitpid(pid, &wstatus, 0);
++                // check child was killed with SIGSEGV
++                printf("wstatus=%d\n", wstatus);
++                if (os == MYSTIKOS)
++                    assert(
++                        WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
++            }
++        }
++
++#if 0
++        // Mystikos doesn't support partial mapping
++        // check mmap starting at valid non-zero offset
++        {
++            char* second_page = mmap(
++                0,
++                PAGE_SIZE,
++                PROT_READ | PROT_WRITE,
++                MAP_SHARED,
++                fd,
++                PAGE_SIZE);
++            printf("addr=%p errno=%s\n", second_page, strerror(errno));
++            assert(second_page != MAP_FAILED);
++
++            memset(second_page, 'a', PAGE_SIZE);
++            munmap(second_page, PAGE_SIZE);
++
++            char* both_pages = mmap(
++                0, 2 * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
++            assert(both_pages != MAP_FAILED);
++            assert(*(both_pages + PAGE_SIZE) == 'a');
++        }
++#endif
++        assert(shm_unlink(shm_name) != -1);
++    }
++    else
++    {
++        printf("Unsupported test arg: %s\n", argv[1]);
++    }
++}
+diff --git a/utils/buf.c b/utils/buf.c
+index 382cd118..2ca1e8ad 100644
+--- a/utils/buf.c
++++ b/utils/buf.c
+@@ -1,15 +1,14 @@
+ // Copyright (c) Microsoft Corporation.
+ // Licensed under the MIT License.
+ 
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <string.h>
+-
+ #include <myst/buf.h>
+-#include <stdlib.h>
+-
++#include <myst/mmanutils.h>
+ #include <myst/round.h>
+ #include <myst/strings.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <sys/mman.h>
+ 
+ #define MYST_BUF_CHUNK_SIZE 1024
+ 
+@@ -51,13 +50,28 @@ int myst_buf_reserve(myst_buf_t* buf, size_t cap)
+         /* If capacity still insufficent, round to multiple of chunk size */
+         if (cap > new_cap)
+         {
+-            const size_t N = MYST_BUF_CHUNK_SIZE;
++            const size_t N = (buf->flags & MYST_BUF_PAGE_ALIGNED)
++                                 ? PAGE_SIZE
++                                 : MYST_BUF_CHUNK_SIZE;
+             new_cap = (cap + N - 1) / N * N;
+         }
+ 
+         /* Expand allocation */
+-        if (!(new_data = realloc(buf->data, new_cap)))
+-            return -1;
++        if (buf->flags & MYST_BUF_PAGE_ALIGNED)
++        {
++            if (!(new_data = memalign(PAGE_SIZE, new_cap)))
++                return -1;
++            if (buf->data)
++            {
++                memcpy(new_data, buf->data, buf->size);
++                free(buf->data);
++            }
++        }
++        else
++        {
++            if (!(new_data = realloc(buf->data, new_cap)))
++                return -1;
++        }
+ 
+         buf->data = new_data;
+         buf->cap = new_cap;
+@@ -104,8 +118,7 @@ int myst_buf_append(myst_buf_t* buf, const void* data, size_t size)
+     /* Compute the new size */
+     new_size = buf->size + size;
+ 
+-    /* If insufficient capacity to hold new data */
+-    if (new_size > buf->cap)
++    /* Reserve memory if needed */
+     {
+         int err;
+ 
+@@ -410,3 +423,26 @@ done:
+ 
+     return ret;
+ }
++
++bool myst_buf_has_active_mmap(myst_buf_t* buf)
++{
++    assert(buf);
++    return buf->flags & MYST_BUF_ACTIVE_MAPPING;
++}
++
++int myst_buf_set_mmap_active(myst_buf_t* buf, bool active)
++{
++    int ret = -1;
++
++    if (!buf)
++        goto done;
++
++    buf->flags = buf->flags & ~MYST_BUF_ACTIVE_MAPPING;
++    if (active)
++        buf->flags = buf->flags | MYST_BUF_ACTIVE_MAPPING;
++
++    ret = 0;
++
++done:
++    return ret;
++}

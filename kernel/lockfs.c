@@ -607,6 +607,33 @@ done:
     return ret;
 }
 
+static int _fs_file_data_start_addr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** addr_out)
+{
+    int ret = 0;
+    LOCK();
+    ret = (*lockfs->fs->fs_file_data_start_addr)(lockfs->fs, file, addr_out);
+    UNLOCK();
+
+done:
+    return ret;
+}
+
+static int _fs_file_mapping_notify(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    bool active)
+{
+    int ret = 0;
+    LOCK();
+    ret = (*lockfs->fs->fs_file_mapping_notify)(lockfs->fs, file, active);
+    UNLOCK();
+done:
+    return ret;
+}
+
 int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
 {
     int ret = 0;
@@ -668,6 +695,8 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_fdatasync = _fs_fdatasync,
         .fs_fsync = _fs_fsync,
         .fs_release_tree = _fs_release_tree,
+        .fs_file_data_start_addr = _fs_file_data_start_addr,
+        .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
 
     if (lockfs_out)

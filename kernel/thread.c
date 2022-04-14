@@ -29,6 +29,7 @@
 #include <myst/printf.h>
 #include <myst/procfs.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/stack.h>
@@ -1089,20 +1090,14 @@ static long _run_thread(void* arg_)
             size_t i = thread->unmap_on_exit_used;
             while (i)
             {
-                if (!myst_munmap(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size))
-                {
-                    /* App process might have invoked SYS_mmap, which marks the
-                     * memory as owned by the calling app process, and then
-                     * SYS_myst_unmap_on_exit on the memory region. Clear the
-                     * pid vector to make sure the unmapped memory is marked as
-                     * not owned by any app process */
-                    myst_mman_pids_set(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size,
-                        0);
-                }
+                /* App process might have invoked SYS_mmap, which marks the
+                 * memory as owned by the calling app process, and then
+                 * SYS_myst_unmap_on_exit on the memory region. Clear the
+                 * pid vector to make sure the unmapped memory is marked as
+                 * not owned by any app process */
+                myst_munmap_and_pids_clear_atomic(
+                    thread->unmap_on_exit[i - 1].ptr,
+                    thread->unmap_on_exit[i - 1].size);
                 i--;
             }
         }
@@ -1418,6 +1413,9 @@ static long _syscall_clone_vfork(
 
             free(self_path);
         }
+
+        /* Child inherits parent's shared memory mappings */
+        ECHECK(myst_shmem_share_mappings(child_process->pid));
 
         ECHECK(_get_entry_stack(child_thread));
     }

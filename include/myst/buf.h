@@ -8,8 +8,11 @@
 #include <stdint.h>
 
 // clang-format off
-#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0 }
+#define MYST_BUF_INITIALIZER { NULL, 0, 0, 0, 0 }
 // clang-format on
+
+#define MYST_BUF_PAGE_ALIGNED 1
+#define MYST_BUF_ACTIVE_MAPPING 2
 
 typedef struct myst_buf
 {
@@ -17,6 +20,7 @@ typedef struct myst_buf
     size_t size;
     size_t cap;
     size_t offset;
+    int flags;
 } myst_buf_t;
 
 void myst_buf_release(myst_buf_t* buf);
@@ -51,5 +55,9 @@ int myst_buf_unpack_strings(
     myst_buf_t* buf,
     const char*** strings,
     size_t* count);
+
+bool myst_buf_has_active_mmap(myst_buf_t* buf);
+
+int myst_buf_set_mmap_active(myst_buf_t* buf, bool active);
 
 #endif /* _MYST_BUF_H */

@@ -39,7 +39,7 @@ int procfs_setup()
 {
     int ret = 0;
 
-    if (myst_init_ramfs(myst_mount_resolve, &_procfs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_procfs, 0) != 0)
     {
         myst_eprintf("failed initialize the proc file system\n");
         ERAISE(-EINVAL);

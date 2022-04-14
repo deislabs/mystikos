@@ -12,5 +12,6 @@
     "MemorySize": "2g",
     "HostApplicationParameters": true,
     "ForkMode": "pseudo_wait_for_exit_exec",
-    "NoBrk": true
+    "NoBrk": true,
+    "ThreadStackSize": "1m"
 }

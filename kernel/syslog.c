@@ -51,7 +51,7 @@ void __myst_vsyslog(
             break;
     }
 
-    myst_eprintf("mytikos: %s: ", name);
+    myst_eprintf("mystikos: %s: ", name);
 
     if (file && line && func)
         myst_eprintf("%s(%u): %s(): ", file, line, func);

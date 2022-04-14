@@ -46,7 +46,8 @@ typedef struct _vcallback
 
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
-    myst_fs_t** fs_out);
+    myst_fs_t** fs_out,
+    int device_num);
 
 int myst_ramfs_set_buf(
     myst_fs_t* fs,
@@ -72,4 +73,5 @@ int myst_write_stateful_virtual_file(
 
 int set_overrides_for_special_fs(myst_fs_t* fs);
 
+#define MYST_POSIX_SHMFS_DEV_NUM 26
 #endif /* _MYST_RAMFS_H */

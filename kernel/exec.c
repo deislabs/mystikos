@@ -28,6 +28,7 @@
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>

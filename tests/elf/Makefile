@@ -35,4 +35,4 @@ test1:
 
 test2:
 	@ $(MKROOTFS) $(SUBBINDIR)/$(PROGRAM) rootfs $(IMAGE)
-	@ $(RUNTEST) $(MYST_EXEC) rootfs /bin/$(PROGRAM) $(IMAGE)
+	@ $(RUNTEST) $(MYST_EXEC) --nobrk rootfs /bin/$(PROGRAM) $(IMAGE)

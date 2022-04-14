@@ -73,6 +73,7 @@
 #include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
@@ -3558,12 +3559,14 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
+        "addr=%lx length=%zu(%lx) prot=%d(%s) flags=%d(%s) fd=%d offset=%lu",
         (long)addr,
         length,
         length,
         prot,
+        myst_mman_prot_to_string(prot),
         flags,
+        myst_mman_flags_to_string(flags),
         fd,
         offset);
 
@@ -3581,15 +3584,15 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         if (flags & MAP_FIXED)
         {
-            pid_t pid = myst_getpid();
-
-            size_t rounded_up_length;
-            if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
+            // addr hint with MAP_FIXED not supported for shared mappings
+            if (flags & MAP_SHARED)
+            {
+                MYST_WLOG("MAP_FIXED is not supported for shared mappings");
                 return (_return(n, -EINVAL));
+            }
 
-            /* if calling process does not own this mapping */
-            if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-                (ssize_t)rounded_up_length)
+            /* Caller should own the memory range */
+            if (!myst_process_owns_mem_range(addr, length, true))
                 return (_return(n, -EINVAL));
         }
         else
@@ -3608,7 +3611,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         ret = -ENOMEM;
     }
-    else if (ret > 0)
+    else if (ret > 0 && !(flags & MAP_SHARED))
     {
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
@@ -3631,11 +3634,16 @@ static long _SYS_mprotect(long n, long params[6])
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d",
+        "addr=%lx length=%zu(%lx) prot=%d(%s)",
         (long)addr,
         length,
         length,
-        prot);
+        prot,
+        myst_mman_prot_to_string(prot));
+
+    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        return (_return(n, -EINVAL));
 
     return (_return(n, (long)myst_mprotect(addr, length, prot)));
 }
@@ -3669,6 +3677,19 @@ static long _SYS_munmap(
                 _return(n, myst_syscall_unmap_on_exit(thread, addr, length)));
         }
     }
+
+    /* Handle MAP_SHARED unmapping */
+    {
+        bool is_shmem;
+        if (myst_shmem_handle_munmap(addr, length, &is_shmem) < 0)
+            return (_return(n, -EINVAL));
+
+        if (is_shmem)
+            return (_return(n, 0));
+    }
+
+    if (!myst_process_owns_mem_range(addr, length, true))
+        return (_return(n, -EINVAL));
 
     long ret = (long)myst_munmap(addr, length);
 
@@ -3835,6 +3856,7 @@ static long _SYS_mremap(long n, long params[6])
     int flags = (int)params[3];
     void* new_address = (void*)params[4];
     long ret;
+    map_type_t old_map_type = NONE;
 
     _strace(
         n,
@@ -3849,20 +3871,14 @@ static long _SYS_mremap(long n, long params[6])
         flags,
         new_address);
 
-    {
-        const pid_t pid = myst_getpid();
-        myst_assume(pid > 0);
-
-        /* fail if the calling process does not own this mapping */
-        if (myst_mman_pids_test(old_address, old_size, pid) !=
-            (ssize_t)old_size)
-            return (_return(n, -EINVAL));
-    }
+    if (!(old_map_type =
+              myst_process_owns_mem_range(old_address, old_size, NULL)))
+        return (_return(n, -EINVAL));
 
     ret =
         (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
 
-    if (ret >= 0)
+    if (old_map_type != SHARED && ret >= 0)
     {
         const pid_t pid = myst_getpid();
 
@@ -3885,6 +3901,9 @@ static long _SYS_msync(long n, long params[6])
     int flags = (int)params[2];
 
     _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        return (_return(n, -EINVAL));
 
     return (_return(n, myst_msync(addr, length, flags)));
 }
@@ -4037,7 +4056,7 @@ static long _SYS_myst_clone(long n, long params[6])
         n,
         "fn=%p "
         "child_stack=%p "
-        "flags=%x "
+        "flags=%x (%s) "
         "arg=%p "
         "ptid=%p "
         "newtls=%p "
@@ -4045,6 +4064,7 @@ static long _SYS_myst_clone(long n, long params[6])
         fn,
         child_stack,
         flags,
+        flags & CLONE_VFORK ? "CLONE_VFORK" : "CLONE_THREAD",
         arg,
         ptid,
         newtls,
@@ -4913,7 +4933,7 @@ static long _SYS_mlock(long n, long params[6])
 static long _SYS_prctl(long n, long params[6])
 {
     int option = (int)params[0];
-    long ret = 0;
+    long ret = -EINVAL;
 
     _strace(n, "option=%d", option);
 
@@ -4926,6 +4946,7 @@ static long _SYS_prctl(long n, long params[6])
         // ATTN: Linux requires a 16-byte buffer:
         const size_t n = 16;
         myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
+        ret = 0;
     }
     else if (option == PR_SET_NAME)
     {
@@ -4935,9 +4956,11 @@ static long _SYS_prctl(long n, long params[6])
 
         ret = myst_set_thread_name(myst_thread_self(), arg2);
     }
-    else
+    else if (option == PR_SET_PDEATHSIG)
     {
-        ret = -EINVAL;
+        // TODO: Send signal passed as arg2 to the calling process if and when
+        // its parent dies.
+        ret = 0;
     }
 
     return (_return(n, ret));

@@ -102,7 +102,6 @@ and not test_EmbeddingBag_discontiguous \
 and not test_EmbeddingBag_mean \
 and not test_EmbeddingBag_sparse \
 and not test_EmbeddingBag_sum \
-and not test_share_memory \
 and not test_avg_pool2d_nhwc_cpu_float32 \
 and not test_avg_pool2d_nhwc_cpu_float64 \
 and not test_max_pool2d_nhwc_cpu_float32 \
@@ -111,7 +110,7 @@ and not test_cross_entropy_loss_precision \
 and not test_l1_loss_correct"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1323 passed.*1437 skipped.*42 deselected.*3 xfailed' $@.out
+	grep -q -E '1324 passed.*1437 skipped.*41 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
 run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
@@ -136,8 +135,27 @@ run-test-torch: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '693 passed.*527 skipped.*3 deselected' $@.out
 
+.PHONY: run-test-mp-spawn
+run-test-mp-spawn: EXCLUDE_TESTS = "not test_success_func \
+and not test_success_single_arg_func \
+and not test_exception_single_func \
+and not test_exception_all_func \
+and not test_terminate_signal_func \
+and not test_terminate_exit_func \
+and not test_success_first_then_exception_func \
+and not test_nested_child_body \
+and not test_infinite_task \
+and not test_process_exit \
+and not test_nested \
+and not ForkTest"
+run-test-mp-spawn: rootfs
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
+	/usr/local/bin/python -m pytest -v \
+	/workspace/pytorch/test/test_multiprocessing_spawn.py \
+	-k $(EXCLUDE_TESTS)
+
 .PHONY: run-core-tests
-run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
+run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch run-test-mp-spawn
 
 .PHONY: run
 _run: run-core-tests
@@ -146,8 +164,10 @@ run:
 	$(RUNTEST) make -C $(CURDIR) _run
 
 .PHONY: one
+TEST=test_nn
+SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
 one: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
+	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
 
 .PHONY: gdb
 gdb: rootfs

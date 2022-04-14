@@ -31,6 +31,18 @@
         }                                                            \
     } while (0)
 
+#define ECHECK_LABEL(ERRNUM, LABEL)                                  \
+    do                                                               \
+    {                                                                \
+        typeof(ERRNUM) _r_ = ERRNUM;                                 \
+        if (_r_ < 0)                                                 \
+        {                                                            \
+            ret = (typeof(ret))_r_;                                  \
+            myst_eraise(__FILE__, __LINE__, __FUNCTION__, (int)ret); \
+            goto LABEL;                                              \
+        }                                                            \
+    } while (0)
+
 #define ECHECK_QUIET(ERRNUM) \
     do                       \
     {                        \
