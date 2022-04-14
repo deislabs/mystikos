@@ -12,6 +12,12 @@ int shmfs_setup();
 
 int shmfs_teardown();
 
+int tmpshmfs_setup();
+
+int tmpshmfs_teardown();
+
+myst_fs_t* tmpshmfs_instance();
+
 typedef struct shared_mapping shared_mapping_t;
 
 bool myst_is_posix_shm_file_handle(int fd, int flags);

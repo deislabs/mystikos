@@ -70,6 +70,8 @@ typedef struct shared_mapping
 static myst_list_t _shared_mappings;
 static myst_rspinlock_t _shared_mappings_lock;
 static myst_fs_t* _posix_shmfs;
+// This fs is used to only support memfd_create syscall
+static myst_fs_t* _tmpshmfs;
 
 static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid);
 
@@ -111,6 +113,40 @@ int shmfs_teardown()
     }
 
     return 0;
+}
+
+// Create tmp shmfs, do not mount it
+int tmpshmfs_setup()
+{
+    int ret = 0;
+
+    if (myst_init_ramfs(
+            myst_mount_resolve, &_tmpshmfs, MYST_POSIX_SHMFS_DEV_NUM) != 0)
+    {
+        myst_eprintf("failed initialize the tmpshmfs file system\n");
+        ERAISE(-EINVAL);
+    }
+
+    ECHECK(set_overrides_for_special_fs(_tmpshmfs));
+
+done:
+    return ret;
+}
+
+int tmpshmfs_teardown()
+{
+    if ((*_tmpshmfs->fs_release)(_tmpshmfs) != 0)
+    {
+        myst_eprintf("failed to release tmpshmfs\n");
+        return -1;
+    }
+
+    return 0;
+}
+
+myst_fs_t* tmpshmfs_instance()
+{
+    return _tmpshmfs;
 }
 
 #ifdef TRACE
@@ -178,7 +214,9 @@ static bool _is_posix_shm_mapping(shared_mapping_t* sm)
 {
     if (sm && sm->type == SHMEM_POSIX_SHM)
     {
-        assert(sm->file_handle->fs == _posix_shmfs);
+        assert(
+            sm->file_handle->fs == _posix_shmfs ||
+            sm->file_handle->fs == _tmpshmfs);
         return true;
     }
     return false;
@@ -212,9 +250,11 @@ bool myst_is_posix_shm_file_handle(int fd, int flags)
 
 static int _notify_shmfs_active(mman_file_handle_t* file_handle, bool active)
 {
-    assert(file_handle && _posix_shmfs == file_handle->fs);
-    return (*_posix_shmfs->fs_file_mapping_notify)(
-        _posix_shmfs, file_handle->file, active);
+    assert(
+        file_handle &&
+        (_posix_shmfs == file_handle->fs || _tmpshmfs == file_handle->fs));
+    return (*file_handle->fs->fs_file_mapping_notify)(
+        file_handle->fs, file_handle->file, active);
 }
 
 size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)

@@ -826,6 +826,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Setup POSIX Shared Memory fs */
     shmfs_setup();
+    tmpshmfs_setup();
 
     /* Create top-level proc entries */
     create_proc_root_entries();
@@ -1024,6 +1025,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* Tear down the posix shm file system */
     shmfs_teardown();
+    tmpshmfs_teardown();
 
     /* Tear down the RAM file system */
     _teardown_ramfs();

@@ -1947,6 +1947,67 @@ done:
     return ret;
 }
 
+long myst_syscall_memfd_create(const char* name, unsigned int flags)
+{
+    int ret = 0;
+
+    const myst_fdtable_type_t fdtype = MYST_FDTABLE_TYPE_FILE;
+    // Get tmpshmfs for hosting anonymous memory file
+    myst_fs_t* fs = tmpshmfs_instance();
+    myst_fs_t* fs_out = NULL;
+    myst_file_t* file;
+
+    int fd;
+
+    myst_fdtable_t* fdtable = myst_fdtable_current();
+    ECHECK((*fs->fs_open_memfd)(fs, name, flags, &fs_out, &file));
+
+    assert(fs == fs_out);
+    myst_assume(myst_is_hostfs(fs_out) || myst_is_lockfs(fs_out));
+
+    if ((fd = myst_fdtable_assign(fdtable, fdtype, fs_out, file)) < 0)
+    {
+        (*fs_out->fs_close)(fs_out, file);
+        ERAISE(fd);
+    }
+
+    // ATTN: creating symlink to anonymous files is not supported
+    // This will disable use cases like, for example, list all memfd files
+    // with command: ls -al /proc/[pid]/fd
+    /*
+    struct locals
+    {
+        char realpath[PATH_MAX];
+        char linkpath[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+    const size_t n = sizeof(locals->linkpath);
+    if (snprintf(locals->realpath, n, "/memfd:%s", name) >= (int)n)
+        ERAISE(-ENAMETOOLONG);
+
+    if (snprintf(locals->linkpath, n, "/proc/%d/fd/%d", myst_getpid(), fd) >=
+        (int)n)
+        ERAISE(-ENAMETOOLONG);
+
+    // Create link: /proc/[pid]/fd/[fd] -> /memfd:[name]
+    if ((int r = symlink(locals->realpath, locals->linkpath)) != 0)
+    {
+        myst_fdtable_remove(fdtable, fd);
+        (*fs_out->fs_close)(fs_out, file);
+        ERAISE(r);
+    }
+    */
+
+    ret = fd;
+
+done:
+
+    return ret;
+}
+
 long myst_syscall_fcntl(int fd, int cmd, long arg)
 {
     long ret = 0;
@@ -5893,6 +5954,17 @@ static long _SYS_getrandom(long n, long params[6])
     return (_return(n, myst_syscall_getrandom(buf, buflen, flags)));
 }
 
+static long _SYS_memfd_create(long n, long params[6])
+{
+    const char* name = (const char*)params[0];
+    unsigned int flags = (unsigned int)params[1];
+
+    _strace(n, "name=%s flags=%d", name, flags);
+
+    int ret = myst_syscall_memfd_create(name, flags);
+    return (_return(n, ret));
+}
+
 static long _SYS_execveat(
     long n,
     long params[6],
@@ -7500,7 +7572,9 @@ static long _syscall(void* args_)
             BREAK(_SYS_getrandom(n, params));
         }
         case SYS_memfd_create:
-            break;
+        {
+            BREAK(_SYS_memfd_create(n, params));
+        }
         case SYS_kexec_file_load:
             break;
         case SYS_bpf:

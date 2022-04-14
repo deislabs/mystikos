@@ -111,6 +111,23 @@ done:
     return ret;
 }
 
+static int _fs_open_memfd(
+    myst_fs_t* fs,
+    const char* pathname,
+    int flags,
+    myst_fs_t** fs_out,
+    myst_file_t** file_out)
+{
+    int ret = 0;
+    LOCK();
+    ret = (*lockfs->fs->fs_open_memfd)(
+        lockfs->fs, pathname, flags, fs_out, file_out);
+    UNLOCK();
+
+done:
+    return ret;
+}
+
 static off_t _fs_lseek(
     myst_fs_t* fs,
     myst_file_t* file,
@@ -697,7 +714,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
         .fs_release_tree = _fs_release_tree,
         .fs_file_data_start_addr = _fs_file_data_start_addr,
         .fs_file_mapping_notify = _fs_file_mapping_notify,
-    };
+        .fs_open_memfd = _fs_open_memfd};
 
     if (lockfs_out)
         *lockfs_out = NULL;

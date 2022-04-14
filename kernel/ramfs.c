@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
+
 #include <assert.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -8,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 
 #include <myst/backtrace.h>
@@ -987,6 +990,104 @@ done:
 
     if (locals)
         free(locals);
+
+    if (inode && is_i_new)
+        _inode_free(ramfs, inode);
+
+    if (file)
+        free(file);
+
+    if (file_shared)
+        free(file_shared);
+
+    return ret;
+}
+
+/*
+This method is only used for memfd_create
+This method behaves like _fs_open, except:
+1. It always create new file given the name
+    (doesn't check duplicate/existing file)
+2. syslink
+*/
+static int _fs_open_memfd(
+    myst_fs_t* fs,
+    const char* pathname,
+    int flags,
+    myst_fs_t** fs_out,
+    myst_file_t** file_out)
+{
+    ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode = NULL;
+    myst_file_t* file = NULL;
+    myst_file_shared_t* file_shared = NULL;
+    int mode = 0700;
+    int ret = 0;
+    bool is_i_new = false;
+
+    if (file_out)
+        *file_out = NULL;
+
+    if (!_ramfs_valid(ramfs))
+        ERAISE(-EINVAL);
+
+    if (!pathname)
+        ERAISE(-EFAULT);
+
+    // only supports MFD_CLOEXEC
+    if (flags && !(flags & MFD_CLOEXEC))
+        ERAISE(-ENOTSUP);
+
+    if (!file_out)
+        ERAISE(-EINVAL);
+
+    /* Create the file object */
+    if (!(file = calloc(1, sizeof(myst_file_t))))
+        ERAISE(-ENOMEM);
+
+    if (!(file_shared = calloc(1, sizeof(myst_file_shared_t))))
+        ERAISE(-ENOMEM);
+
+    file->shared = file_shared;
+
+    /* i.e, path resolving has terminated,
+    file resides in the current fs. */
+    if (ramfs->lockfs)
+        *fs_out = ramfs->lockfs;
+    else
+        *fs_out = (myst_fs_t*)ramfs;
+
+    // Always create a new file
+    is_i_new = true;
+
+    /* Create the new file inode */
+    /* ATTN: Current ramfs only support S_IFREG or S_ISCHR (virtual /dev) */
+    if (!S_ISCHR(mode))
+    {
+        /* in case upper layer does not set file type in mode */
+        mode = mode | S_IFREG;
+    }
+    ECHECK(_inode_new(ramfs, ramfs->root, pathname, mode, &inode));
+
+    /* Initialize the file */
+    if (flags & MFD_CLOEXEC)
+        file->fdflags = FD_CLOEXEC;
+    // Do not set the file->shared->realpath since its anonymous
+    file->shared->magic = FILE_MAGIC;
+    file->shared->inode = inode;
+    file->shared->access = O_RDWR;
+    file->shared->operating = (flags & (O_APPEND | O_NONBLOCK));
+    file->shared->use_count = 1;
+    inode->nopens++;
+
+    assert(_file_valid(file));
+
+    *file_out = file;
+    file = NULL;
+    file_shared = NULL;
+    inode = NULL;
+
+done:
 
     if (inode && is_i_new)
         _inode_free(ramfs, inode);
@@ -3062,6 +3163,7 @@ static int _init_ramfs(
         .fs_release_tree = _fs_release_tree,
         .fs_file_data_start_addr = _fs_file_data_start_addr,
         .fs_file_mapping_notify = _fs_file_mapping_notify,
+        .fs_open_memfd = _fs_open_memfd
     };
     // clang-format on
     inode_t* root_inode = NULL;

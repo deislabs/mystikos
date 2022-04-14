@@ -196,6 +196,13 @@ struct myst_fs
         void** addr_out);
     int (
         *fs_file_mapping_notify)(myst_fs_t* fs, myst_file_t* file, bool active);
+    /* Used for supporting memfd_create */
+    int (*fs_open_memfd)(
+        myst_fs_t* fs,
+        const char* pathname,
+        int flags,
+        myst_fs_t** fs_out,
+        myst_file_t** file_out);
 };
 
 int myst_add_fd_link(myst_fs_t* fs, myst_file_t* file, int fd);
