@@ -39,7 +39,7 @@ build-package: package.pem
 	$(MYST) package-sgx --roothash=roothash package.pem config_256m.json
 
 run:
-	$(TEST_RUNNER) $(PACKAGE_PATH) null null 30 package pr0-256m
+	$(TEST_RUNNER) $(PACKAGE_PATH) null null 30 package pr0-256m 2
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 30 ext2 pr0-1g
 	$(TEST_RUNNER) $(MYST_EXEC) config_2g.json 45 ext2 pr0-2g
 	$(TEST_RUNNER) $(MYST_EXEC) config_3g.json 90 ext2 pr0-3g
