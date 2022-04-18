@@ -50,17 +50,6 @@ int myst_cond_destroy(myst_cond_t* c)
     return 0;
 }
 
-typedef struct myst_cond_thread_sig_handler
-{
-    // Used by thread signal handler infrastructure
-    myst_thread_sig_handler_t sig_handler;
-
-    // our condition variable details to clean up;
-    myst_cond_t* cond;
-    myst_mutex_t* mutex;
-
-} myst_cond_thread_sig_handler_t;
-
 static int _cond_timedwait(
     myst_cond_t* c,
     myst_mutex_t* mutex,

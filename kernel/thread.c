@@ -989,6 +989,22 @@ static long _run_thread(void* arg_)
 
         /* ---------- running target thread descriptor ---------- */
 
+        /* Call any internal thread signal handlers that may have been set up
+         * and we ended up here as a result of the thread shutting down
+         * as a result of a signal being thrown on the thread.
+         * This may be the default signal handler, or it may be as a result of a
+         * thread calling exit in their own signal handler. These handles can
+         * release locks and do other cleanup if necessary.
+         * */
+        myst_thread_sig_handler_t* thread_sig_handler =
+            thread->signal.thread_sig_handler;
+        while (thread_sig_handler)
+        {
+            thread_sig_handler->signal_fn(
+                -1, thread_sig_handler->signal_fn_arg);
+            thread_sig_handler = thread_sig_handler->previous;
+        }
+
         /* release the kernel stack that was set by SYS_exit */
         if (thread->exit_kstack)
         {

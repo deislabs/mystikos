@@ -20,6 +20,39 @@ typedef struct lockfs
     myst_fs_t* fs;
 } lockfs_t;
 
+typedef struct lockfs_sighandler
+{
+    // Used by thread signal handler infrastructure
+    myst_thread_sig_handler_t sig_handler;
+
+    // our condition variable details to clean up;
+    myst_mutex_t* lock;
+
+} lockfs_sighandler_t;
+
+static void _unlock_sighandler(MYST_UNUSED unsigned signum, void* _sig_handler)
+{
+    lockfs_sighandler_t* sig_handler = (lockfs_sighandler_t*)_sig_handler;
+    myst_mutex_unlock(sig_handler->lock);
+}
+
+static void _install_sig_handler(
+    lockfs_sighandler_t* sig_handler,
+    myst_mutex_t* lock)
+{
+    memset(sig_handler, 0, sizeof(*sig_handler));
+
+    sig_handler->lock = lock;
+
+    myst_thread_sig_handler_install(
+        &sig_handler->sig_handler, _unlock_sighandler, sig_handler);
+}
+
+static void _uninstall_sig_handler(lockfs_sighandler_t* sig_handler)
+{
+    myst_thread_sig_handler_uninstall(&sig_handler->sig_handler);
+}
+
 static bool _lockfs_valid(const lockfs_t* lockfs)
 {
     return lockfs && lockfs->magic == LOCKFS_MAGIC;
@@ -27,26 +60,35 @@ static bool _lockfs_valid(const lockfs_t* lockfs)
 
 #define LOCK()                        \
     sigset_t old_mask;                \
+    lockfs_sighandler_t sig_handler;  \
     lockfs_t* lockfs = (lockfs_t*)fs; \
     if (!_lockfs_valid(lockfs))       \
     {                                 \
         ERAISE(-EINVAL);              \
     }                                 \
-    lock(lockfs, &old_mask);
+    lock(lockfs, &old_mask, &sig_handler);
 
-#define UNLOCK() unlock(lockfs, &old_mask);
+#define UNLOCK() unlock(lockfs, &old_mask, &sig_handler);
 
-static void lock(lockfs_t* lockfs, sigset_t* mask_old)
+static void lock(
+    lockfs_t* lockfs,
+    sigset_t* mask_old,
+    lockfs_sighandler_t* sig_handler)
 {
     sigset_t mask;
     myst_sigfillset(&mask);
 
     myst_signal_sigprocmask(SIG_BLOCK, &mask, mask_old);
     myst_mutex_lock(&lockfs->lock);
+    _install_sig_handler(sig_handler, &lockfs->lock);
 }
 
-static void unlock(lockfs_t* lockfs, sigset_t* mask_old)
+static void unlock(
+    lockfs_t* lockfs,
+    sigset_t* mask_old,
+    lockfs_sighandler_t* sig_handler)
 {
+    _uninstall_sig_handler(sig_handler);
     myst_mutex_unlock(&lockfs->lock);
     myst_signal_sigprocmask(SIG_SETMASK, mask_old, NULL);
 }

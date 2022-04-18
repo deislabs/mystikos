@@ -67,16 +67,6 @@ int __myst_mutex_trylock(myst_mutex_t* m, myst_thread_t* self)
     return -EBUSY;
 }
 
-typedef struct myst_mutex_thread_sig_handler
-{
-    // Used by thread signal handler infrastructure
-    myst_thread_sig_handler_t sig_handler;
-
-    // our mutex details to clean up
-    myst_mutex_t* mutex;
-
-} myst_mutex_thread_sig_handler_t;
-
 static int _mutex_lock(myst_mutex_t* mutex)
 {
     myst_mutex_t* m = (myst_mutex_t*)mutex;
