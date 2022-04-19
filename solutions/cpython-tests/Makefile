@@ -64,11 +64,15 @@ ifdef MYST_NIGHTLY_TEST
 endif
 
 run-3.8: ext2fs3.8
+ifndef MYST_ENABLE_GCOV
 	SUBTEST=$(TESTFILE)-3.8 $(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.8 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+endif
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_8), $(MAKE) one FS=ext2fs3.8 TEST=$(i) $(NL) )
 
 run-3.9: ext2fs3.9
+ifndef MYST_ENABLE_GCOV
 	SUBTEST=$(TESTFILE)-3.9 $(RUNTEST) $(MYST_EXEC) $(OPTS) ext2fs3.9 /cpython/python -m test -f /$(TESTFILE) --timeout 120 -v
+endif
 	$(foreach i, $(TEST_RUN_INDIVIDUAL_3_9), $(MAKE) one FS=ext2fs3.9 TEST=$(i) $(NL) )
 
 run-3.10: ext2fs3.10

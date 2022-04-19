@@ -14,14 +14,14 @@ endif
 endif
 
 DIRS += mhsm_ssr
-DIRS += confidential_ml
 DIRS += msgpack_c
 
-ifndef MYST_ENABLE_GCOV
 DIRS += dotnet
-endif
-
+DIRS += confidential_ml
 DIRS += aspnet_core
+DIRS += numpy_core_tests
+DIRS += cpython-tests
+
 DIRS += memcached
 DIRS += python_flask_tests
 DIRS += python_web_frameworks
@@ -32,9 +32,7 @@ DIRS += tensorflow_lite
 DIRS += pandas_tests
 endif
 DIRS += nodejs
-DIRS += numpy_core_tests
 DIRS += redis
-DIRS += cpython-tests
 
 .PHONY: $(DIRS)
 

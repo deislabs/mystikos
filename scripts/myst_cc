@@ -11,6 +11,8 @@
 
 MYST_ROOT="$(realpath "$(dirname "$0")/..")"
 
+set -x 
+
 cp -r "${MYST_ROOT}"/build/obj/tools/* -t "${MYST_ROOT}"/tools
 cp -r "${MYST_ROOT}"/build/obj/utils/* -t "${MYST_ROOT}"/utils
 cp -r "${MYST_ROOT}"/build/obj/hostfs/* -t "${MYST_ROOT}"/hostfs
@@ -24,7 +26,14 @@ cp -r "${MYST_ROOT}"/build/obj/target/* -t "${MYST_ROOT}"/target
 cp "${MYST_ROOT}"/build/obj/crt/*.gc* -t "${MYST_ROOT}"/crt
 cp "${MYST_ROOT}"/tools/myst/config.c "${MYST_ROOT}"/tools/myst/config_file.c -t "${MYST_ROOT}"/tools
 cp "${MYST_ROOT}"/tools/myst/common.c "${MYST_ROOT}"/tools/myst/kargs.c -t "${MYST_ROOT}"/tools
-cp -r "${MYST_ROOT}"/build/obj/target/shared/* -t "${MYST_ROOT}"/shared
+cp "${MYST_ROOT}"/tools/myst/options.c -t "${MYST_ROOT}"/tools
+
+rm -rf "${MYST_ROOT}"/../shared
+mkdir "${MYST_ROOT}"/../shared
+cp "${MYST_ROOT}"/target/shared/crypto.c -t "${MYST_ROOT}"/../shared
+cp -r "${MYST_ROOT}"/build/obj/target/shared/crypto.* -t "${MYST_ROOT}"/../shared
+touch "${MYST_ROOT}"/target/shared/crypto.gcda
+touch "${MYST_ROOT}"/target/shared/crypto.gcno
 
 rm $(find "${MYST_ROOT}"/build/obj/ -name "*.gc*")
 
@@ -37,5 +46,3 @@ lcov --list lcov.info
 rm -rf "${MYST_ROOT}"/lcov
 mkdir "${MYST_ROOT}"/lcov
 genhtml --branch-coverage -o "${MYST_ROOT}"/lcov "${MYST_ROOT}"/lcov.info
-
-python3 -m "lcov_cobertura" lcov.info -o lcov.xml
