@@ -566,7 +566,11 @@ long myst_wait(
     int options,
     struct rusage* rusage);
 
-void myst_wait_on_child_processes(myst_process_t* process);
+void myst_wait_on_child_processes(myst_process_t* process, bool is_main_thread);
+
+void myst_shutdown_process_thread(
+    myst_process_t* process,
+    bool is_main_process);
 
 size_t myst_get_num_threads(void);
 
@@ -596,7 +600,9 @@ int myst_set_thread_name(myst_thread_t* thread, const char* n);
 long myst_call_on_stack(void* stack, long (*func)(void* arg), void* arg);
 
 /* Send SIGHUP to child processes of given process thread */
-int myst_send_sighup_child_processes(myst_process_t* process);
+int myst_send_sighup_child_processes(
+    myst_process_t* process,
+    bool is_main_process);
 
 /* Install a thread signal handler to do thread cleanup before the default
  * terminating signal handler is called. Examples of this include unlocking

@@ -40,7 +40,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-//#define TRACE
+#define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -906,6 +906,77 @@ myst_process_t* myst_process_self(void)
     return myst_thread_self()->process;
 }
 
+void myst_shutdown_process_thread(myst_process_t* process, bool is_main_process)
+{
+    /* wait for all child threads to shutdown */
+    {
+        while (process->main_process_thread->group_next)
+        {
+            myst_sleep_msec(10, false);
+        }
+    }
+
+    myst_signal_free(process);
+
+    /* Send SIGHUP to children if we are the head of a process group ID */
+    myst_send_sighup_child_processes(process, is_main_process);
+
+    /* Free CWD */
+    free(process->cwd);
+    process->cwd = NULL;
+
+    procfs_pid_cleanup(process->pid);
+
+    /* Wait for any children to go away before proceeding */
+    myst_wait_on_child_processes(process, is_main_process);
+
+    /* unmap any mapping made by the process */
+    myst_release_process_mappings(process->pid);
+
+    if (process->exec_stack)
+    {
+        /* The stack is released as part of
+         * myst_release_process_mappings. Clear the pointer and size
+         * value */
+        process->exec_stack = NULL;
+        process->exec_stack_size = 0;
+    }
+
+#ifdef MYST_THREAD_KEEP_CRT_PTR
+    if (process->exec_crt_data)
+    {
+        /* The crt data is released as part of
+         * myst_release_process_mappings. Clear the pointer and size
+         * value */
+        process->exec_crt_data = NULL;
+        process->exec_crt_size = 0;
+    }
+#endif
+
+    /* unmapping closes fd's associated with mappings, so free fdtable
+     * after all unmaps are done */
+    if (process->fdtable)
+    {
+        myst_fdtable_free(process->fdtable);
+        process->fdtable = NULL;
+    }
+
+    if (process->itimer)
+        free(process->itimer);
+
+    if (is_main_process)
+    {
+        free(process);
+    }
+    else
+    {
+        /* Only need to zombify the process thread.
+        ATTN: referencing "process" after zombification is not safe,
+        parent might have cleaned it up */
+        myst_send_sigchld_and_zombify_process(process);
+    }
+}
+
 /* Force the caller stack to be aligned */
 __attribute__((force_align_arg_pointer)) static long _call_thread_fn(void* arg)
 {
@@ -1014,6 +1085,7 @@ static long _run_thread(void* arg_)
         /* Release memory objects owned by the main/process thread */
         if (!is_child_thread)
         {
+#if 0
             /* wait for all child threads to shutdown */
             {
                 while (thread->group_next || thread->group_prev)
@@ -1021,23 +1093,34 @@ static long _run_thread(void* arg_)
                     myst_sleep_msec(10, false);
                 }
             }
-
+#endif
+#if 0
             myst_signal_free(process);
+#endif
 
+#if 0
             /* Send SIGHUP to all our children */
             myst_send_sighup_child_processes(process);
+#endif
 
+#if 0
             free(process->cwd);
             process->cwd = NULL;
+#endif
 
+#if 0
             procfs_pid_cleanup(process->pid);
+#endif
 
+#if 0
             /* Wait for any children to go away before proceeding */
             myst_wait_on_child_processes(process);
-
+#endif
+#if 0
             /* unmap any mapping made by the process */
             myst_release_process_mappings(process->pid);
-
+#endif
+#if 0
             if (process->exec_stack)
             {
                 /* The stack is released as part of
@@ -1046,7 +1129,8 @@ static long _run_thread(void* arg_)
                 process->exec_stack = NULL;
                 process->exec_stack_size = 0;
             }
-
+#endif
+#if 0
 #ifdef MYST_THREAD_KEEP_CRT_PTR
             if (process->exec_crt_data)
             {
@@ -1057,10 +1141,9 @@ static long _run_thread(void* arg_)
                 process->exec_crt_size = 0;
             }
 #endif
+#endif
 
-            /* clear the signal delivery altstack */
-            myst_clear_signal_delivery_altstack(thread);
-
+#if 0
             /* unmapping closes fd's associated with mappings, so free fdtable
              * after all unmaps are done */
             if (process->fdtable)
@@ -1068,15 +1151,23 @@ static long _run_thread(void* arg_)
                 myst_fdtable_free(process->fdtable);
                 process->fdtable = NULL;
             }
-
+#endif
+#if 0
             if (process->itimer)
                 free(process->itimer);
-
+#endif
+#if 0
             /* Only need to zombify the process thread.
             ATTN: referencing "process" after zombification is not safe,
             parent might have cleaned it up */
             myst_send_sigchld_and_zombify_process(process);
+#endif
+
+            myst_shutdown_process_thread(process, false);
         }
+
+        /* clear the signal delivery altstack */
+        myst_clear_signal_delivery_altstack(thread);
 
         {
             myst_assume(_num_threads > 1);
@@ -1659,37 +1750,74 @@ done:
 }
 
 /* Send SIGHUP to child processes */
-int myst_send_sighup_child_processes(myst_process_t* process)
+static void _child_sighup(
+    myst_process_t* child,
+    myst_process_t* current,
+    int parent_pgid)
 {
-    pid_t pid = process->pid;
+    if (child->ppid == current->pid)
+    {
+        printf(
+            "child process pid=%d, pgid=%d, setting ppid=%d\n",
+            child->ppid,
+            child->pgid,
+            current->ppid);
+        /* we are orphaning this child so set its parent to our parent */
+        child->ppid = current->ppid;
+        if ((parent_pgid != current->pgid) && (child->pgid == current->pgid))
+        {
+            printf("child process has same pgid as current process, sending "
+                   "SIGHUP\n");
+            myst_signal_deliver(child->main_process_thread, SIGHUP, NULL);
+        }
+    }
+}
+
+int myst_send_sighup_child_processes(
+    myst_process_t* current,
+    bool is_main_process)
+{
+    pid_t parent_pgid = 0;
 
     myst_spin_lock(&myst_process_list_lock);
 
+    if (!is_main_process)
+    {
+        myst_process_t* parent = NULL;
+        parent = myst_find_process_from_pid(current->ppid, false);
+        parent_pgid = parent->pgid;
+    }
+    printf(
+        "process pid=%d, ppid=%d, pgid=%d, parent pgid=%d\n",
+        current->pid,
+        current->ppid,
+        current->pgid,
+        parent_pgid);
+
     // first processes left
-    myst_process_t* p = process->prev_process;
+    myst_process_t* p = current->prev_process;
     while (p)
     {
-        if (p->ppid == pid)
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+        _child_sighup(p, current, parent_pgid);
 
         p = p->prev_process;
     }
 
     // now processes right
-    p = process->next_process;
+    p = current->next_process;
     while (p)
     {
-        if (p->ppid == pid)
-            myst_signal_deliver(p->main_process_thread, SIGHUP, NULL);
+        _child_sighup(p, current, parent_pgid);
 
         p = p->next_process;
     }
+
     myst_spin_unlock(&myst_process_list_lock);
 
     return 0;
 }
 
-void myst_wait_on_child_processes(myst_process_t* process)
+void myst_wait_on_child_processes(myst_process_t* process, bool is_main_thread)
 {
     pid_t pid = process->pid;
     myst_process_t* p;
@@ -1702,7 +1830,8 @@ void myst_wait_on_child_processes(myst_process_t* process)
         p = process->prev_process;
         while (p)
         {
-            if (p->ppid == pid)
+            if (is_main_thread ||
+                ((p->ppid == pid) && (p->is_parent_of_pseudo_fork_process)))
                 break;
 
             p = p->prev_process;
@@ -1714,7 +1843,8 @@ void myst_wait_on_child_processes(myst_process_t* process)
             p = process->next_process;
             while (p)
             {
-                if (p->ppid == pid)
+                if (is_main_thread ||
+                    ((p->ppid == pid) && (p->is_parent_of_pseudo_fork_process)))
                     break;
 
                 p = p->next_process;

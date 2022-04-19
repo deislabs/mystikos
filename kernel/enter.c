@@ -913,7 +913,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             myst_put_kstack(thread->exit_kstack);
             thread->exit_kstack = NULL;
         }
-
+#if 0
         /* Wait for all child threads to shutdown */
         {
             myst_assume(thread->group_prev == NULL);
@@ -922,17 +922,21 @@ int myst_enter_kernel(myst_kernel_args_t* args)
                 myst_sleep_msec(10, false);
             }
         }
-
+#endif
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = process->exit_status;
 
         /* release signal related heap memory */
+#if 0
         myst_signal_free(process);
+#endif
         myst_signal_free_siginfos(thread);
 
+#if 0
         /* release process mapping, including stack and crt */
         myst_release_process_mappings(process->pid);
-
+#endif
+#if 0
         if (process->exec_stack)
         {
             /* The stack is released as part of
@@ -941,7 +945,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             process->exec_stack = NULL;
             process->exec_stack_size = 0;
         }
-
+#endif
+#if 0
 #ifdef MYST_THREAD_KEEP_CRT_PTR
         if (process->exec_crt_data)
         {
@@ -952,37 +957,51 @@ int myst_enter_kernel(myst_kernel_args_t* args)
             process->exec_crt_size = 0;
         }
 #endif
-
+#endif
+#if 0
         /* release the fdtable */
         if (process->fdtable)
         {
             myst_fdtable_free(process->fdtable);
             process->fdtable = NULL;
         }
-
+#endif
+#if 0
         if (process->itimer)
             free(process->itimer);
+#endif
 
+#if 0
         /* Remove ourself from /proc/<pid> so other processes know we have gone
          * if they check */
         procfs_pid_cleanup(process->pid);
+#endif
 
+#if 0
         /* Send SIGHUP to all other active processes */
         myst_send_sighup_child_processes(process);
+#endif
 
+#if 0
         /* Wait for all other processes to exit */
         while (process->prev_process || process->next_process)
             myst_sleep_msec(10, false);
+#endif
 
         if (args->shell_mode)
             myst_start_shell("\nMystikos shell (exit)\n");
 
+#if 0
         /* Free CWD */
         free(process->cwd);
         process->cwd = NULL;
-
+#endif
+#if 0
         free(process);
         process = NULL;
+#endif
+
+        myst_shutdown_process_thread(process, true);
 
         if (create_appenv_ret == 0)
         {
