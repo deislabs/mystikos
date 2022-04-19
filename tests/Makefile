@@ -15,7 +15,6 @@ DIRS += libc
 endif
 
 DIRS += args
-DIRS += pthread
 DIRS += urandom
 DIRS += buf
 DIRS += cpuid
@@ -36,7 +35,6 @@ DIRS += nbio
 DIRS += thread
 DIRS += gdb
 DIRS += lldb
-
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
@@ -94,7 +92,6 @@ ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
 endif
 
-ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
 DIRS += sockperf
 endif
@@ -105,10 +102,11 @@ DIRS += dotnet-lib-6
 DIRS += dotnet-proc-maps
 DIRS += dotnet-ubuntu
 DIRS += openmp
-endif
+DIRS += dotnet-sos
+DIRS += pthread
+DIRS += python_vfork
 
 DIRS += msync
-
 DIRS += robust
 DIRS += devfs
 DIRS += syscall_exception
@@ -116,12 +114,10 @@ DIRS += mutex
 DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
-DIRS += dotnet-sos
 DIRS += tkillself
 DIRS += thread_abort
 DIRS += synccall
 DIRS += python_subprocess
-DIRS += python_vfork
 DIRS += fcntl
 DIRS += stacksize
 DIRS += math
