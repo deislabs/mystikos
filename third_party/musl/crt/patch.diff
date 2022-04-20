@@ -631,6 +631,18 @@ index 01e19c59..11084aee 100644
 +
 +	return values[name];
  }
+
+diff --git a/src/errno/__strerror.h b/src/errno/__strerror.h
+index 2f04d400..7905ce1b 100644
+--- a/src/errno/__strerror.h
++++ b/src/errno/__strerror.h
+@@ -102,4 +102,4 @@ E(ENOMEDIUM,    "No medium found")
+ E(EMEDIUMTYPE,  "Wrong medium type")
+ E(EMULTIHOP,    "Multihop attempted")
+
+-E(0,            "No error information")
++E(0,            "Unknown error")
+
 diff --git a/src/exit/_Exit.c b/src/exit/_Exit.c
 index 7a6115c7..9f715d51 100644
 --- a/src/exit/_Exit.c
