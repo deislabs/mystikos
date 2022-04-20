@@ -22,6 +22,7 @@ LIBCXX_TESTS_DIR=llvm-project/libcxx/test/
 ALLTESTS=tests.all
 export TIMEOUT=10000
 OPTS += --nobrk
+OPTS += --thread-stack-size 1048576
 
 all:
 	$(MAKE) myst
