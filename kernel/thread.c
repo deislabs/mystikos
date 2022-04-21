@@ -40,7 +40,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-#define TRACE
+//#define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -1610,7 +1610,7 @@ long kill_child_fork_processes(myst_process_t* process)
 
     if (!process->is_parent_of_pseudo_fork_process)
         return false;
-
+#if 0
     myst_spin_lock(&myst_process_list_lock);
     myst_process_t* p = process->prev_process;
     pid_t pid = process->pid;
@@ -1633,7 +1633,7 @@ long kill_child_fork_processes(myst_process_t* process)
     }
 
     myst_spin_unlock(&myst_process_list_lock);
-
+#endif
     return 0;
 }
 
@@ -1757,17 +1757,23 @@ static void _child_sighup(
 {
     if (child->ppid == current->pid)
     {
+#if TRACE
         printf(
-            "child process pid=%d, pgid=%d, setting ppid=%d\n",
+            "_child_sighup reparenting child process pid=%d, pgid=%d, setting "
+            "ppid=%d\n",
             child->ppid,
             child->pgid,
             current->ppid);
+#endif
         /* we are orphaning this child so set its parent to our parent */
         child->ppid = current->ppid;
         if ((parent_pgid != current->pgid) && (child->pgid == current->pgid))
         {
-            printf("child process has same pgid as current process, sending "
+#if TRACE
+            printf("_child_sighup child process has same pgid as current "
+                   "process, sending "
                    "SIGHUP\n");
+#endif
             myst_signal_deliver(child->main_process_thread, SIGHUP, NULL);
         }
     }
@@ -1787,13 +1793,15 @@ int myst_send_sighup_child_processes(
         parent = myst_find_process_from_pid(current->ppid, false);
         parent_pgid = parent->pgid;
     }
+#if TRACE
     printf(
-        "process pid=%d, ppid=%d, pgid=%d, parent pgid=%d\n",
+        "myst_send_sighup_child_processes: current pid=%d, ppid=%d, pgid=%d, "
+        "parent pgid=%d\n",
         current->pid,
         current->ppid,
         current->pgid,
         parent_pgid);
-
+#endif
     // first processes left
     myst_process_t* p = current->prev_process;
     while (p)

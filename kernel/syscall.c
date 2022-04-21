@@ -4107,12 +4107,14 @@ static long _SYS_myst_kill_wait_child_forks(
 
     kill_child_fork_processes(process);
 
-    while (myst_have_child_forked_processes(process))
+    if (process->is_parent_of_pseudo_fork_process)
     {
-        /* ATTN: revisit whether signals should be processed */
-        myst_sleep_msec(10, false);
+        while (myst_have_child_forked_processes(process))
+        {
+            /* ATTN: revisit whether signals should be processed */
+            myst_sleep_msec(10, false);
+        }
     }
-
     return (_return(n, ret));
 }
 

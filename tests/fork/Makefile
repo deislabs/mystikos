@@ -45,5 +45,9 @@ test-fork-kill-children: all
 test-wait-exec-sighandler: rootfs
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-wait-exec.json rootfs /bin/fork forkwait_sighandler
 
+# testing of orphaned children
+test-orphaned: rootfs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode pseudo rootfs /bin/fork fork-orphaned
+
 clean:
 	rm -rf $(APPDIR) rootfs

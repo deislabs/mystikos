@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define _GNU_SOURCE
 #include <errno.h>
 #include <myst/assume.h>
 #include <pthread.h>
@@ -12,13 +13,26 @@
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 extern int myst_fork(void);
 
-int _gettid(void)
+static int _gettid(void)
 {
     return syscall(SYS_gettid);
+}
+static int _getpid(void)
+{
+    return syscall(SYS_getpid);
+}
+static int _getppid(void)
+{
+    return syscall(SYS_getppid);
+}
+static int _getpgid(void)
+{
+    return syscall(SYS_getpgid);
 }
 
 int _printf(const char* fmt, ...)
@@ -28,7 +42,13 @@ int _printf(const char* fmt, ...)
 
     va_start(ap, fmt);
     pthread_mutex_lock(&_lock);
-    fprintf(stderr, "tid=%d: ", _gettid());
+    fprintf(
+        stderr,
+        "pid=%d tid=%d ppid=%d gpid=%d: ",
+        _getpid(),
+        _gettid(),
+        _getppid(),
+        _getpgid());
     vfprintf(stderr, fmt, ap);
     fflush(stderr);
     pthread_mutex_unlock(&_lock);
@@ -502,6 +522,155 @@ int test_forkexec_sighandler(int argc, const char* argv[])
     return 0;
 }
 
+static long g_child1_pid = 0;
+static long g_child2_pid = 0;
+
+int test_fork_orphaned(int argc, const char* argv[])
+{
+    long pid1 = 0;
+    long pid2 = 0;
+
+    printf("*** Starting test_fork_orphaned ***\n");
+
+    pid1 = fork();
+    if (pid1 == 0)
+    {
+        _printf("child 1 started\n");
+        pid2 = fork();
+        if (pid2 == 0)
+        {
+            // Wait until we get a signal
+            _printf("child 2 started, going to sleep\n");
+            pause();
+        }
+        else if (pid2 > 0)
+        {
+            g_child2_pid = pid2;
+
+            // level 1 child
+            long ret;
+            while (1)
+            {
+                _printf("child 1 waiting for child 2 to start\n");
+                // Loop until the child starts up
+                ret = waitpid(pid2, NULL, WNOHANG);
+                if (ret == 0)
+                {
+                    // child
+                    // We can now exit and the second level child should
+                    // continue to run
+                    _printf("child 2 started, shutting down child 1\n");
+                    exit(pid1);
+                }
+                else if (ret == ECHILD)
+                {
+                    // not started yet
+                    // We need to wait
+                    _printf("Child 1 did not find child 2 yet, sleeping\n");
+                    struct timespec sleeptime = {.tv_sec = 0,
+                                                 .tv_nsec = 1000000};
+                    nanosleep(&sleeptime, NULL);
+                }
+                else if (ret == pid2)
+                {
+                    // child shutdown when it should not
+                    // ERROR
+                    _printf("child 1 waited for child 2 and it shutdown by "
+                            "error\n");
+                    exit(-1);
+                }
+                else
+                {
+                    // Some other error
+                    // ERROR
+                    _printf("child 1 waited for child 1 and got an error\n");
+                    exit(-2);
+                }
+            }
+        }
+        else
+        {
+            // ERROR
+            _printf("child 1 forking child 2 got an error\n");
+            exit(-3);
+        }
+    }
+    else if (pid1 > 0)
+    {
+        g_child1_pid = pid1;
+        // parent
+        while (1)
+        {
+            _printf("parent created child 1, waiting for child 1 to quit\n");
+            long ret = waitpid(pid1, NULL, 0);
+            if (ret == pid1)
+            {
+                _printf("child 1 shutdown as expected, checking child 2 is "
+                        "still there\n");
+                // child 1 has shut down
+                ret = waitpid(g_child2_pid, NULL, WNOHANG);
+                if (ret == 0)
+                {
+                    _printf("parent found child 2 still running, sending a "
+                            "signal to shut it down\n");
+                    // It is still running so send a signal to shut it down
+                    kill(g_child2_pid, SIGALRM);
+
+                    // wait for it to exit
+                    _printf("parent waiting for child 2 to shutdown after "
+                            "signal\n");
+                    ret = waitpid(g_child2_pid, NULL, 0);
+                    if (ret == g_child2_pid)
+                    {
+                        // yay! it worked as expected
+                        _printf("parent acknowledges child 2 is done. We are "
+                                "dont.\n");
+                        printf("*** Finished test_fork_orphaned ***\n");
+                        exit(0);
+                    }
+                    else
+                    {
+                        // child process did not shut down or some other error
+                        // happened
+                        _printf("parent waiting for child 2 got unexpected "
+                                "error\n");
+                        exit(-4);
+                    }
+                }
+                else
+                {
+                    _printf("parent got error checking that child 2 is "
+                            "present. error or shutdown already\n");
+                    // child 1 already gone so this means it shutdown already or
+                    // something failed.
+                    exit(-5);
+                }
+            }
+            else if (ret == ECHILD)
+            {
+                _printf("parent didnt find child 1 yet, sleeping...\n");
+                // child 1 has not started yet so sleep a bit
+                struct timespec sleeptime = {.tv_sec = 0, .tv_nsec = 1000000};
+                nanosleep(&sleeptime, NULL);
+            }
+            else
+            {
+                _printf(
+                    "parent got an error waiting for child 1 to shutdown\n");
+                exit(-6);
+            }
+        }
+    }
+    else
+    {
+        // fork failed
+        _printf("parent failed to start child 1\n");
+        exit(-7);
+    }
+
+    _printf("*** FINISHED UNEXPECTEDLY test_fork_orphaned ***\n");
+    return -8;
+}
 int main(int argc, const char* argv[])
 {
     if (argc < 2)
@@ -530,6 +699,10 @@ int main(int argc, const char* argv[])
     else if (strcmp(argv[1], "forkwait_sighandler") == 0)
     {
         myst_assume(test_forkexec_sighandler(argc, argv) == 0);
+    }
+    else if (strcmp(argv[1], "fork-orphaned") == 0)
+    {
+        myst_assume(test_fork_orphaned(argc, argv) == 0);
     }
     else
     {
