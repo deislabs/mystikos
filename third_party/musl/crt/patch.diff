@@ -552,7 +552,7 @@ index 02cb1aa2..07e76f19 100644
  		errno = EINVAL;
  		return 0;
 diff --git a/src/conf/fpathconf.c b/src/conf/fpathconf.c
-index e6aca5cf..d7392ced 100644
+index e6aca5cf..a4ed5482 100644
 --- a/src/conf/fpathconf.c
 +++ b/src/conf/fpathconf.c
 @@ -1,6 +1,7 @@
@@ -563,7 +563,7 @@ index e6aca5cf..d7392ced 100644
  
  long fpathconf(int fd, int name)
  {
-@@ -31,5 +32,20 @@ long fpathconf(int fd, int name)
+@@ -31,5 +32,15 @@ long fpathconf(int fd, int name)
  		errno = EINVAL;
  		return -1;
  	}
@@ -575,20 +575,15 @@ index e6aca5cf..d7392ced 100644
 +		if (fstat(fd, &buf) == -1) {
 +			return -1;
 +		}
-+		// Should be directory
-+		if (!S_ISDIR(buf.st_mode)) {
-+			errno = EBADF;
-+			return -1;
-+		}
 +	}
 +
  	return values[name];
  }
 diff --git a/src/conf/pathconf.c b/src/conf/pathconf.c
-index 01e19c59..30a9e3cb 100644
+index 01e19c59..11084aee 100644
 --- a/src/conf/pathconf.c
 +++ b/src/conf/pathconf.c
-@@ -1,6 +1,51 @@
+@@ -1,6 +1,46 @@
  #include <unistd.h>
 +#include <limits.h>
 +#include <errno.h>
@@ -630,11 +625,6 @@ index 01e19c59..30a9e3cb 100644
 +	if (name == _PC_NAME_MAX) {
 +		struct stat buf;
 +		if (stat(path, &buf) == -1) {
-+			return -1;
-+		}
-+		// Should be directory
-+		if (!S_ISDIR(buf.st_mode)) {
-+			errno = EBADF;
 +			return -1;
 +		}
 +	}
