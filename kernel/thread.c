@@ -1612,6 +1612,7 @@ long kill_child_fork_processes(myst_process_t* process)
         return false;
 #if 0
     myst_spin_lock(&myst_process_list_lock);
+
     myst_process_t* p = process->prev_process;
     pid_t pid = process->pid;
 
