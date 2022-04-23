@@ -7862,6 +7862,16 @@ long myst_syscall_kill(int pid, int signum)
     myst_process_t* process = myst_main_process;
     bool delivered_any = false;
 
+    if ((pid < -1) && (process_self->pgid == -pid))
+    {
+        delivered_any = true;
+        if (signum != 0)
+        {
+            ECHECK(_myst_send_kill(process_self, signum));
+            ECHECK(myst_signal_process(process_self->main_process_thread));
+        }
+    }
+
     myst_spin_lock(&myst_process_list_lock);
 
     while (process)
@@ -7896,7 +7906,9 @@ long myst_syscall_kill(int pid, int signum)
         }
 
         // if pid < -1 send to processes in specific process group
-        else if ((pid < -1) && (process->pgid == -pid))
+        else if (
+            ((pid < -1) && (process->pgid == -pid)) &&
+            (process != process_self))
         {
             delivered_any = true;
             if (signum == 0)

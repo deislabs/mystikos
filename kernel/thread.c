@@ -1758,22 +1758,21 @@ static void _child_sighup(
 {
     if (child->ppid == current->pid)
     {
-#if TRACE
+#ifdef TRACE
         printf(
             "_child_sighup reparenting child process pid=%d, pgid=%d, setting "
             "ppid=%d\n",
-            child->ppid,
+            child->pid,
             child->pgid,
             current->ppid);
 #endif
         /* we are orphaning this child so set its parent to our parent */
-        child->ppid = current->ppid;
+        // child->ppid = current->ppid;
         if ((parent_pgid != current->pgid) && (child->pgid == current->pgid))
         {
-#if TRACE
+#ifdef TRACE
             printf("_child_sighup child process has same pgid as current "
-                   "process, sending "
-                   "SIGHUP\n");
+                   "process, sending SIGHUP\n");
 #endif
             myst_signal_deliver(child->main_process_thread, SIGHUP, NULL);
         }
@@ -1794,7 +1793,7 @@ int myst_send_sighup_child_processes(
         parent = myst_find_process_from_pid(current->ppid, false);
         parent_pgid = parent->pgid;
     }
-#if TRACE
+#ifdef TRACE
     printf(
         "myst_send_sighup_child_processes: current pid=%d, ppid=%d, pgid=%d, "
         "parent pgid=%d\n",

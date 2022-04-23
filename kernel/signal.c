@@ -18,7 +18,7 @@
 /* the size of red zone in bytes */
 #define MYST_X86_64_ABI_REDZONE_SIZE 0x80
 
-// #define TRACE
+//#define TRACE
 
 #define MYST_SIG_UNBLOCKED(mask) \
     (~mask) | ((uint64_t)1 << (SIGKILL - 1)) | ((uint64_t)1 << (SIGSTOP - 1));
