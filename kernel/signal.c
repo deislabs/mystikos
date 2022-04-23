@@ -911,6 +911,13 @@ void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
     assert(siginfo != NULL);
     assert(mcontext != NULL);
 
+#ifdef TRACE
+    printf(
+        "%s(%u %s)\n",
+        __FUNCTION__,
+        siginfo->si_signo,
+        myst_signum_to_string(siginfo->si_signo));
+#endif
     _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
 
     /* resume the execution based on mcontext for the unlikely case
