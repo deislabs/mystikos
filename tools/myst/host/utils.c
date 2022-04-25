@@ -248,6 +248,23 @@ int cli_get_mount_mapping_opts(
         found = false;
         if (cli_getopt(argc, argv, "--mount", &arg) == 0)
         {
+            char buf[2 * PATH_MAX + 1]; /* <source>=<target> */
+            char* p;
+
+            if (myst_strlcpy(buf, arg, sizeof(buf)) >= sizeof(buf))
+                _err("--mount option argument too long: %s", arg);
+
+            if (!(p = strchr(buf, '=')))
+                _err("--mount option missing '=' character: %s", arg);
+
+            *p++ = '\0';
+
+            if (buf[0] != '/')
+                _err("--mount <source> must be an absolute path: %s", buf);
+
+            if (p[0] != '/')
+                _err("--mount <target> must be an absolute path: %s", p);
+
             myst_args_append1(mounts_buff, arg);
             found = 1;
         }
