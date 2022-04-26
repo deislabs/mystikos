@@ -68,6 +68,11 @@ static bool _ramfs_valid(const ramfs_t* ramfs)
     return ramfs && ramfs->magic == RAMFS_MAGIC;
 }
 
+static bool _is_shmfs(const ramfs_t* ramfs)
+{
+    return ramfs && ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM;
+}
+
 /*
 **==============================================================================
 **
@@ -256,7 +261,7 @@ static int _inode_new(
     inode->gid = myst_syscall_getegid();
     inode->uid = myst_syscall_geteuid();
 
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(mode))
+    if (_is_shmfs(ramfs) && S_ISREG(mode))
         inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
 
     /* The root directory is its own parent */
@@ -1125,7 +1130,7 @@ static bool is_posix_shmfs_active_file(ramfs_t* ramfs, inode_t* inode)
 {
     assert(ramfs && _ramfs_valid(ramfs));
     assert(inode && _inode_valid(inode));
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM && S_ISREG(inode->mode) &&
+    if (_is_shmfs(ramfs) && S_ISREG(inode->mode) &&
         inode->buf.flags & MYST_BUF_ACTIVE_MAPPING)
         return true;
     return false;
@@ -1420,8 +1425,7 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
         inode->nopens--;
 
         bool active_mmaps =
-            (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
-             myst_buf_has_active_mmap(&inode->buf));
+            (_is_shmfs(ramfs) && myst_buf_has_active_mmap(&inode->buf));
         /* handle case where file was deleted while open */
         if (!active_mmaps && inode->nlink == 0 && inode->nopens == 0)
         {
@@ -1764,12 +1768,10 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     // if file is still linked or opened by someone.
     // For shm files, cleanup also needs to wait for existing mappings related
     // to the file to be unmapped.
-    if (S_ISLNK(inode->mode) ||
-        (!(ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM &&
-           myst_buf_has_active_mmap(&inode->buf)) &&
-         inode->nlink == 0 && inode->nopens == 0))
+    if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
     {
-        _inode_free(ramfs, inode);
+        if (!_is_shmfs(ramfs) || !myst_buf_has_active_mmap(&inode->buf))
+            _inode_free(ramfs, inode);
     }
 
 done:
@@ -2940,7 +2942,7 @@ static int _fs_file_data_start_addr(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
+    if (_is_shmfs(ramfs))
     {
         if (!addr_out)
             ERAISE(-EINVAL);
@@ -2973,7 +2975,7 @@ static int _fs_file_mapping_notify(
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
-    if (ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM)
+    if (_is_shmfs(ramfs))
     {
         inode_t* inode = file->shared->inode;
         ECHECK(myst_buf_set_mmap_active(&inode->buf, active));

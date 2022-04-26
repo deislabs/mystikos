@@ -654,6 +654,7 @@ done:
 
 int myst_shmem_handle_release_mappings(pid_t pid)
 {
+    int ret = 0;
 #ifdef TRACE
     printf("pid=%d\n", pid);
     _dump_shared_mappings("At process release entry");
@@ -669,7 +670,7 @@ int myst_shmem_handle_release_mappings(pid_t pid)
                 // For last reference to shared mapping, delete mapping
                 if (sm->sharers.size == 0)
                 {
-                    assert(__shm_unmap(sm, sm->start_addr, sm->length) == 0);
+                    ECHECK(__shm_unmap(sm, sm->start_addr, sm->length));
                     myst_list_remove(&_shared_mappings, &sm->base);
                     void* next_sm = sm->base.next;
                     free(sm);
@@ -680,13 +681,15 @@ int myst_shmem_handle_release_mappings(pid_t pid)
             sm = (shared_mapping_t*)sm->base.next;
         }
     }
+
+done:
     myst_rspin_unlock(&_shared_mappings_lock);
 
 #ifdef TRACE
     _dump_shared_mappings("At process release exit");
 #endif
 
-    return 0;
+    return ret;
 }
 
 int myst_shmem_share_mappings(pid_t childpid)
