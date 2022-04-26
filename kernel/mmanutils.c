@@ -281,11 +281,21 @@ bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2)
     return false;
 }
 
+size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)
+{
+    assert(file_handle);
+    struct stat statbuf;
+    assert(
+        (file_handle->fs->fs_fstat)(
+            file_handle->fs, file_handle->file, &statbuf) == 0);
+    return statbuf.st_size;
+}
+
 static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
 {
     int ret = 0;
     bool locked = false;
-    size_t index;
+    size_t index, file_size;
     vectors_t v = _get_vectors();
     mman_file_handle_t* file_handle;
 
@@ -296,6 +306,8 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     ECHECK((index = _get_page_index(addr, length)));
 
     ECHECK(myst_mman_file_handle_get(fd, &file_handle));
+
+    file_size = myst_mman_backing_file_size(file_handle);
 
     _rlock(&locked);
     {
@@ -325,6 +337,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
                 file_handle->npages++;
             }
             p->used = MYST_FDMAPPING_USED;
+            p->filesz = file_size;
             p->offset = off;
             off += PAGE_SIZE;
         }
@@ -1287,14 +1300,15 @@ int myst_msync(void* addr, size_t length, int flags)
         {
             myst_fdmapping_t* p = &v.fdmappings[i];
 
-            if (p->used == MYST_FDMAPPING_USED)
+            if (p->used == MYST_FDMAPPING_USED && p->offset < p->filesz)
             {
                 ECHECK(myst_mman_get_prot(
                     &_mman, page, PAGE_SIZE, &prot, &consistent));
 
                 if (prot & PROT_WRITE)
                 {
-                    size_t num_bytes_to_write = _min_size(PAGE_SIZE, length);
+                    size_t num_bytes_to_write = _min_size(
+                        p->filesz - p->offset, _min_size(PAGE_SIZE, length));
                     ECHECK(_sync_file(
                         p->mman_file_handle,
                         p->offset,

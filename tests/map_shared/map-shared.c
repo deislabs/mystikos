@@ -62,6 +62,9 @@ int main(int argc, char* argv[])
             mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         assert(addr != MAP_FAILED);
 
+        // file deletion is delayed no open files + no active mmaps
+        assert(unlink(data_file_name) != -1);
+
         printf("addr=%p\n", addr);
         printf("mem before copy: %s\n", addr);
         strcpy(addr, "hellowrld");
@@ -89,8 +92,6 @@ int main(int argc, char* argv[])
             if (nbytes)
                 printf("data: %s\n", buf);
         }
-
-        assert(unlink(data_file_name) != -1);
     }
     else if (strcmp(argv[1], "empty-file") == 0)
     {
