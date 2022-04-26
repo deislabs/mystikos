@@ -217,16 +217,6 @@ static int _notify_shmfs_active(mman_file_handle_t* file_handle, bool active)
         _posix_shmfs, file_handle->file, active);
 }
 
-size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle)
-{
-    assert(file_handle);
-    struct stat statbuf;
-    assert(
-        (file_handle->fs->fs_fstat)(
-            file_handle->fs, file_handle->file, &statbuf) == 0);
-    return statbuf.st_size;
-}
-
 static proc_w_count_t* _lookup_sharers_by_proc(shared_mapping_t* sm, pid_t pid)
 {
     proc_w_count_t* pn = (proc_w_count_t*)sm->sharers.head;
