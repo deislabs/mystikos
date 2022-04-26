@@ -164,6 +164,9 @@ int main(int argc, char* argv[])
             assert(waitpid(cpid, &wstatus, 0) == cpid && WIFEXITED(wstatus));
             printf("addr=%p contents after fork=%s\n", addr, addr);
             assert(!strcmp(addr, "wrldhello"));
+
+            // Check parent still owns memory by calling mprotect()
+            assert(mprotect(addr, FILE_SIZE, PROT_NONE) == 0);
             exit(0);
         }
     }
