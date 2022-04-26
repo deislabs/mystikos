@@ -173,6 +173,9 @@ docker_network_remove()
                     echo "Force removing $CONTAINER from $NETWORK_NAME"
                     docker network disconnect -f $NETWORK_NAME $CONTAINER || true
                 done
+            else
+                echo "Docker network absent: assuming removed."
+                break
             fi
             echo "Docker network retry $i: sleeping $i seconds..."
             sleep $i
