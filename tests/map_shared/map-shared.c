@@ -71,11 +71,17 @@ int main(int argc, char* argv[])
         /* Check we don't write beyond mapped range [offset, offset+length] into
          * the file */
         {
+            /* Even though we requested 10 bytes of memory in mmap(), we are
+             * attempting to write 30. This does not fail either on Linux or
+             * Mystikos because the kernel allocates a whole page for the
+             * allocation. However, mmap() behavior dicates that modification
+             * beyond the end of the file should not be carried back to the file
+             */
             strcpy(addr, "astringlongerthan10characters");
             // sync whole page
             assert(msync(addr, PAGE_SIZE, MS_ASYNC) == 0);
             char buf[20];
-            int nbytes = read(fd, buf, 10);
+            int nbytes = read(fd, buf, 20);
             printf("nbytes in file=%d\n", nbytes);
             // assert file did not grow beyond the limits specificied in mmap()
             // call.
@@ -138,24 +144,23 @@ int main(int argc, char* argv[])
             addr =
                 mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
             assert(addr != MAP_FAILED);
-
             close(fd);
 
             printf("addr=%p contents before fork=%s\n", addr, addr);
-            assert(!strcmp(addr, "")); // assert zero-filled-memory
         }
 
-        pid_t pid = fork();
-        assert(pid != -1);
+        pid_t cpid = fork();
+        assert(cpid != -1);
 
-        if (pid == 0) // child writes to shared memory
+        if (cpid == 0) // child writes to shared memory
         {
             strcpy(addr, "wrldhello");
             assert(munmap(addr, FILE_SIZE) == 0);
         }
         else // parent waits on child and then verifies write
         {
-            waitpid(pid, NULL, 0);
+            int wstatus;
+            assert(waitpid(cpid, &wstatus, 0) == cpid && WIFEXITED(wstatus));
             printf("addr=%p contents after fork=%s\n", addr, addr);
             assert(!strcmp(addr, "wrldhello"));
             exit(0);
@@ -170,19 +175,27 @@ int main(int argc, char* argv[])
         char* addr =
             mmap(0, FILE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
-        // check mremap() is allowed if single user
+        // check mremap() is allowed when a single Mystikos process thread has
+        // the memory region mapped
         {
             char* new_addr =
                 mremap(addr, FILE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
             assert(new_addr != MAP_FAILED);
+            addr = new_addr;
         }
 
-        // check mremap() is not allowed if multiple users
+        // Check failure of mremap when >1 Mystikos process threads share the
+        // mapping. mremap() operation can potentially move the mapping to a
+        // different virtual address range. Mystikos manages a linear virtual
+        // address space. And so can't provide aliases within that space. Ring 0
+        // kernels control the virtual to physical mapping, and therefore can
+        // allow same physical memory region to be addressed with different
+        // virtual addresses within a process or across processes.
         {
-            pid_t pid = fork();
-            assert(pid != -1);
+            pid_t cpid = fork();
+            assert(cpid != -1);
 
-            if (pid == 0)
+            if (cpid == 0)
             {
                 char* new_addr =
                     mremap(addr, FILE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
@@ -190,12 +203,20 @@ int main(int argc, char* argv[])
             }
             else
             {
-                waitpid(pid, NULL, 0);
+                int wstatus;
+                assert(waitpid(cpid, &wstatus, 0) == cpid);
+                assert(WIFEXITED(wstatus));
+
+                // check mremap is allowed now that we are single process again
+                {
+                    char* new_addr2 = mremap(
+                        addr, 2 * PAGE_SIZE, 4 * PAGE_SIZE, MREMAP_MAYMOVE);
+                    assert(new_addr2 != MAP_FAILED);
+                }
+                assert(unlink(data_file_name) != -1);
                 exit(0);
             }
         }
-
-        assert(unlink(data_file_name) != -1);
     }
     else if (strcmp(argv[1], "restricted-mprotect") == 0)
     {
@@ -212,24 +233,39 @@ int main(int argc, char* argv[])
             assert(ret == 0);
         }
 
-        // check mprotect() is not allowed if multiple users
+        // Check failure of mprotect when >1 Mystikos process threads sharing a
+        // mapping. Mystikos runs single process on the host OS(Linux in our
+        // case). On Linux, page protections are at the granularity of process.
+        // Because of this limitation, Mystikos panics when it detects a
+        // mprotect on an address range which is shared by multiple Mystikos
+        // process threads.
         {
-            pid_t pid = fork();
-            assert(pid != -1);
+            pid_t cpid = fork();
+            assert(cpid != -1);
 
-            if (pid == 0)
+            if (cpid == 0)
             {
-                int ret = mprotect(addr, FILE_SIZE, PROT_READ);
+                // try to change page permission to write only
+                int ret = mprotect(addr, FILE_SIZE, PROT_WRITE);
                 assert(ret != 0 && errno == EINVAL);
             }
             else
             {
-                waitpid(pid, NULL, 0);
+                int wstatus;
+                assert(waitpid(cpid, &wstatus, 0) == cpid);
+                assert(WIFEXITED(wstatus));
+
+                // check mprotect is allowed now that we are single process
+                // again
+                {
+                    int ret = mprotect(addr, FILE_SIZE, PROT_WRITE);
+                    assert(ret == 0);
+                }
+
+                assert(unlink(data_file_name) != -1);
                 exit(0);
             }
         }
-
-        assert(unlink(data_file_name) != -1);
     }
     else if (strcmp(argv[1], "partial-ops-unsupported") == 0)
     {
@@ -247,12 +283,20 @@ int main(int argc, char* argv[])
             mmap(0, 2 * PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
         assert(addr != MAP_FAILED);
 
+        /*
+        Current design does not support mremap or mprotect operations at a
+        non-zero offset from the start of a shared memory region. This is to
+        avoid complexity in tracking of shared memory regions. None of the
+        programs we run in our CI exhibit such usage. We fail loudly with a
+        SIGSEGV, so that if we ever run such a situation its noticeable.
+        */
+
         // check failure of partial mremap
         {
-            pid_t pid = fork();
-            assert(pid != -1);
+            pid_t cpid = fork();
+            assert(cpid != -1);
 
-            if (pid == 0)
+            if (cpid == 0)
             {
                 // partial mremap should throw SIGSEGV
                 mremap(
@@ -261,7 +305,7 @@ int main(int argc, char* argv[])
             else
             {
                 int wstatus;
-                waitpid(pid, &wstatus, 0);
+                assert(waitpid(cpid, &wstatus, 0) == cpid);
                 // check child was killed with SIGSEGV
                 printf("wstatus=%d\n", wstatus);
                 assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
@@ -270,18 +314,18 @@ int main(int argc, char* argv[])
 
         // check failure of partial mprotect
         {
-            pid_t pid = fork();
-            assert(pid != -1);
+            pid_t cpid = fork();
+            assert(cpid != -1);
 
-            if (pid == 0)
+            if (cpid == 0)
             {
                 // partial mprotect should throw SIGSEGV
-                mprotect(addr + PAGE_SIZE, PAGE_SIZE, PROT_READ);
+                mprotect(addr + PAGE_SIZE, PAGE_SIZE, PROT_WRITE);
             }
             else
             {
                 int wstatus;
-                waitpid(pid, &wstatus, 0);
+                waitpid(cpid, &wstatus, 0);
                 // check child was killed with SIGSEGV
                 printf("wstatus=%d\n", wstatus);
                 assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
