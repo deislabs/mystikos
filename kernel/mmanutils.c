@@ -908,7 +908,7 @@ int myst_release_process_mappings(pid_t pid)
         ERAISE(-EINVAL);
 
     /* Release shared memory mappings for this process */
-    myst_shmem_handle_release_mappings(pid);
+    ECHECK(myst_shmem_handle_release_mappings(pid));
 
     /* Scan entire pids vector range for process-owned MAP_PRIVATE memory */
     {

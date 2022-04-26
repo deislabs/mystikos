@@ -884,10 +884,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Setup devfs */
-    devfs_setup();
+    ECHECK(devfs_setup());
 
     /* Setup POSIX Shared Memory fs */
-    shmfs_setup();
+    ECHECK(shmfs_setup());
 
     /* Create top-level proc entries */
     create_proc_root_entries();
