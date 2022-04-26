@@ -2,7 +2,7 @@
     "Debug": 1,
     "ProductID": 1,
     "SecurityVersion": 1,
-    "UserMemSize": "2g",
+    "UserMemSize": "4g",
     "CurrentWorkingDirectory": "/app",
     "ApplicationPath": "/usr/local/bin/python3",
     "ApplicationParameters": ["/app/service_app.py"],
