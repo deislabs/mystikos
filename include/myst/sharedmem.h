@@ -58,6 +58,4 @@ bool myst_addr_within_process_owned_shmem(
     const size_t length,
     pid_t pid);
 
-size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle);
-
 #endif /* _MYST_POSIXSHMMAN_H */

@@ -32,6 +32,7 @@ typedef struct myst_fdmapping
 {
     uint32_t used;   /* whether entry is used */
     uint64_t offset; /* offset of page within backing file */
+    size_t filesz;   /* size of file at mmap() time */
     mman_file_handle_t* mman_file_handle;
 } myst_fdmapping_t;
 
@@ -127,6 +128,8 @@ bool mman_file_handle_eq(mman_file_handle_t* f1, mman_file_handle_t* f2);
 long myst_mman_file_handle_get(int fd, mman_file_handle_t** file_handle_out);
 
 void myst_mman_file_handle_put(mman_file_handle_t* file_handle);
+
+size_t myst_mman_backing_file_size(mman_file_handle_t* file_handle);
 
 const char* myst_mman_prot_to_string(int prot);
 const char* myst_mman_flags_to_string(int flags);
