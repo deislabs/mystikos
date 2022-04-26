@@ -1,0 +1,18 @@
+{
+    "version": "0.1",
+
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    "MemorySize": "128m",
+    "ApplicationPath": "/bin/mount",
+    "CurrentWorkingDirectory": "/bin",
+    "HostApplicationParameters": true,
+    "Mount": [
+        {
+            "Target": "/mnt/ext2fs",
+            "Type": "ext2"
+        }
+    ]
+}
