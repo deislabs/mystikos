@@ -908,10 +908,23 @@ done:
 
 void myst_handle_host_signal(siginfo_t* siginfo, mcontext_t* mcontext)
 {
+    void* original_fsbase;
+    myst_thread_t* thread;
+    myst_td_t* target_td;
+
+    original_fsbase = myst_get_fsbase();
+    myst_assume(myst_tcall_get_tsd((uint64_t*)&thread) == 0);
+
+    target_td = thread->target_td;
+
+    myst_set_fsbase(target_td);
+
     assert(siginfo != NULL);
     assert(mcontext != NULL);
 
     _handle_one_signal(siginfo->si_signo, siginfo, mcontext);
+
+    myst_set_fsbase(original_fsbase);
 
     /* resume the execution based on mcontext for the unlikely case
      * where the _handle_one_signal returns (e.g., early return) */

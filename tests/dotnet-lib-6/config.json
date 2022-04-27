@@ -3,7 +3,7 @@
     "Debug": 1,
     "ProductID": 1,
     "SecurityVersion": 1,
-    "UserMemSize": "4g",
+    "UserMemSize": "5g",
     "CurrentWorkingDirectory": "/",
     "HostApplicationParameters": 1,
     "EnvironmentVariables": ["DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=0"],
