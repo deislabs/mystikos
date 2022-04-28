@@ -14,13 +14,13 @@ def test_pyodbc(server: str, database: str, uid: str, password: str, driver: str
     connstr += ";Server=" + server
     connstr += ";Database=" + database
     connstr += ";UID=" + uid
-    connstr += ";Password=" + password
+    connstr += ";PWD=" + password
 
     try:
         conn = pyodbc.connect(connstr)
+        logger.info("Successful connected to database")
     except pyodbc.Error as ex:
         print(ex)
-    logger.info("Successful connected to database")
 
     cursor = conn.cursor()
     cursor.execute(query)
