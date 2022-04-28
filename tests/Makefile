@@ -137,7 +137,7 @@ DIRS += aspnetcore6
 DIRS += glibc
 endif
 
-DIRS += appenv
+DIRS = appenv
 
 .PHONY: $(DIRS)
 
