@@ -10,5 +10,5 @@
     // Mystikos specific values
     "MemorySize": "30m",
     "HostApplicationParameters": true,
-    "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_URL"]
+    "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_URL", "DB_USERID", "DB_PASSWORD"]
 }
