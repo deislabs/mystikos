@@ -22,7 +22,7 @@ int main(int argc, const char* argv[])
         printf("argv[%d]={%s}", i, argv[i]);
     }
 
-    printf("\n=== passed test (%s)\n", argv[0]);
+    printf("\n=== passed test ==== (%s)\n", argv[0]);
 
     return 0;
 }
