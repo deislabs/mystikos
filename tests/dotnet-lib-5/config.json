@@ -2,7 +2,7 @@
     "Debug": 1,
     "ProductID": 1,
     "SecurityVersion": 1,
-    "UserMemSize": "4g",
+    "UserMemSize": "5g",
     "CurrentWorkingDirectory": "/dotnet-lib-release",
     "EnvironmentVariables": ["DOTNET_CLI_TELEMETRY_OPTOUT=1", "DOTNET_CLI_PERF_LOG=0", "DOTNET_CLI_HOME=/"],
     "HostApplicationParameters": 1,
