@@ -109,6 +109,14 @@ To enable python source listing, do \n\
 before launching gdb.\033[0m\n')" \
            --args $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m unittest Lib.test.$(TESTCASE) -v
 
+testcase-mpdb:
+	killall myst 2> /dev/null || echo ""
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(FS) /cpython/python -m mpdb -m unittest Lib.test.$(TESTCASE) -v &
+	sleep 15 # Increase this value in Makefile if connection fails
+	rlwrap telnet 127.0.0.1 5678
+	# Once debugger prompt is available, do
+	# (Pdb) b /cpython/Lib/test/<test file>.py:line
+
 CPYTHON_TAG=v3.8.11
 apply-patch:
 	git clone --depth 1 --single-branch --branch $(CPYTHON_TAG) https://github.com/python/cpython.git cpython_$(CPYTHON_TAG)
