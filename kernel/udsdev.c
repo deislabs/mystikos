@@ -93,6 +93,12 @@ typedef struct shared
     /* support setsockopt(SO_REUSEADDR) but ignore for AF_LOCAL */
     uint64_t so_reuseaddr;
 
+    /* Abstract namespace flag: indicates whether name provided at bind() time
+     * is a fs independent name. sun_path starts with \0 byte for abstract
+     * namespace bind addresses. Rest of the sun_path can also have null
+     * characters. */
+    bool abs_ns;
+
     /* acceptor fields */
     struct sockaddr_un bind_addr; /* set by bind() */
     acceptor_t* acceptor;         /* created by listen */
@@ -160,7 +166,10 @@ static int _lookup_acceptor(const char* sun_path, acceptor_t** acceptor_out)
 
     for (size_t i = 0; i < _num_acceptors; i++)
     {
-        if (strcmp(_acceptors[i].sun_path, sun_path) == 0)
+        if ((sun_path[0] != 0
+                 ? strcmp(_acceptors[i].sun_path, sun_path)
+                 : memcmp(_acceptors[i].sun_path, sun_path, SUN_PATH_SIZE)) ==
+            0)
         {
             acceptor = &_acceptors[i];
             break;
@@ -188,6 +197,11 @@ static int _release_acceptor(acceptor_t* acceptor)
     {
         if (&_acceptors[i] == acceptor)
         {
+            /* the last acceptor in the array is moved to the released slot, and
+             * the total number of acceptors is decremented by one. We can move
+             * the acceptor because direct pointers to acceptors are not shared.
+             * All lookups are performed by iterating the array and comparing
+             * the sun_path attribute */
             _acceptors[i] = _acceptors[_num_acceptors - 1];
             _num_acceptors--;
 
@@ -222,7 +236,7 @@ static int _create_acceptor(const char* sun_path, acceptor_t** acceptor_out)
     memset(acceptor, 0, sizeof(acceptor_t));
     myst_cond_init(&acceptor->cond);   /* cannot fail when arg is non-null */
     myst_mutex_init(&acceptor->mutex); /* cannot fail when arg is non-null */
-    myst_strlcpy(acceptor->sun_path, sun_path, SUN_PATH_SIZE);
+    memcpy(acceptor->sun_path, sun_path, SUN_PATH_SIZE);
 
     *acceptor_out = acceptor;
     acceptor = NULL;
@@ -850,23 +864,35 @@ static int _udsdev_bind(
     if (addrlen > sizeof(struct sockaddr_un))
         ERAISE(-EINVAL);
 
-    if (*sun->sun_path == '\0')
+    /* fail if socket is already bound to an address */
+    if (_obj(sock)->abs_ns || *_obj(sock)->bind_addr.sun_path)
         ERAISE(-EINVAL);
 
-    /* fail if the socket is already bound to an address */
-    if (*_obj(sock)->bind_addr.sun_path)
-        ERAISE(-EINVAL);
-
-    /* raise EADDRINUSE if file already exists */
+    if (*sun->sun_path != '\0')
     {
-        struct stat statbuf;
+        /* raise EADDRINUSE if file already exists */
+        {
+            struct stat statbuf;
 
-        if (myst_syscall_stat(sun->sun_path, &statbuf) == 0)
-            ERAISE(-EADDRINUSE);
+            if (myst_syscall_stat(sun->sun_path, &statbuf) == 0)
+                ERAISE(-EADDRINUSE);
+        }
+
+        /* create the UDS file (contains the connection id) */
+        ECHECK(_create_uds_file(sun->sun_path));
     }
-
-    /* create the UDS file (contains the connection id) */
-    ECHECK(_create_uds_file(sun->sun_path));
+    else // abstract namespace case
+    {
+        /* raise EADDRINUSE if abstract namespace name already used */
+        {
+            acceptor_t* acceptor = NULL;
+            if (!_lookup_acceptor(sun->sun_path, &acceptor))
+            {
+                ERAISE(-EADDRINUSE);
+            }
+        }
+        _obj(sock)->abs_ns = true;
+    }
 
     /* save the bind address */
     memset(&_obj(sock)->bind_addr, 0, sizeof(_obj(sock)->bind_addr));
@@ -888,7 +914,7 @@ static int _udsdev_listen(myst_sockdev_t* dev, myst_sock_t* sock, int backlog)
         ERAISE(-EINVAL);
 
     /* if bind() has not been called yet */
-    if (*_obj(sock)->bind_addr.sun_path == '\0')
+    if (!_obj(sock)->abs_ns && *_obj(sock)->bind_addr.sun_path == '\0')
         ERAISE(-EOPNOTSUPP);
 
     ECHECK(_create_acceptor(
@@ -921,9 +947,6 @@ static int _udsdev_connect(
 
     if (addrlen > sizeof(struct sockaddr_un))
         ERAISE(-EINVAL);
-
-    if (*sun->sun_path == '\0')
-        ERAISE(-ECONNREFUSED);
 
     /* if this socket already has a peer */
     if (_obj(sock)->peer)
@@ -1769,7 +1792,7 @@ static int _udsdev_getsockname(
     {
         memset(addr, 0, *addrlen);
 
-        if (*_obj(sock)->bind_addr.sun_path)
+        if (_obj(sock)->abs_ns || *_obj(sock)->bind_addr.sun_path)
         {
             size_t min = _min(*addrlen, sizeof(struct sockaddr_un));
             memcpy(addr, &_obj(sock)->bind_addr, min);

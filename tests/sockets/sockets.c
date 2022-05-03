@@ -27,13 +27,7 @@ static bool _read_one_byte_at_at_time;
 
 static const char alpha[] = "abcdefghijklmnopqrstuvwxyz";
 
-static void _sleep_msec(uint32_t msec)
-{
-    struct timespec ts;
-    ts.tv_sec = (uint64_t)msec / 1000;
-    ts.tv_nsec = ((int64_t)msec % 1000) * 1000000;
-    nanosleep(&ts, NULL);
-}
+static pthread_barrier_t bar;
 
 typedef struct args
 {
@@ -86,6 +80,9 @@ static void* _srv_thread_func(void* arg)
     args_t* args = (args_t*)arg;
     int lsock;
     int r;
+    struct sockaddr* common_addr;
+    struct sockaddr_in addr_in;
+    struct sockaddr_un addr_un;
 
     (void)arg;
 
@@ -101,20 +98,22 @@ static void* _srv_thread_func(void* arg)
 
     if (args->domain == AF_INET)
     {
-        struct sockaddr_in addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sin_family = AF_INET;
-        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        addr.sin_port = htons(port);
-        assert(bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+        memset(&addr_in, 0, sizeof(addr_in));
+        addr_in.sin_family = AF_INET;
+        addr_in.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        addr_in.sin_port = htons(port);
+        assert(bind(lsock, (struct sockaddr*)&addr_in, sizeof(addr_in)) == 0);
+        common_addr = &addr_in;
     }
     else if (args->domain == AF_UNIX)
     {
-        struct sockaddr_un addr;
-        memset(&addr, 0, sizeof(addr));
-        addr.sun_family = AF_UNIX;
-        *addr.sun_path = '\0';
-        strncat(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
+        memset(&addr_un, 0, sizeof(addr_un));
+        addr_un.sun_family = AF_UNIX;
+        *addr_un.sun_path = '\0';
+        if (args->path[0])
+            strncat(addr_un.sun_path, args->path, sizeof(addr_un.sun_path) - 1);
+        else
+            memcpy(addr_un.sun_path, args->path, sizeof(addr_un.sun_path) - 1);
 
         struct stat buf;
 
@@ -126,7 +125,12 @@ static void* _srv_thread_func(void* arg)
         assert(fstat(lsock, &buf) == 0);
         assert((buf.st_mode & 0x000001ff) == 0777);
 
-        assert(bind(lsock, (struct sockaddr*)&addr, sizeof(addr)) == 0);
+        assert(bind(lsock, (struct sockaddr*)&addr_un, sizeof(addr_un)) == 0);
+        // Test EINVAL if socket is already bound
+        assert(
+            bind(lsock, (struct sockaddr*)&addr_un, sizeof(addr_un)) != 0 &&
+            errno == EINVAL);
+        common_addr = &addr_un;
     }
     else
     {
@@ -134,6 +138,17 @@ static void* _srv_thread_func(void* arg)
     }
 
     assert(listen(lsock, 10) == 0);
+
+    // Test EADDRINUSE if a server socket is listening on the same address
+    {
+        int sock2 = socket(args->domain, SOCK_STREAM, 0);
+        assert(
+            bind(sock2, common_addr, sizeof(struct sockaddr)) != 0 &&
+            errno == EADDRINUSE);
+    }
+
+    // client can now proceed to connect()
+    pthread_barrier_wait(&bar);
 
     for (;;)
     {
@@ -189,6 +204,8 @@ static void* _cli_thread_func(void* arg)
         sock = tmp_sock;
     }
 
+    // wait till server thread is listening on address
+    pthread_barrier_wait(&bar);
     if (args->domain == AF_INET)
     {
         printf("client: connect\n");
@@ -204,7 +221,11 @@ static void* _cli_thread_func(void* arg)
         memset(&addr, 0, sizeof(addr));
         addr.sun_family = AF_UNIX;
         *addr.sun_path = '\0';
-        strncat(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
+        if (args->path[0])
+            strncat(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
+        else
+            memcpy(addr.sun_path, args->path, sizeof(addr.sun_path) - 1);
+
         assert(connect(sock, (struct sockaddr*)&addr, sizeof(addr)) >= 0);
     }
     else
@@ -260,12 +281,15 @@ void test_sockets(args_t* args)
     pthread_t srv_thread;
     pthread_t cli_thread;
 
+    pthread_barrier_init(&bar, NULL, 2);
+
     assert(pthread_create(&srv_thread, NULL, _srv_thread_func, args) == 0);
-    _sleep_msec(100);
     assert(pthread_create(&cli_thread, NULL, _cli_thread_func, args) == 0);
 
     pthread_join(cli_thread, NULL);
     pthread_join(srv_thread, NULL);
+
+    pthread_barrier_destroy(&bar);
 
     printf("=== passed test (test_sockets: domain=%d)\n", args->domain);
 }
@@ -450,6 +474,11 @@ int main(int argc, const char* argv[])
     unlink("/tmp/uds");
 
     _read_one_byte_at_at_time = true;
+    test_sockets(&unix_args);
+
+    /* Test Abstract Namespace addresses for UDS */
+    unix_args.path = "\0sockfoo";
+    _read_one_byte_at_at_time = false;
     test_sockets(&unix_args);
 
     test_socketpair();

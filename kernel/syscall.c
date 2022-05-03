@@ -387,17 +387,36 @@ static int _socketaddr_to_str(
         ERAISE(-EFAULT);
     }
 
-    const uint8_t* p = (uint8_t*)addr->sa_data;
-    uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
-    const uint8_t ip1 = p[2];
-    const uint8_t ip2 = p[3];
-    const uint8_t ip3 = p[4];
-    const uint8_t ip4 = p[5];
-
-    if (snprintf(out, limit, "%u.%u.%u.%u:%u", ip1, ip2, ip3, ip4, port) >=
-        (int)limit)
+    if (addr->sa_family == AF_UNIX)
     {
-        ERAISE(-ENAMETOOLONG);
+        if (addr->sa_data[0] &&
+            myst_snprintf(out, limit, "%s", addr->sa_data) == ERANGE)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
+        // abstract namespace address
+        else if (
+            myst_snprintf(
+                out, limit, "%s(abstract namespace)", addr->sa_data + 1) ==
+            ERANGE)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
+    }
+    else
+    {
+        const uint8_t* p = (uint8_t*)addr->sa_data;
+        uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
+        const uint8_t ip1 = p[2];
+        const uint8_t ip2 = p[3];
+        const uint8_t ip3 = p[4];
+        const uint8_t ip4 = p[5];
+
+        if (snprintf(out, limit, "%u.%u.%u.%u:%u", ip1, ip2, ip3, ip4, port) >=
+            (int)limit)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
     }
 
 done:
@@ -2282,7 +2301,15 @@ long myst_syscall_execveat(
             ERAISE(-ENOMEM);
 
         for (size_t i = 0; i < argc; i++)
+        {
             argv[i] = argv_in[i];
+            if (__myst_kernel_args.strace_config.trace_syscalls)
+            {
+                myst_eprintf(" %s ", argv[i]);
+                if (i == argc - 1)
+                    myst_eprintf("\n");
+            }
+        }
 
         argv[0] = abspath;
         argv[argc] = NULL;
@@ -6000,7 +6027,7 @@ static long _SYS_connect(long n, long params[6])
         {
             _strace(
                 n,
-                "sockfd=%d addrlen=%u family=%u ip=%s",
+                "sockfd=%d addrlen=%u family=%u addr=%s",
                 sockfd,
                 addrlen,
                 addr->sa_family,
