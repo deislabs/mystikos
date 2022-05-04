@@ -45,7 +45,7 @@ gdb: appdir private.pem
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
-	$(APPBUILDER) -v Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 clean:
 	./kill.sh

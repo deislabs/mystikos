@@ -17,7 +17,7 @@ all: build-runner
 build: rootfs
 
 appdir:
-	$(MYST-RETRY) $(APPBUILDER) -i $(DOCKER_IMAGE_MUSL)
+	$(MYST-RETRY) $(APPBUILDER) -m -i $(DOCKER_IMAGE_MUSL)
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -51,7 +51,7 @@ rootfsr: $(RAPPDIR)
 	$(MYST) mkext2 $(RAPPDIR) $(RROOTFS)
 
 appdirr:
-	$(MYST-RETRY) $(APPBUILDER) -o $(RAPPDIR) Dockerfile.musl.runner 
+	$(MYST-RETRY) $(APPBUILDER) -m -o $(RAPPDIR) Dockerfile.musl.runner 
 
 TESTCASE=testcases/pass.txt
 

@@ -31,7 +31,7 @@ all: ext2fs
 
 appdir:
 	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/sdk:5.0-focal
-	$(APPBUILDER) -d Dockerfile.runner
+	$(APPBUILDER) -m -d Dockerfile.runner
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs

@@ -15,7 +15,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 TIMEOUT=60s
 

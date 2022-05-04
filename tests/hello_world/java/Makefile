@@ -12,7 +12,7 @@ endif
 all: appdir rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs: appdir
 	$(MYST) mkext2 --force appdir ext2rootfs

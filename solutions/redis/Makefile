@@ -53,7 +53,7 @@ gdb: clean package
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 $(APPDIR):
-	$(APPBUILDER) -d Dockerfile
+	$(APPBUILDER) -m -d Dockerfile
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

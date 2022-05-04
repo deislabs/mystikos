@@ -18,13 +18,13 @@ endif
 all: rootfs
 
 appdir-keyvault_identity:
-	$(APPBUILDER) -i mystikos/azure-python-sdk-keyvault-identity:azure-mgmt-keyvault_9.1.0 -v -o keyvault_identity/appdir
+	$(APPBUILDER) -m -i mystikos/azure-python-sdk-keyvault-identity:azure-mgmt-keyvault_9.1.0 -v -o keyvault_identity/appdir
 
 appdir-storage:
-	$(APPBUILDER) -i mystikos/azure-python-sdk-storage:azure-mgmt-storage_19.0.0 -v -o storage/appdir
+	$(APPBUILDER) -m -i mystikos/azure-python-sdk-storage:azure-mgmt-storage_19.0.0 -v -o storage/appdir
 
 appdir-storage-blob:
-	$(APPBUILDER) -i mystikos/azure-python-sdk-storage-blob:azure-storage-blob_12.8.1 -v -o storage-blob/appdir
+	$(APPBUILDER) -m -i mystikos/azure-python-sdk-storage-blob:azure-storage-blob_12.8.1 -v -o storage-blob/appdir
 
 rootfs-keyvault_identity: appdir-keyvault_identity
 	$(MYST) mkext2 keyvault_identity/appdir keyvault_identity/rootfs

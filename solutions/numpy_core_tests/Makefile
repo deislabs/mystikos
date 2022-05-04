@@ -12,7 +12,7 @@ endif
 all: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 	# Remove the test that depends on mmap(MAP_SHARED...).
 	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_memmap.py
 	# Remove the test that fails due to rng

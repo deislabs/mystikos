@@ -16,6 +16,7 @@ function print_usage {
     echo "  -e extras   Specify the extra options while building the container image"
     echo "  -o      Specify the name of the output file or directory"
     echo "          If not specified, defaults to 'appdir'"
+    echo "  -m      Export docker image by mount. This is faster but requires sudo."
     echo "  -v      Verbose"
     echo "  -h      Print this help message"
     echo
@@ -37,7 +38,7 @@ function print_usage {
 }
 
 
-while getopts 'hvd:i:f:o:e:' OPTION; do
+while getopts 'hvmd:i:f:o:e:' OPTION; do
     case "$OPTION" in
         d )
             DOCKER_FILE=${OPTARG:-Dockerfile}
@@ -62,6 +63,9 @@ while getopts 'hvd:i:f:o:e:' OPTION; do
             VERBOSE=true;
             QUIET=false;
             set -x
+            ;;
+        m )
+            USE_MOUNT=true;
             ;;
         * )
             print_usage;
@@ -209,37 +213,73 @@ get_image()
     fi
 }
 
-# export a flattened copy of the container
-export_image()
+export_via_overlayfs_mount()
 {
-    TEMP_FILE=$(mktemp)
-    TEMP_DIR=$(mktemp -d)
-    APPENV_FILENAME="appenv.json"
+    LOWER_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.LowerDir}}' $IMAGE_NAME | tr -d '"')
+    UPPER_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.UpperDir}}' $IMAGE_NAME | tr -d '"')
+    WORK_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.WorkDir}}' $IMAGE_NAME | tr -d '"')
+    MNT_PNT_DIR=$(mktemp -d)
+
+    sudo mount -t overlay overlay -olowerdir=$LOWER_DIR,upperdir=$UPPER_DIR,workdir=$WORK_DIR $MNT_PNT_DIR
+    # change ownership back to current effective user and group
+    sudo chown -R $USER:$(id -ng) $MNT_PNT_DIR
+
+    # copy appenv.json
+    mv $TEMP_APPENV $MNT_PNT_DIR/appenv.json
+
+    if [ "$OUTPUT_FORMAT" == "dir" ]; then
+        cp -r $MNT_PNT_DIR $OUTPUT_NAME
+    elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
+        myst mkcpio $MNT_PNT_DIR $OUTPUT_NAME
+    fi
+
+    sudo umount $MNT_PNT_DIR
+    rm -rf $MNT_PNT_DIR
+}
+
+export_via_docker_export()
+{
+    EXPORTED_IMG_TAR=$(mktemp)
+    EXTRACTED_ROOTFS_DIR=$(mktemp -d)
 
     # note that we have to start up the image to flatten it
     TEMP_INAME=$(docker run -d $IMAGE_NAME)
-    TEMP_APPENV=$APPENV_FILENAME-$TEMP_INAME
-    
-    docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
-
     docker stop $TEMP_INAME >/dev/null
-    docker export $TEMP_INAME -o $TEMP_FILE
+    docker export $TEMP_INAME -o $EXPORTED_IMG_TAR
     docker rm $TEMP_INAME >/dev/null
     if [ -z $DELETE_IMAGE ]; then
         docker rmi -f $IMAGE_NAME
     fi
 
-    # create the 'appdir' from the docker export
-    tar xf $TEMP_FILE -C $TEMP_DIR
-    mv $TEMP_APPENV $TEMP_DIR/$APPENV_FILENAME
-    rm -rf $OUTPUT_NAME $TEMP_FILE
+    # extract rootfs directory from image tarball
+    tar xf $EXPORTED_IMG_TAR -C $EXTRACTED_ROOTFS_DIR
+    rm -rf $EXPORTED_IMG_TAR
+
+    # copy appenv.json
+    mv $TEMP_APPENV $EXTRACTED_ROOTFS_DIR/appenv.json
 
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
-        mv $TEMP_DIR $OUTPUT_NAME
+        mv $EXTRACTED_ROOTFS_DIR $OUTPUT_NAME
     elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
-        myst mkcpio $TEMP_DIR $OUTPUT_NAME
+        myst mkcpio $EXTRACTED_ROOTFS_DIR $OUTPUT_NAME
     fi
-    rm -rf $TEMP_DIR
+
+    rm -rf $EXTRACTED_ROOTFS_DIR
+}
+
+export_image()
+{
+    TEMP_APPENV="appenv.json-$(date +%s)"
+    docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
+
+    # cleanup $OUTPUT_NAME if it exists
+    rm -rf $OUTPUT_NAME
+
+    if $USE_MOUNT; then
+        export_via_overlayfs_mount
+    else
+        export_via_docker_export
+    fi
 }
 
 get_image

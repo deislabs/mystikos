@@ -40,16 +40,16 @@ mpdb.py:$(MPDB)
 
 ext2fs3.8:mpdb.py test_config_v3.8.11/tests.passed
 	rm -fr appdir3.8
-	$(APPBUILDER) -o appdir3.8 -e "--build-arg CPYTHON_TAG=v3.8.11" Dockerfile
+	$(APPBUILDER) -m -o appdir3.8 -e "--build-arg CPYTHON_TAG=v3.8.11" Dockerfile
 	$(MYST) mkext2 -f appdir3.8 ext2fs3.8
 
 ext2fs3.9:mpdb.py test_config_v3.9.7/tests.passed
 	rm -fr appdir3.9
-	$(APPBUILDER) -o appdir3.9 -e "--build-arg CPYTHON_TAG=v3.9.7" Dockerfile
+	$(APPBUILDER) -m -o appdir3.9 -e "--build-arg CPYTHON_TAG=v3.9.7" Dockerfile
 	$(MYST) mkext2 -f appdir3.9 ext2fs3.9
 
 appdir3.10: mpdb.py
-	$(APPBUILDER) -o appdir3.10 -e "--build-arg CPYTHON_TAG=v3.10.2" Dockerfile
+	$(APPBUILDER) -m -o appdir3.10 -e "--build-arg CPYTHON_TAG=v3.10.2" Dockerfile
 ext2fs3.10: appdir3.10
 	$(MYST) mkext2 -f appdir3.10 ext2fs3.10
 

@@ -9,6 +9,9 @@ build/
 *lcov*
 *.gc*
 
+appenv.json*
+*/*/appenv.json*
+*/*/*/appenv.json*
 third_party/musl/musl/lib
 third_party/enclave-musl/musl/lib/
 **/*.signed/*

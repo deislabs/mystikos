@@ -11,7 +11,7 @@ endif
 all: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs

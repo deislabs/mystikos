@@ -24,7 +24,7 @@ gdb: all
 	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /curl https://www.microsoft.com
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs:
 	$(BINDIR)/myst mkcpio appdir rootfs
