@@ -222,7 +222,7 @@ export_image()
     
     docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
 
-    docker stop $TEMP_INAME >/dev/null
+    $(dirname $0)/myst-retry docker stop $TEMP_INAME >/dev/null
     docker export $TEMP_INAME -o $TEMP_FILE
     docker rm $TEMP_INAME >/dev/null
     if [ -z $DELETE_IMAGE ]; then
