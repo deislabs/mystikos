@@ -22,7 +22,7 @@ rootfs: $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
 appdir:
-	$(MYST-RETRY) $(APPBUILDER) -o $(APPDIR) Dockerfile.glibc.runner 
+	$(MYST-RETRY) $(APPBUILDER) -m -o $(APPDIR) Dockerfile.glibc.runner 
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --app-config-path config.json $(RUNNER) /testcases/pass.1 /dotnet-lib-release/

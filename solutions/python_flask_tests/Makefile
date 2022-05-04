@@ -12,7 +12,7 @@ all: build
 build: appdir rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

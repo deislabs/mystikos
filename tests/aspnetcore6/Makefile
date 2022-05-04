@@ -45,7 +45,7 @@ all: ext2fs
 # ubuntu debug build: vtikoo/aspnetcore:oct8-2021
 appdir:
 	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/sdk:6.0
-	$(APPBUILDER) -d Dockerfile.runner
+	$(APPBUILDER) -m -d Dockerfile.runner
 
 ext2fs: appdir
 	sudo $(MYST) mkext2 appdir ext2fs

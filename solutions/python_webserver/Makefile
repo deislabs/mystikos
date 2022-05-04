@@ -32,7 +32,7 @@ OPTS += --roothash=roothash
 endif
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 TIMEOUT=60s
 

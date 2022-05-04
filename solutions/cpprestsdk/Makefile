@@ -26,7 +26,7 @@ run-debug: ext2rootfs
 	$(RUNTEST) $(MYST_EXEC) --app-config-path debug-config.json $(OPTS) ext2rootfs /app/casablanca/build.debug/Release/Binaries/test_runner *_test.so
 
 $(APPDIR):
-	$(APPBUILDER) -v -d Dockerfile
+	$(APPBUILDER) -m -v -d Dockerfile
 
 cpio: $(APPDIR)
 	$(MYST) mkcpio $(APPDIR) rootfs

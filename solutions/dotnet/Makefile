@@ -26,7 +26,7 @@ gdb: appdir private.pem
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

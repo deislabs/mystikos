@@ -14,7 +14,7 @@ rootfs: appdir
 	$(MYST) mkcpio appdir $(ROOTFS)
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 _run:
 	$(MAKE) run1

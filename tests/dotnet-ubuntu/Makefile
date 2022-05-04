@@ -15,7 +15,7 @@ all: ext2fs
 appdir:
 	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/sdk:6.0
 	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/runtime:6.0
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs

@@ -17,7 +17,7 @@ gdb: appdir private.pem
 
 appdir: $(SRC)
 	$(MAKE) clean
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

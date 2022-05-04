@@ -21,12 +21,12 @@ all: rootfs ext2fs build-package
 # docker build time ~1hr. Using prebuilt image.
 # Other docker images:
 # pr1(~10k tests) tests in debug
-#$(APPBUILDER) vtikoo/coreclr-tests:release
+#$(APPBUILDER) -m vtikoo/coreclr-tests:release
 # runtime with debug symbols -
-#$(APPBUILDER) vtikoo/coreclr-tests:debug3
+#$(APPBUILDER) -m vtikoo/coreclr-tests:debug3
 appdir:
 	# pr0(~2.7k tests) tests in release
-	$(APPBUILDER) -i vtikoo/coreclr-tests:pr0-release
+	$(APPBUILDER) -m -i vtikoo/coreclr-tests:pr0-release
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

@@ -33,7 +33,7 @@ endif
 all: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 	cp $(PYTEST_INI_FILE) appdir/
 	@ $(foreach i, $(REMOVE_TESTS_TEMPORARILY),  rm  -rf appdir/$(i) )
 

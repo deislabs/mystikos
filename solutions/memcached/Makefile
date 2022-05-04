@@ -65,7 +65,7 @@ myst:
 
 appdir: 
 	@echo "\n------Building appdir------\n"
-	$(APPBUILDER) Dockerfile.server
+	$(APPBUILDER) -m Dockerfile.server
 	@echo "\n------Building client client application container------\n"
 	docker build -t $(CLIENT_IMAGE) -f Dockerfile.client .
 

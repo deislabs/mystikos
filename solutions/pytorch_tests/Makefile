@@ -49,7 +49,7 @@ push:
 	docker push $(DOCKER_FULL_NAME):$(DOCKER_TAG)
 
 appdir:
-	$(APPBUILDER) -i $(DOCKER_FULL_NAME):$(DOCKER_TAG) -v
+	$(APPBUILDER) -m -i $(DOCKER_FULL_NAME):$(DOCKER_TAG) -v
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -175,7 +175,7 @@ build-appdir: DOCKER_TAG   := $(PYTORCH_VERSION)-build
 build-appdir: BUILD_TARGET := build
 build-appdir: export DOCKER_BUILDKIT=1
 build-appdir:
-	$(APPBUILDER) -e '$(EXTRA_OPTIONS)' -v -d $(DOCKER_FILE) -o build-appdir
+	$(APPBUILDER) -m -e '$(EXTRA_OPTIONS)' -v -d $(DOCKER_FILE) -o build-appdir
 
 build-rootfs: build-appdir
 	$(MYST) mkext2 build-appdir build-rootfs

@@ -8,7 +8,7 @@ all: appdir
 
 appdir:
 	g++ -g -o $(APPNAME) test_ssr.c -ldl -I$(TOP)/include
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 $(PKEY_FILE):
 	./gen_pkey.sh $(PKEY_FILE)

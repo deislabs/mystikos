@@ -19,7 +19,7 @@ OPTS += --app-config-path=config_3g.json
 all: ext2fs build-package
 
 appdir:
-	$(APPBUILDER) -i vtikoo/coreclr-tests:6.0-p1-release
+	$(APPBUILDER) -m -i vtikoo/coreclr-tests:6.0-p1-release
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

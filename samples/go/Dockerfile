@@ -2,7 +2,7 @@ FROM golang:alpine
 
 RUN mkdir /app
 
-COPY hello.go /app
+COPY src/hello.go /app
 
 RUN apk add build-base
 

@@ -19,7 +19,7 @@ export TIMEOUT=900
 all: myst $(ROOTFS)
 
 $(APPDIR):
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 $(ROOTFS): $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)

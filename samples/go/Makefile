@@ -5,12 +5,11 @@ APPBUILDER=$(TOP)/scripts/appbuilder
 
 all: rootfs
 
-rootfs: Dockerfile
-	mkdir -p mntdir
-	docker build --quiet --iidfile .iid -f Dockerfile src
-	$(BINDIR)/mount-docker-image .iid mntdir | xargs sudo
-	sudo $(MYST) mkext2 --force mntdir rootfs
-	sudo umount mntdir
+appdir: Dockerfile
+	$(APPBUILDER) -m Dockerfile
+
+rootfs: appdir
+	$(MYST) mkext2 --force appdir rootfs
 
 OPTS =
 OPTS += --thread-stack-size=1m
@@ -27,4 +26,4 @@ ifeq ($(SGX2_PRESENT),1)
 endif
 
 clean:
-	rm -rf appdir rootfs .iid mntdir
+	rm -rf appdir rootfs
