@@ -215,29 +215,38 @@ export_image()
     TEMP_FILE=$(mktemp)
     TEMP_DIR=$(mktemp -d)
     APPENV_FILENAME="appenv.json"
-
-    # note that we have to start up the image to flatten it
-    TEMP_INAME=$(docker run -d $IMAGE_NAME)
-    TEMP_APPENV=$APPENV_FILENAME-$TEMP_INAME
+    TEMP_APPENV=$APPENV_FILENAME-$(date +%s)
     
     docker image inspect --format='{{json .Config}}' $IMAGE_NAME > $TEMP_APPENV
 
-    docker stop $TEMP_INAME >/dev/null
-    docker export $TEMP_INAME -o $TEMP_FILE
-    docker rm $TEMP_INAME >/dev/null
-    if [ -z $DELETE_IMAGE ]; then
-        docker rmi -f $IMAGE_NAME
-    fi
+    # create 'appdir' with docker save
+    mkdir -p $TEMP_DIR/layers $TEMP_DIR/appdir
+    mv $TEMP_APPENV $TEMP_DIR/appdir/$APPENV_FILENAME
+    docker save $IMAGE_NAME -o $TEMP_FILE
+    tar xf $TEMP_FILE -C $TEMP_DIR/layers
+    # At this point $TEMP_DIR should look something like -
+    # $TEMP_DIR
+    #  layers
+    #     <uuid-for-layer0>
+    #           layer.tar
+    #     <uuid-for-layer1>
+    #          layer.tar
+    #     <uuid-for-layer2>
+    #          layer.tar
+    #     <...more layers...>
+    #  appdir
+    #     appenv.json-<unix-ts>
+    # Next extract layers into $TEMP_DIR/appdir
+    cd $TEMP_DIR/appdir
+    find $TEMP_DIR/layers -name layer.tar -exec sh -c 'tar xf {}' \;
+    cd -
 
-    # create the 'appdir' from the docker export
-    tar xf $TEMP_FILE -C $TEMP_DIR
-    mv $TEMP_APPENV $TEMP_DIR/$APPENV_FILENAME
     rm -rf $OUTPUT_NAME $TEMP_FILE
 
     if [ "$OUTPUT_FORMAT" == "dir" ]; then
-        mv $TEMP_DIR $OUTPUT_NAME
+        mv $TEMP_DIR/appdir $OUTPUT_NAME
     elif [ "$OUTPUT_FORMAT" == "cpio" ]; then
-        myst mkcpio $TEMP_DIR $OUTPUT_NAME
+        myst mkcpio $TEMP_DIR/appdir $OUTPUT_NAME
     fi
     rm -rf $TEMP_DIR
 }
