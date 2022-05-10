@@ -13,7 +13,7 @@ SHUTDOWN_WAIT = 2
 all: $(PACKAGE)
 
 appdir:
-	$(APPBUILDER) -v -d Dockerfile
+	$(APPBUILDER) -d Dockerfile
 
 $(PACKAGE): appdir package.pem
 	$(MYST) mkext2 appdir rootfs
