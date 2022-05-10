@@ -11,3 +11,5 @@ FROM hullcritical/dotnet-library-test:release-glibc-v6
 
 COPY --from=builder /runner /runner
 COPY ./testcases/ /testcases/
+
+ENTRYPOINT ["/runner/bin/Release/net6.0/runner", "/testcases/pass.1", "/dotnet-lib-release/"]

@@ -5,6 +5,12 @@
 # such as Docker images or QEMU VHDs.
 #
 
+# Initialize Configuration default values
+# Can only be string value "true" or "false"
+CHECK_SYMBOL=false
+USE_MOUNT=false
+VERBOSE=false
+
 function print_usage {
     echo "$(basename $0): a useful shell script for converting Docker images into Mystikos cpio archives"
     echo
@@ -18,6 +24,7 @@ function print_usage {
     echo "          If not specified, defaults to 'appdir'"
     echo "  -m      Export docker image by mount. This is faster but requires sudo."
     echo "  -v      Verbose"
+    echo "  -p      Print unsupported glibc symbol present in application"
     echo "  -h      Print this help message"
     echo
     echo
@@ -44,7 +51,7 @@ function cleanup()
     set +e
     [ -f $TEMP_IMAGE_IIDFILE ] && rm $TEMP_IMAGE_IIDFILE
     [ -d $EXTRACTED_ROOTFS_DIR ] && rm -rf $EXTRACTED_ROOTFS_DIR
-    if $USE_MOUNT; then
+    if [ "$USE_MOUNT" = "true" ]; then
         if [ -d $MNT_PNT_DIR ]; then
             sudo umount $MNT_PNT_DIR
             rm -rf $MNT_PNT_DIR
@@ -57,7 +64,7 @@ function cleanup()
 
 trap cleanup EXIT
 
-while getopts 'hvmd:i:f:o:e:' OPTION; do
+while getopts 'hpvmd:i:f:o:e:' OPTION; do
     case "$OPTION" in
         d )
             DOCKER_FILE=${OPTARG:-Dockerfile}
@@ -80,11 +87,13 @@ while getopts 'hvmd:i:f:o:e:' OPTION; do
             ;;
         v )
             VERBOSE=true;
-            QUIET=false;
             set -x
             ;;
         m )
             USE_MOUNT=true;
+            ;;
+        p )
+            CHECK_SYMBOL=true;
             ;;
         * )
             print_usage;
@@ -156,7 +165,7 @@ if [ -d $OUTPUT_NAME -o -f $OUTPUT_NAME ]; then
     done
 fi
 
-if $QUIET; then
+if [ "$VERBOSE" = "false" ]; then
     DOCKER_BUILD_MODE="--quiet";
 fi
 
@@ -209,7 +218,7 @@ docker_network_remove()
 # Download the docker image from dockerhub, or build it locally from a docker file.
 get_image()
 {   
-    if $USE_DOCKERFILE; then
+    if [ "$USE_DOCKERFILE" = "true" ]; then
         # in either quiet or none quiet mode, IMAGE id will always be exported to intermediate iidfile
         rm -f $TEMP_IMAGE_IIDFILE
         # Create and use custom network for each image build to avoid collisions
@@ -294,18 +303,21 @@ export_image()
     # cleanup $OUTPUT_NAME if it exists
     rm -rf $OUTPUT_NAME
 
-    if $USE_MOUNT; then
+    if [ "$USE_MOUNT" = "true" ]; then
         export_via_overlayfs_mount
     else
         export_via_docker_export
     fi
 }
 
+check_symbols() {
+    $(dirname $0)/symbol_check/check_unsupported_symbols.sh $IMAGE_NAME "$PWD/$OUTPUT_NAME"
+}
+
 get_image
 export_image
-
-if $VERBOSE; then
-    set +x
+if [ "$CHECK_SYMBOL" = "true" ]; then
+    check_symbols
 fi
 
 echo "Success! Application built at ${OUTPUT_NAME}."
