@@ -11,4 +11,4 @@ COPY ./test_subprocess.py .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["/miniconda/bin/python3", "/app/test_subprocess.py"]
+ENTRYPOINT ["/miniconda/bin/python3", "/app/test_subprocess.py"]

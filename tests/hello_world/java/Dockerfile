@@ -9,5 +9,4 @@ RUN javac Helloworld.java
 #workaround
 RUN cp /opt/openjdk-13/lib/server/libjvm.so /opt/openjdk-13/lib/
 
-#CMD ["java", "Helloworld"]
-CMD ["/bin/sh"]
+ENTRYPOINT ["/opt/openjdk-13/bin/java", "-ea", "Helloworld", "red", "green", "blue"]

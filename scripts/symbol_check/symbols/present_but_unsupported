@@ -1,0 +1,3 @@
+# Following symbols are present in Mystikos.so, but they are unsupported/not implemented in Mystikos
+# List maintained by hand
+memfd_create
