@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS += --memory-size=256m
+OPTS += --memory-size=256m --max-affinity-cpus=4
 
 ifdef PERF
 OPTS += --perf
