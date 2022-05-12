@@ -108,10 +108,11 @@ and not test_avg_pool2d_nhwc_cpu_float64 \
 and not test_max_pool2d_nhwc_cpu_float32 \
 and not test_max_pool2d_nhwc_cpu_float64 \
 and not test_cross_entropy_loss_precision \
-and not test_l1_loss_correct"
+and not test_l1_loss_correct \
+and not test_GroupNorm_numeric_cpu"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1323 passed.*1437 skipped.*42 deselected.*3 xfailed' $@.out
+	grep -q -E '1322 passed.*1437 skipped.*43 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
 run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
@@ -119,7 +120,8 @@ or test_avg_pool2d_nhwc_cpu_float64 \
 or test_max_pool2d_nhwc_cpu_float32 \
 or test_max_pool2d_nhwc_cpu_float64 \
 or test_cross_entropy_loss_precision \
-or test_l1_loss_correct"
+or test_l1_loss_correct \
+or test_GroupNorm_numeric_cpu"
 run-test-nn-8g: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS)
 
