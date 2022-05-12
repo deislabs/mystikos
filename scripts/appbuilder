@@ -37,6 +37,25 @@ function print_usage {
     echo
 }
 
+# Please add appropriate cleanup actions here for any new resources created in this script
+function cleanup()
+{
+    # this is a catchall, ignore errors
+    set +e
+    [ -f $TEMP_IMAGE_IIDFILE ] && rm $TEMP_IMAGE_IIDFILE
+    [ -d $EXTRACTED_ROOTFS_DIR ] && rm -rf $EXTRACTED_ROOTFS_DIR
+    if $USE_MOUNT; then
+        if [ -d $MNT_PNT_DIR ]; then
+            sudo umount $MNT_PNT_DIR
+            rm -rf $MNT_PNT_DIR
+        fi
+    else
+        [ -f $EXPORTED_IMG_TAR ] && rm $EXPORTED_IMG_TAR
+    fi
+
+}
+
+trap cleanup EXIT
 
 while getopts 'hvmd:i:f:o:e:' OPTION; do
     case "$OPTION" in
@@ -90,7 +109,7 @@ fi
 OUTPUT_NAME=${OUTPUT_NAME:-appdir}
 DELETE_OUTPUT=${DELETE_OUTPUT:-false}
 OUTPUT_FORMAT=${OUTPUT_FORMAT:-dir}
-TEMP_IMAGE_IIDFILE=$(mktemp /tmp/myst.XXXXXX)
+TEMP_IMAGE_IIDFILE=$(mktemp -t myst-iid.XXXXXX)
 NETWORK_NAME=$(basename ${PWD})-$(head /dev/urandom | tr -dc 'a-z0-9' | head -c 10)
 DOCKER_RETRIES=3
 
@@ -218,7 +237,7 @@ export_via_overlayfs_mount()
     LOWER_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.LowerDir}}' $IMAGE_NAME | tr -d '"')
     UPPER_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.UpperDir}}' $IMAGE_NAME | tr -d '"')
     WORK_DIR=$(docker image inspect --format='{{json .GraphDriver.Data.WorkDir}}' $IMAGE_NAME | tr -d '"')
-    MNT_PNT_DIR=$(mktemp -d)
+    MNT_PNT_DIR=$(mktemp -d -t myst-mntpnt.XXXXXX)
 
     sudo mount -t overlay overlay -olowerdir=$LOWER_DIR,upperdir=$UPPER_DIR,workdir=$WORK_DIR $MNT_PNT_DIR
     # change ownership back to current effective user and group
@@ -239,8 +258,8 @@ export_via_overlayfs_mount()
 
 export_via_docker_export()
 {
-    EXPORTED_IMG_TAR=$(mktemp)
-    EXTRACTED_ROOTFS_DIR=$(mktemp -d)
+    EXPORTED_IMG_TAR=$(mktemp -t myst-img-tar.XXXXXX)
+    EXTRACTED_ROOTFS_DIR=$(mktemp -d -t myst-rootfs-dir.XXXXXX)
 
     # note that we have to start up the image to flatten it
     TEMP_INAME=$(docker run -d $IMAGE_NAME)
