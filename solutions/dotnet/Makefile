@@ -17,10 +17,10 @@ run-unsigned:
 _run: appdir private.pem
 	timeout 45m $(MYST) package appdir private.pem config.json
 	myst/bin/$(APPNAME) $(OPTS)
-	
+
 run:
 	$(RUNTEST) make -C $(CURDIR) _run
-	
+
 gdb: appdir private.pem
 	$(MYST) package appdir private.pem config.json
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
