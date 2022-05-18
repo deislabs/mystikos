@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-TIMEOUT=1500
+TIMEOUT=900
 
 ifdef RUN_AZURE_TESTS
 RUNTEST=$(RUNTEST_COMMAND)
@@ -37,16 +37,16 @@ rootfs-storage-blob: appdir-storage-blob
 
 rootfs: rootfs-keyvault_identity rootfs-storage rootfs-storage-blob
 
-test-keyvault_identity: rootfs-keyvault_identity
+test-keyvault_identity:
 	./test-all-packages.sh "$(MYST_EXEC)" keyvault_identity/rootfs "$(OPTS)" keyvault_identity/packages.txt
 
-test-storage: rootfs-storage
+test-storage:
 	./test-all-packages.sh "$(MYST_EXEC)" storage/rootfs "$(OPTS)" storage/packages.txt
 
-test-storage-blob: rootfs-storage-blob
+test-storage-blob:
 	./test-all-packages.sh "$(MYST_EXEC)" storage-blob/rootfs "$(OPTS)" storage-blob/packages.txt
 
-_tests: all test-keyvault_identity test-storage test-storage-blob
+_tests: test-keyvault_identity test-storage test-storage-blob
 
 tests:
 	TIMEOUT=$(TIMEOUT) $(RUNTEST) make -C $(CURDIR) _tests 

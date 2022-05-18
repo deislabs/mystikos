@@ -27,7 +27,7 @@ $(ROOTFS): $(APPDIR)
 
 OPTS += --app-config-path config.json
 
-_tests: all
+_tests: $(ROOTFS)
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/template/azure-template/test/azure-template-test
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-global-context-test
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/keyvault/azure-security-keyvault-keys/test/ut/azure-security-keyvault-keys-test
