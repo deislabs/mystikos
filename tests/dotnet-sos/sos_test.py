@@ -42,11 +42,13 @@ def run_test(debugger):
     process = debugger.GetSelectedTarget().GetProcess()
 
     # For sgx, we hit the cpuid SIGILL pretty early in OE crypto initialization
+    # Note that the SIGILL will be suppressed when vDSO is used (Linux Kernel 5.11+)
     if os.getenv("TARGET") == "sgx":
         assert(process.GetState() == lldb.eStateStopped)
-        assert(process.GetSelectedThread().GetStopReason() == lldb.eStopReasonSignal)
-        debugger.HandleCommand("pro hand -p true -s false -n false SIGILL")
-        process.Continue()
+        # Continue the execution if SIGILL is not suppressed
+        if process.GetSelectedThread().GetStopReason() == lldb.eStopReasonSignal:
+            debugger.HandleCommand("pro hand -p true -s false -n false SIGILL")
+            process.Continue()
 
     # Should've hit /tmp path init breakpoint
     assert(process.GetState() == lldb.eStateStopped)
