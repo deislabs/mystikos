@@ -77,8 +77,7 @@ int shmfs_setup()
 {
     int ret = 0;
 
-    if (myst_init_ramfs(
-            myst_mount_resolve, &_posix_shmfs, MYST_POSIX_SHMFS_DEV_NUM) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_posix_shmfs, RAMFS_SHMFS) != 0)
     {
         myst_eprintf("failed initialize the shm file system\n");
         ERAISE(-EINVAL);
@@ -203,8 +202,7 @@ bool myst_is_posix_shm_file_handle(int fd, int flags)
     if (fd >= 0 && (flags & MAP_SHARED))
     {
         struct stat buf;
-        if (myst_syscall_fstat(fd, &buf) == 0 &&
-            buf.st_dev == MYST_POSIX_SHMFS_DEV_NUM)
+        if (myst_syscall_fstat(fd, &buf) == 0 && buf.st_dev == RAMFS_SHMFS)
             return true;
     }
     return false;
