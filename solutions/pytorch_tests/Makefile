@@ -58,11 +58,10 @@ rootfs: appdir
 run-test-autograd: EXCLUDE_TESTS = "not test_deep_reentrant \
 and not test_no_grad_copy_sparse \
 and not test_profiler_seq_nr \
-and not test_record_function \
-and not test_thread_shutdown"
+and not test_record_function"
 run-test-autograd: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_autograd.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '400 passed.*68 skipped.*7 deselected.*1 xfailed' $@.out
+	grep -q -E '327 passed.*68 skipped.*6 deselected.*1 xfailed' $@.out
 
 .PHONY: run-test-autograd-thread-shutdown
 run-test-autograd-thread-shutdown: rootfs
@@ -111,7 +110,7 @@ and not test_l1_loss_correct \
 and not test_GroupNorm_numeric_cpu"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1324 passed.*1437 skipped.*41 deselected.*3 xfailed' $@.out
+	grep -q -E '1323 passed.*1437 skipped.*42 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
 run-test-nn-8g: INCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
