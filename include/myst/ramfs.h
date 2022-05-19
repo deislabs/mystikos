@@ -44,10 +44,18 @@ typedef struct _vcallback
     int (*write_cb)(myst_file_t* self, const void* buf, size_t count);
 } myst_vcallback_t;
 
+typedef enum ramfs_minor_num
+{
+    RAMFS_NONE = 0,
+    RAMFS_PROCFS = 1,
+    RAMFS_DEVFS = 2,
+    RAMFS_SHMFS = 26
+} ramfs_minor_num_t;
+
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out,
-    int device_num);
+    ramfs_minor_num_t device_num);
 
 int myst_ramfs_set_buf(
     myst_fs_t* fs,
@@ -73,5 +81,4 @@ int myst_write_stateful_virtual_file(
 
 int set_overrides_for_special_fs(myst_fs_t* fs);
 
-#define MYST_POSIX_SHMFS_DEV_NUM 26
 #endif /* _MYST_RAMFS_H */

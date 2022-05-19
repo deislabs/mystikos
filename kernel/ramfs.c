@@ -60,7 +60,7 @@ typedef struct ramfs
     myst_mount_resolve_callback_t resolve;
     size_t ninodes;
     myst_fs_t* lockfs;
-    int device_num;
+    ramfs_minor_num_t device_num;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
@@ -70,7 +70,7 @@ static bool _ramfs_valid(const ramfs_t* ramfs)
 
 static bool _is_shmfs(const ramfs_t* ramfs)
 {
-    return ramfs && ramfs->device_num == MYST_POSIX_SHMFS_DEV_NUM;
+    return ramfs && ramfs->device_num == RAMFS_SHMFS;
 }
 
 /*
@@ -2999,7 +2999,7 @@ done:
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out,
-    int device_num)
+    ramfs_minor_num_t device_num)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
@@ -3104,7 +3104,7 @@ done:
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
     myst_fs_t** fs_out,
-    int device_num)
+    ramfs_minor_num_t device_num)
 {
     int ret = 0;
     myst_fs_t* ramfs = NULL;
