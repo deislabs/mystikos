@@ -7,8 +7,8 @@ DIRS += attested_tls
 ifdef DB_SERVER_NAME
 ifdef DB_NAME
 ifdef MAA_URL
-#DIRS += sql_ae
-#DIRS += python_app
+DIRS += sql_ae
+DIRS += python_app
 endif
 endif
 endif
