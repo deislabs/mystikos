@@ -5,6 +5,7 @@
     "Debug": 1,
     "ProductID": 1,
     "SecurityVersion": 1,
+    "ThreadStackSize": "2m",
 
     // Mystikos specific values
 
