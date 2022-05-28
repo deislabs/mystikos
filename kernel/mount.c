@@ -32,8 +32,9 @@
 
 typedef struct mount_table_entry
 {
-    char* source;
-    char* path;
+    char* source; /* path where the device or directory to be mounted is
+                     specified */
+    char* path;   /* path where device is attached */
     size_t path_size;
     myst_fs_t* fs;
     uint32_t flags;

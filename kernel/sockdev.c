@@ -6,9 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/un.h>
 
 #include <myst/eraise.h>
+#include <myst/fdtable.h>
+#include <myst/hostfs.h>
 #include <myst/iov.h>
+#include <myst/mount.h>
 #include <myst/panic.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
@@ -25,6 +29,12 @@ struct myst_sock
     int fd;         /* the target-relative file descriptor */
     bool nonblock;
 };
+
+MYST_INLINE bool _valid_sockdev(const myst_sockdev_t* sockdev)
+{
+    return sockdev &&
+           ((sockdev == myst_udsdev_get()) || (sockdev == myst_sockdev_get()));
+}
 
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
 {
@@ -924,5 +934,108 @@ int myst_sockdev_resolve(
     }
 
 done:
+    return ret;
+}
+
+int myst_sockdev_reresolve(
+    int sockfd,
+    myst_sockdev_t* sockdev,
+    myst_sock_t* sock,
+    const struct sockaddr* addr,
+    socklen_t addrlen,
+    bool* reresolved,
+    myst_sockdev_t** sockdev_out,
+    myst_sock_t** sock_out,
+    struct sockaddr** addr_out,
+    socklen_t* addrlen_out)
+{
+    int ret = 0;
+    struct locals
+    {
+        char suffix[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+    myst_sock_t* hostuds_sock = NULL;
+    struct sockaddr_un* new_addr = NULL;
+
+    if (sockfd < 0 || !sockdev || !sock || !_valid_sockdev(sockdev))
+        ERAISE(-EINVAL);
+
+    if (!reresolved || !sock_out || !sockdev_out || !addr_out || !addrlen_out)
+        ERAISE(-EINVAL);
+
+    *reresolved = false;
+
+    if (sockdev != myst_udsdev_get())
+        return 0;
+
+    myst_sockdev_t* myst_udsdev = sockdev;
+
+    const struct sockaddr_un* sun = (const struct sockaddr_un*)addr;
+
+    /* abstract namespace UDSes are always myst kernel internal */
+    if (*sun->sun_path == '\0')
+        return 0;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    myst_fs_t* fs_out = NULL;
+    ECHECK(myst_mount_resolve(sun->sun_path, locals->suffix, &fs_out));
+    /* locals->suffix now holds the path relative to the root of the mounted
+     * filesytem */
+
+    if (!myst_is_hostfs(fs_out))
+        goto done;
+
+    // At this point we have uds + hostfs path
+    // A new sockaddr structure needs to be created, as the file path is
+    // different on the host.
+    if (!(new_addr = calloc(1, sizeof(struct sockaddr_un))))
+        ERAISE(-ENOMEM);
+
+    new_addr->sun_family = AF_UNIX;
+    ECHECK(myst_hostfs_suffix_to_host_abspath(
+        fs_out,
+        new_addr->sun_path,
+        sizeof(new_addr->sun_path) - 1,
+        locals->suffix));
+    // TODO: check if suffix is a link?
+
+    // get socket type and cleanup/close the udsdev socket
+    int type = 0;
+    socklen_t optlen = sizeof(type);
+    ECHECK(myst_udsdev->sd_getsockopt(
+        myst_udsdev, sock, SOL_SOCKET, SO_TYPE, &type, &optlen));
+    ECHECK(myst_udsdev->sd_close(myst_udsdev, sock));
+
+    // create the hostdev socket
+    myst_sockdev_t* host_sockdev = myst_sockdev_get();
+    ECHECK(host_sockdev->sd_socket(
+        host_sockdev, AF_LOCAL, type, 0, &hostuds_sock));
+
+    // update mount entry
+    ECHECK(myst_fdtable_update_sock_entry(
+        myst_fdtable_current(), sockfd, host_sockdev, hostuds_sock));
+
+    *reresolved = true;
+    *sockdev_out = host_sockdev;
+    *sock_out = hostuds_sock;
+    *addr_out = (struct sockaddr*)new_addr;
+    *addrlen_out = sizeof(*new_addr);
+
+    hostuds_sock = NULL;
+    new_addr = NULL;
+done:
+
+    if (hostuds_sock)
+        host_sockdev->sd_close(host_sockdev, hostuds_sock);
+
+    if (locals)
+        free(locals);
+
+    if (new_addr)
+        free(new_addr);
+
     return ret;
 }
