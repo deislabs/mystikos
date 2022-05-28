@@ -179,4 +179,10 @@ long myst_fdtable_sync(myst_fdtable_t* fdtable);
 
 ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable);
 
+int myst_fdtable_update_sock_entry(
+    myst_fdtable_t* fdtable,
+    int fd,
+    myst_sockdev_t* device,
+    myst_sock_t* new_sock);
+
 #endif /* _MYST_FDTABLE_H */

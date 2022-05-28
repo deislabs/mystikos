@@ -389,10 +389,10 @@ static int _socketaddr_to_str(
 
     if (addr->sa_family == AF_UNIX)
     {
-        if (addr->sa_data[0] &&
-            myst_snprintf(out, limit, "%s", addr->sa_data) == ERANGE)
+        if (addr->sa_data[0])
         {
-            ERAISE(-ENAMETOOLONG);
+            if (myst_snprintf(out, limit, "%s", addr->sa_data) == ERANGE)
+                ERAISE(-ENAMETOOLONG);
         }
         // abstract namespace address
         else if (
@@ -2374,11 +2374,32 @@ int myst_syscall_bind(
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd;
-    myst_sock_t* sock;
+    myst_sockdev_t *sd, *new_sd;
+    myst_sock_t *sock, *new_sock;
+    struct sockaddr* new_addr;
+    socklen_t new_addrlen;
+    bool reresolved;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
+    ECHECK(myst_sockdev_reresolve(
+        sockfd,
+        sd,
+        sock,
+        addr,
+        addrlen,
+        &reresolved,
+        &new_sd,
+        &new_sock,
+        &new_addr,
+        &new_addrlen));
+
+    if (!reresolved)
+        ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
+    else
+    {
+        ret = (*new_sd->sd_bind)(new_sd, new_sock, new_addr, new_addrlen);
+        free(new_addr);
+    }
 
 done:
     return ret;
@@ -2391,8 +2412,11 @@ long myst_syscall_connect(
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t* sd;
-    myst_sock_t* sock;
+    myst_sockdev_t *sd, *new_sd;
+    myst_sock_t *sock, *new_sock;
+    struct sockaddr* new_addr;
+    socklen_t new_addrlen;
+    bool reresolved;
     myst_fdtable_type_t type;
 
     ECHECK(myst_fdtable_get_any(
@@ -2404,7 +2428,25 @@ long myst_syscall_connect(
     if (myst_is_bad_addr_read(addr, sizeof(struct sockaddr)))
         ERAISE(-EFAULT);
 
-    ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
+    ECHECK(myst_sockdev_reresolve(
+        sockfd,
+        sd,
+        sock,
+        addr,
+        addrlen,
+        &reresolved,
+        &new_sd,
+        &new_sock,
+        &new_addr,
+        &new_addrlen));
+
+    if (!reresolved)
+        ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
+    else
+    {
+        ret = (*new_sd->sd_connect)(new_sd, new_sock, new_addr, new_addrlen);
+        free(new_addr);
+    }
 
 done:
     return ret;
@@ -2432,6 +2474,7 @@ long myst_syscall_recvfrom(
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     ret = (*sd->sd_recvfrom)(sd, sock, buf, len, flags, src_addr, addrlen);
 
 done:
@@ -2466,6 +2509,7 @@ long myst_syscall_sendto(
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     ret = (*sd->sd_sendto)(sd, sock, buf, len, flags, dest_addr, addrlen);
 
 done:

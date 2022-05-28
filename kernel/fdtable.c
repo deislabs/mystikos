@@ -666,3 +666,38 @@ ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable)
 done:
     return ret;
 }
+
+int myst_fdtable_update_sock_entry(
+    myst_fdtable_t* fdtable,
+    int fd,
+    myst_sockdev_t* device,
+    myst_sock_t* new_sock)
+{
+    int ret = 0;
+
+    if (!fdtable || !device || !new_sock)
+        ERAISE(-EINVAL);
+
+    if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
+        ERAISE(-EBADF);
+
+    myst_spin_lock(&fdtable->lock);
+    {
+        myst_fdtable_entry_t* entry = &fdtable->entries[fd];
+
+        if (entry->type != MYST_FDTABLE_TYPE_SOCK ||
+            !(entry->device && entry->object))
+        {
+            myst_spin_unlock(&fdtable->lock);
+            ERAISE(-ENOTSOCK);
+        }
+
+        entry->device = device;
+        entry->object = new_sock;
+    }
+    myst_spin_unlock(&fdtable->lock);
+
+done:
+
+    return ret;
+}

@@ -130,6 +130,7 @@ DIRS += stack_overflow
 DIRS += sendfile
 DIRS += strtonum
 DIRS += fsflags
+DIRS += hostfs_uds
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += aspnetcore5
