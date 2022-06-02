@@ -58,15 +58,22 @@ $(TOP)/build/bin/myst-lldb: $(TOP)/build/openenclave
 FETCH_SUBMODULE = git submodule update --init --progress
 
 openenclave:
-	git clone $(URL)
-	( cd openenclave; git checkout $(COMMIT) )
-	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
-	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL )
+#	git clone $(URL)
+#	( cd openenclave; git checkout $(COMMIT) )
+#	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
+#	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL
+	@echo "********************************************************here"
+	@echo "********************************************************here"
+	cp -R ../../../openenclave openenclave
+	rm -rf $(OPENENCLAVE_BUILD)
+	mkdir -p $(OPENENCLAVE_BUILD)
+	( cd $(OPENENCLAVE_BUILD); cmake $(CMAKE_OPTS) $(OPENENCLAVE_SRC) )
+	
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 

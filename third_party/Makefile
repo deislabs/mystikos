@@ -18,6 +18,7 @@ distclean:
 
 init:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) $(i) $(NL) )
+	$(MAKE) -B -C openenclave openenclave
 
 build:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) build $(NL) )
