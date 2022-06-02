@@ -5,8 +5,8 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-BRANCH=master
-COMMIT=cce575a3e0781eb4ae1e4e83a30acb655a116151
+BRANCH=v0.18.x
+COMMIT=a4d1dde6444a8a56a29ea3cfe4739366c68e4bf4
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
