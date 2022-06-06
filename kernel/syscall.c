@@ -3671,6 +3671,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     }
 
     /* this can return (void*)-errno */
+    myst_mman_lock();
     long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
     // ATTN : temporary workaround for myst_mmap()  inaccurate return
@@ -3686,10 +3687,13 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
         /* set ownership this mapping to pid */
         if (myst_mman_pids_set(ptr, length, pid) != 0)
+        {
+            myst_mman_unlock();
             myst_panic("myst_mman_pids_set()");
-
+        }
         ret = (long)ptr;
     }
+    myst_mman_unlock();
 
     return (_return(n, ret));
 }
@@ -3741,14 +3745,19 @@ static long _SYS_munmap(
         }
     }
 
+    myst_mman_lock();
     long ret = (long)myst_munmap(addr, length);
 
     if (ret == 0)
     {
         /* set ownership this mapping to nobody */
         if (myst_mman_pids_set(addr, length, 0) != 0)
+        {
+            myst_mman_unlock();
             myst_panic("myst_mman_pids_set()");
+        }
     }
+    myst_mman_unlock();
 
     return (_return(n, ret));
 }
@@ -3930,6 +3939,7 @@ static long _SYS_mremap(long n, long params[6])
             return (_return(n, -EINVAL));
     }
 
+    myst_mman_lock();
     ret =
         (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
 
@@ -3939,12 +3949,19 @@ static long _SYS_mremap(long n, long params[6])
 
         /* set ownership of old mapping to nobody */
         if (myst_mman_pids_set(old_address, old_size, 0) != 0)
+        {
+            myst_mman_unlock();
             myst_panic("myst_mman_pids_set()");
+        }
 
         /* set ownership of new mapping to pid */
         if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
+        {
+            myst_mman_unlock();
             myst_panic("myst_mman_pids_set()");
+        }
     }
+    myst_mman_unlock();
 
     return (_return(n, ret));
 }
