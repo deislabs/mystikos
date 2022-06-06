@@ -26,7 +26,7 @@ pipeline {
         disableConcurrentBuilds(abortPrevious: true)
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
@@ -94,7 +94,7 @@ pipeline {
                             checkout([$class: 'GitSCM',
                                 branches: [[name: params.BRANCH]],
                                 extensions: [],
-                                userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}/mystikos"]]]
+                                userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}"]]]
                             )
                         }
                         GIT_COMMIT_ID = sh(

@@ -7,7 +7,7 @@ pipeline {
         timestamps ()
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
@@ -59,7 +59,7 @@ pipeline {
                         checkout([$class: 'GitSCM',
                             branches: [[name: params.BRANCH]],
                             extensions: [],
-                            userRemoteConfigs: [[url: "https://github.com/${REPOSITORY}/mystikos"]]]
+                            userRemoteConfigs: [[url: "https://github.com/${REPOSITORY}"]]]
                         )
                     }
                     GIT_COMMIT_ID = sh(

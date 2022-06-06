@@ -7,7 +7,7 @@ pipeline {
         timestamps ()
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main")
         string(name: "EMAIL_SUBJECT")
         string(name: "EMAIL_BODY")
