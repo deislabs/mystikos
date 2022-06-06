@@ -7,7 +7,7 @@ pipeline {
         timestamps ()
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "COMMIT_ID", description: "Short commit ID used to archive build resoures")
     }
