@@ -59,8 +59,11 @@ pipeline {
                         checkout([$class: 'GitSCM',
                             branches: [[name: params.BRANCH]],
                             extensions: [],
-                            userRemoteConfigs: [[url: "https://github.com/${REPOSITORY}"]]]
-                        )
+                            userRemoteConfigs: [[
+                                url: "https://github.com/${REPOSITORY}",
+                                credentialsId: 'github-oeciteam-user-pat'
+                            ]]
+                        ])
                     }
                     GIT_COMMIT_ID = sh(
                         returnStdout: true,
