@@ -1,5 +1,6 @@
 FROM alpine:3.10 AS base-image
 
+USER root
 RUN apk add --no-cache bash sudo unixodbc-dev curl krb5-libs libstdc++ mbedtls
 
 RUN mkdir -p /tmp/msodbcinstall && cd /tmp/msodbcinstall && \
