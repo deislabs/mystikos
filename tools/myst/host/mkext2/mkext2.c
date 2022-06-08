@@ -190,6 +190,9 @@ static void _create_zero_filled_image(const char* path, size_t size)
     if (!(is = fopen(path, "wb")))
         _err("failed to open file for write: %s", path);
 
+    if (fchmod(fileno(is), S_IRUSR | S_IWUSR | S_IRGRP) != 0)
+        _err("failed to chmod file: %s", path);
+
     if (fseek(is, size - sizeof(_block), SEEK_SET) != 0)
         _err("failed to seek file: %s: %zu", path, size);
 

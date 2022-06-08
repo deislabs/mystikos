@@ -294,7 +294,7 @@ myst_cpio_t* myst_cpio_open(const char* path, uint32_t flags)
 
     if ((flags & MYST_CPIO_FLAG_CREATE))
     {
-        if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0)
+        if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0640)) < 0)
             GOTO(done);
 
         if (write(fd, &_dot, _dot.size) != (ssize_t)_dot.size)
@@ -306,7 +306,7 @@ myst_cpio_t* myst_cpio_open(const char* path, uint32_t flags)
     }
     else
     {
-        if ((fd = open(path, O_RDONLY, 0666)) < 0)
+        if ((fd = open(path, O_RDONLY, 0640)) < 0)
             GOTO(done);
 
         cpio->fd = fd;
@@ -631,7 +631,7 @@ int myst_cpio_unpack(const char* source, const char* target)
         {
             ssize_t n;
 
-            if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0666)) < 0)
+            if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0640)) < 0)
                 GOTO(done);
 
             while ((n = myst_cpio_read_data(
@@ -1120,7 +1120,7 @@ int myst_cpio_mem_unpack(
                 ssize_t n = (ssize_t)locals->ent.size;
 
                 // ATTN: Can we replace 0666 with locals->ent.mode?
-                if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0666)) < 0)
+                if ((fd = open(locals->path, O_WRONLY | O_CREAT, 0640)) < 0)
                     GOTO(done);
 
                 if (write(fd, file_data, (size_t)n) != n)

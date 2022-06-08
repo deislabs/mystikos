@@ -382,6 +382,8 @@ int myst_retrieve_wanted_secrets()
             goto done;
         }
 
+        fchmod(fileno(file), S_IWUSR | S_IRUSR | S_IRGRP);
+
         r = fwrite(release_secret.data, 1, release_secret.length, file);
         fclose(file);
         file = NULL;

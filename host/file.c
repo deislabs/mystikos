@@ -19,7 +19,7 @@ int myst_write_file(const char* path, const void* data, size_t size)
     size_t r = size;
     ssize_t n;
 
-    if ((fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0666)) < 0)
+    if ((fd = open(path, O_CREAT | O_WRONLY | O_TRUNC, 0640)) < 0)
         ERAISE(-errno);
 
     while ((n = write(fd, p, r)) > 0)

@@ -185,7 +185,7 @@ long init_symbol_file_tmpdir(char* tmpdir)
 
     if (!mkdtemp(tmpdir))
         ERAISE(errno);
-    ECHECK(chmod(tmpdir, 0777));
+    ECHECK(chmod(tmpdir, 0750));
 
 done:
     return ret;
@@ -245,7 +245,7 @@ long myst_tcall_add_symbol_file(
             {
                 ERAISE(-ENAMETOOLONG);
             }
-            if ((fd = creat(tmp, 0666)) < 0)
+            if ((fd = creat(tmp, 0750)) < 0)
                 goto done;
         }
     }
@@ -261,7 +261,7 @@ long myst_tcall_add_symbol_file(
             ERAISE(-ENAMETOOLONG);
         }
 
-        if ((fd = creat(tmp, 0666)) < 0)
+        if ((fd = creat(tmp, 0750)) < 0)
             goto done;
     }
 
