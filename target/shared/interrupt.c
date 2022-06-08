@@ -52,7 +52,7 @@ long myst_interruptible_syscall(long n, int fd, short events, bool retry, ...)
 
         /* attempt the syscall */
         {
-            long syscall_ret;
+            long syscall_ret = 0;
             errno = 0;
 
             /* Call actual libc function in case it does extra processing */

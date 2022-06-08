@@ -155,7 +155,7 @@ int create_roothashes_file(myst_buf_t* buf, char filename[PATH_MAX])
 {
     int ret = 0;
     char template[] = "/tmp/mystXXXXXX";
-    int fd;
+    int fd = -1;
 
     if (!buf || !filename)
     {

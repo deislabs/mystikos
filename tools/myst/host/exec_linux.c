@@ -572,7 +572,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
 {
     struct myst_options opts;
     const char* rootfs_arg;
-    const char* program_arg;
+    const char* program_arg = NULL;
     static const size_t max_pubkeys = 128;
     const char* pubkeys[max_pubkeys];
     size_t num_pubkeys = 0;
