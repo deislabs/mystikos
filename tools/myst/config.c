@@ -75,7 +75,7 @@ static json_result_t _extract_start_address(
     uint64_t* start_address)
 {
     json_result_t ret = JSON_FAILED;
-    uint64_t value;
+    uint64_t value = 0;
 
     if (start_address == NULL)
         CONFIG_RAISE(JSON_FAILED);

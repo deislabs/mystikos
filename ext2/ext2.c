@@ -3813,7 +3813,7 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
 {
     off_t ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    off_t new_offset;
+    off_t new_offset = 0;
 
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);

@@ -1003,7 +1003,7 @@ static off_t _fs_lseek(
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
     off_t ret = 0;
-    off_t new_offset;
+    off_t new_offset = 0;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);

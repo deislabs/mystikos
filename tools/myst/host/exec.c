@@ -794,7 +794,7 @@ long myst_interrupt_thread_ocall(pid_t tid)
 long myst_write_console_ocall(int fd, const void* buf, size_t count)
 {
     long ret = 0;
-    FILE* stream;
+    FILE* stream = NULL;
 
     if (!buf)
         ERAISE(-EINVAL);
