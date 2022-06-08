@@ -1,25 +1,30 @@
 TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
-APPDIR = appdir
+C-APPDIR = c-appdir
 CFLAGS = -fPIC -g
 LDFLAGS = -Wl,-rpath=$(MUSL_LIB)
 PROG = enclave_client
+APPBUILDER=$(TOP)/scripts/appbuilder
 
 all:
-	$(MAKE) rootfs
+	$(MAKE) c-client-rootfs
 	$(MAKE) build-server
 
 build-server:
 	gcc -o host_uds_server host_uds_server.c
 
-rootfs: $(PROG).c
-	mkdir -p $(APPDIR)/bin
-	$(MUSL_GCC) $(CFLAGS) -o $(APPDIR)/bin/$(PROG) $(PROG).c $(LDFLAGS)
-	$(MYST) mkcpio $(APPDIR) rootfs
+c-client-rootfs: $(PROG).c
+	mkdir -p $(C-APPDIR)/bin
+	$(MUSL_GCC) $(CFLAGS) -o $(C-APPDIR)/bin/$(PROG) $(PROG).c $(LDFLAGS)
+	$(MYST) mkcpio $(C-APPDIR) c-client-rootfs
+
+net-client-rootfs:
+	$(APPBUILDER) -o net-appdir -m Dockerfile
+	$(MYST) mkext2 net-appdir net-client-rootfs
 
 ifdef STRACE
-OPTS = --strace
+OPTS = --strace-filter SYS_epoll_pwait:SYS_socket:SYS_myst_clone:SYS_exit:SYS_setsockopt:SYS_connect:SYS_exit_group:SYS_exit
 endif
 
 HOSTDIR=/tmp/hostfs_uds_test/
@@ -37,17 +42,29 @@ tests: all
 	$(MAKE) rm-hostdir
 	$(MAKE) mk-hostdir
 	$(MAKE) server
-	$(MAKE) client
+	$(MAKE) client-c
 
 server:
 	./host_uds_server $(HOSTDIR) &
 
-client:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/$(PROG) $(HOSTDIR)
+client-c:
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) c-client-rootfs /bin/$(PROG) $(HOSTDIR)
+
+tests-net:
+	$(MAKE) rm-hostdir
+	$(MAKE) mk-hostdir
+	$(MAKE) server
+	sleep 2
+	$(MAKE) client-net
+
+client-net:
+	$(MYST_EXEC) net-client-rootfs $(OPTS) --app-config-path=config.json \
+	--mount $(HOSTDIR)=/mnt/host \
+	/app/hello $(HOSTDIR)
 
 killsrv:
 	killall host_uds_server || true
 
 clean:
 	$(MAKE) killsrv	
-	rm -rf $(APPDIR) $(HOSTDIR) rootfs host_uds_server
+	rm -rf $(C-APPDIR) $(HOSTDIR) c-client-rootfs host_uds_server

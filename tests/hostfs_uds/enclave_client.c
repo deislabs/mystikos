@@ -8,11 +8,13 @@
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <unistd.h>
 
 #define PATH_MAX 4096
+#define SNDTIMEO_SECS 5
 
 const char* hostdir = NULL;
 
@@ -64,12 +66,59 @@ int main(int argc, const char* argv[])
     int fd = socket(AF_LOCAL, SOCK_STREAM, 0);
     assert(fd >= 0);
 
+    {
+        struct timeval timeout;
+        socklen_t optlen = sizeof(struct timeval);
+        int ret = getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, &optlen);
+        assert(ret == 0);
+        printf(
+            "getsockopt() before set: tv_sec=%ld tv_usec=%ld\n",
+            timeout.tv_sec,
+            timeout.tv_usec);
+    }
+
+    {
+        struct timeval timeout;
+        timeout.tv_sec = SNDTIMEO_SECS;
+        timeout.tv_usec = 0;
+
+        int ret = setsockopt(
+            fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(struct timeval));
+        assert(ret == 0);
+    }
+
+    {
+        struct timeval timeout;
+        socklen_t optlen = sizeof(struct timeval);
+        int ret = getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, &optlen);
+        assert(ret == 0);
+        printf(
+            "getsockopt() after set: tv_sec=%ld tv_usec=%ld\n",
+            timeout.tv_sec,
+            timeout.tv_usec);
+        assert(timeout.tv_sec == SNDTIMEO_SECS);
+    }
+
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(struct sockaddr_un));
     addr.sun_family = AF_LOCAL;
     strncpy(addr.sun_path, sock_path, sizeof(addr.sun_path) - 1);
     assert(
         connect(fd, (struct sockaddr*)&addr, sizeof(struct sockaddr_un)) == 0);
+
+    /* connect() causes the socket device to be changed to host socket device,
+    verify the send timeout settings were transferred */
+    {
+        struct timeval timeout;
+        socklen_t optlen = sizeof(struct timeval);
+        int ret = getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, &optlen);
+        assert(ret == 0);
+        printf(
+            "getsockopt() after connect: tv_sec=%ld tv_usec=%ld\n",
+            timeout.tv_sec,
+            timeout.tv_usec);
+        assert(timeout.tv_sec == SNDTIMEO_SECS);
+    }
 
     {
         int nsend, nread;

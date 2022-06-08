@@ -1007,12 +1007,26 @@ int myst_sockdev_reresolve(
     socklen_t optlen = sizeof(type);
     ECHECK(myst_udsdev->sd_getsockopt(
         myst_udsdev, sock, SOL_SOCKET, SO_TYPE, &type, &optlen));
+
+    struct timeval so_sndtimeo;
+    optlen = sizeof(struct timeval);
+    ECHECK(myst_udsdev->sd_getsockopt(
+        myst_udsdev, sock, SOL_SOCKET, SO_SNDTIMEO, &so_sndtimeo, &optlen));
+
     ECHECK(myst_udsdev->sd_close(myst_udsdev, sock));
 
     // create the hostdev socket
     myst_sockdev_t* host_sockdev = myst_sockdev_get();
     ECHECK(host_sockdev->sd_socket(
         host_sockdev, AF_LOCAL, type, 0, &hostuds_sock));
+
+    ECHECK(host_sockdev->sd_setsockopt(
+        host_sockdev,
+        hostuds_sock,
+        SOL_SOCKET,
+        SO_SNDTIMEO,
+        &so_sndtimeo,
+        optlen));
 
     // update mount entry
     ECHECK(myst_fdtable_update_sock_entry(
