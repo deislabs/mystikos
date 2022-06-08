@@ -228,7 +228,7 @@ int _package(int argc, const char* argv[])
         uint8_t page[PAGE_SIZE];
         const int flags = O_CREAT | O_WRONLY | O_TRUNC;
 
-        if ((fd = open(rootfs_file, flags, 0666)) < 0)
+        if ((fd = open(rootfs_file, flags, 0640)) < 0)
             _err("failed to create temporary file");
 
         memset(page, 0, sizeof(page));

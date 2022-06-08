@@ -251,7 +251,7 @@ done:
 static int _create_uds_file(const char* path)
 {
     long ret = 0;
-    const int mode = 0666;
+    const int mode = 0600;
     int fd = -1;
 
     if ((fd = creat(path, mode)) < 0)
