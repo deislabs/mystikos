@@ -824,6 +824,10 @@ long myst_signal_deliver(
             // Wake up target if necessary
             if (thread->signal.waiting_on_event)
             {
+#ifdef TRACE
+                printf("thread sleeping on thread->event futex. Waking up "
+                       "thread..\n");
+#endif
                 myst_tcall_wake(thread->event);
             }
 

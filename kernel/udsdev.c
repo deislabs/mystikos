@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/un.h>
 
@@ -89,6 +90,9 @@ typedef struct shared
     /* support setsockopt(SO_SNDBUF/SO_RCVBUF) but ignore sizes */
     size_t so_sndbuf;
     size_t so_rcvbuf;
+
+    /* support setsockopt(SO_SNDTIMEO), timeout not enforced */
+    struct timeval so_sndtimeo;
 
     /* support setsockopt(SO_REUSEADDR) but ignore for AF_LOCAL */
     uint64_t so_reuseaddr;
@@ -1206,6 +1210,18 @@ static int _udsdev_getsockopt(
             *optlen = sizeof(int);
             break;
         }
+        case SO_SNDTIMEO:
+        {
+            if (!optval || !optlen)
+                ERAISE(-EINVAL);
+
+            memcpy(
+                optval,
+                &_obj(sock)->so_sndtimeo,
+                _min(*optlen, sizeof(struct timeval)));
+            *optlen = _min(*optlen, sizeof(struct timeval));
+            break;
+        }
         default:
         {
             MYST_ELOG("unsupported optname: %d\n", optname);
@@ -1322,6 +1338,14 @@ static int _udsdev_setsockopt(
             }
 
             _obj(sock)->so_rcvbuf = _max(_obj(sock)->so_rcvbuf, MIN_SO_RCVBUF);
+            break;
+        }
+        case SO_SNDTIMEO:
+        {
+            if (!optval)
+                ERAISE(-EINVAL);
+
+            memcpy(&_obj(sock)->so_sndtimeo, optval, sizeof(struct timeval));
             break;
         }
         default:
