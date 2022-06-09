@@ -272,3 +272,9 @@ done:
 
     return ret;
 }
+
+int myst_validate_file_path(const char* path)
+{
+    struct stat st;
+    return path == NULL || (stat(path, &st) == 0 && S_ISREG(st.st_mode));
+}

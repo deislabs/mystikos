@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -78,17 +79,6 @@ static int _getopt(
         _err("%s", err);
 
     return ret;
-}
-
-static void _check_regular_file(const char* path)
-{
-    struct stat st;
-
-    if (stat(path, &st) != 0)
-        _err("file not found: %s", path);
-
-    if (!S_ISREG(st.st_mode))
-        _err("wrong file type: %s", path);
 }
 
 #define MIN_PASSPHRASE_LENGTH 14
@@ -555,8 +545,8 @@ int mkext2_action(int argc, const char* argv[])
         pubkey = sign;
         privkey = colon + 1;
 
-        _check_regular_file(pubkey);
-        _check_regular_file(privkey);
+        assert(myst_validate_file_path(pubkey));
+        assert(myst_validate_file_path(privkey));
     }
 
     /* get the --size option */
@@ -608,7 +598,9 @@ int mkext2_action(int argc, const char* argv[])
         _create_ext2_image(dirname, image, size);
     }
 
+    assert(myst_validate_file_path(image));
     _append_hash_tree(image, size, &root_hash);
+
     _sign(image, pubkey, privkey, size, &root_hash);
 
     return 0;

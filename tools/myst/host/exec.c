@@ -663,6 +663,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     if (test_user_space_fsgsbase() == 0)
         options.have_fsgsbase_instructions = true;
 
+    assert(myst_validate_file_path(commandline_config));
     if (extract_roothashes_from_ext2_images(
             rootfs, &mount_mapping, &roothash_buf) != 0)
     {

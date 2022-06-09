@@ -26,4 +26,6 @@ int myst_copy_file_fd(char* oldpath, int newfd);
 
 int myst_chown_sudo_user(const char* path);
 
+int myst_validate_file_path(const char* path);
+
 #endif /* _MYST_FILE_H */
