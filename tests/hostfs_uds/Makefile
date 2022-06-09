@@ -23,8 +23,12 @@ net-client-rootfs:
 	$(APPBUILDER) -o net-appdir -m Dockerfile
 	$(MYST) mkext2 net-appdir net-client-rootfs
 
-ifdef STRACE
+ifdef STRACE-FILTER
 OPTS = --strace-filter SYS_epoll_pwait:SYS_socket:SYS_myst_clone:SYS_exit:SYS_setsockopt:SYS_connect:SYS_exit_group:SYS_exit
+endif
+
+ifdef STRACE
+OPTS = --strace
 endif
 
 HOSTDIR=/tmp/hostfs_uds_test/

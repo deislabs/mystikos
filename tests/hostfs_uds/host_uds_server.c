@@ -1,5 +1,6 @@
 
 #include <fcntl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -10,9 +11,13 @@
 #define PATH_MAX 4096
 
 const char* hostdir = NULL;
+char ready_path[PATH_MAX];
+bool ready = false;
 
 void failed()
 {
+    if (ready)
+        unlink(ready_path);
     char failed[PATH_MAX];
     snprintf(failed, PATH_MAX, "%s/SRVR_FAILED", hostdir);
     creat(failed, S_IRWXU | S_IROTH);
@@ -21,9 +26,9 @@ void failed()
 
 void publish_readiness()
 {
-    char ready[PATH_MAX];
-    snprintf(ready, PATH_MAX, "%s/SRVR_READY", hostdir);
-    creat(ready, S_IRWXU | S_IROTH);
+    ready = true;
+    snprintf(ready_path, PATH_MAX, "%s/SRVR_READY", hostdir);
+    creat(ready_path, S_IRWXU | S_IROTH);
 }
 
 void string_to_upper(char* s)
@@ -81,6 +86,8 @@ int main(int argc, const char* argv[])
 
     close(srvrfd);
     unlink(sock_path);
+    if (ready)
+        unlink(ready_path);
 
     return 0;
 }
