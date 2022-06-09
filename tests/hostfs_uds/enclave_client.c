@@ -3,8 +3,10 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/epoll.h>
 #include <sys/mount.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -17,6 +19,7 @@
 #define SNDTIMEO_SECS 5
 
 const char* hostdir = NULL;
+int epfd;
 
 void check_server_readiness_or_failure()
 {
@@ -45,6 +48,23 @@ void check_server_readiness_or_failure()
     }
 }
 
+void* event_thread_func(void* args)
+{
+    struct epoll_event evlist[5];
+    while (1)
+    {
+        int nready = epoll_wait(epfd, evlist, 5, -1);
+        // printf("nready=%d\n", nready);
+
+        if (nready == -1)
+        {
+            printf("errno= %d\n", errno);
+            break;
+        }
+    }
+    return NULL;
+}
+
 int main(int argc, const char* argv[])
 {
     if (argc != 2)
@@ -65,6 +85,20 @@ int main(int argc, const char* argv[])
 
     int fd = socket(AF_LOCAL, SOCK_STREAM, 0);
     assert(fd >= 0);
+
+    {
+        epfd = epoll_create1(EPOLL_CLOEXEC);
+        assert(epfd >= 0);
+
+        struct epoll_event ev;
+        ev.events = EPOLLIN | EPOLLOUT;
+        ev.data.fd = fd;
+        int ret = epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev);
+        assert(ret != -1);
+
+        pthread_t sock_event_thread;
+        pthread_create(&sock_event_thread, NULL, event_thread_func, NULL);
+    }
 
     {
         struct timeval timeout;
