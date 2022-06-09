@@ -611,6 +611,7 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     rootfs_arg = argv[2];
     program_arg = argv[3];
 
+    assert(myst_validate_file_path(rootfs_arg));
     if (extract_roothashes_from_ext2_images(
             rootfs_arg, &mount_mappings, &roothash_buf) != 0)
     {
@@ -648,6 +649,8 @@ int exec_linux_action(int argc, const char* argv[], const char* envp[])
     }
 
     /* load the regions into memory */
+    assert(myst_validate_file_path(app_config_path));
+    assert(myst_validate_file_path(rootfs_arg));
     if (!(details = create_region_details_from_files(
               program_arg,
               rootfs_arg,

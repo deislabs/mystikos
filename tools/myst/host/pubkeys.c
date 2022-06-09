@@ -1,3 +1,7 @@
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,6 +82,7 @@ void create_pubkeys_file(
     for (size_t i = 0; i < num_pubkeys; i++)
     {
         /* this function allocates space for a zero-terminator */
+        assert(myst_validate_file_path(pubkeys[i]));
         if (myst_load_file(pubkeys[i], &data, &size) != 0)
             _err("failed to read file given by --pubkey=%s", pubkeys[i]);
 

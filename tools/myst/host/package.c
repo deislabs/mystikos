@@ -241,6 +241,7 @@ int _package(int argc, const char* argv[])
         using_ext2 = true;
     }
 
+    assert(myst_validate_file_path(config_file));
     if (parse_config_from_file(config_file, &parsed_data) != 0)
     {
         fprintf(
@@ -469,6 +470,7 @@ int _package(int argc, const char* argv[])
     }
 
     // Add the config to myst
+    assert(myst_validate_file_path(config_file));
     if (_add_image_to_elf_section(&elf, config_file, ".mystconfig") != 0)
     {
         fprintf(
