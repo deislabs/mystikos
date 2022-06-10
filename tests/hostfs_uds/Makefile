@@ -71,4 +71,4 @@ killsrv:
 
 clean:
 	$(MAKE) killsrv	
-	rm -rf $(C-APPDIR) $(HOSTDIR) c-client-rootfs host_uds_server
+	rm -rf $(C-APPDIR) $(HOSTDIR) net-appdir c-client-rootfs net-client-rootfs host_uds_server
