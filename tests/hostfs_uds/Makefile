@@ -8,7 +8,7 @@ PROG = enclave_client
 APPBUILDER=$(TOP)/scripts/appbuilder
 
 all:
-	$(MAKE) c-client-rootfs
+	$(MAKE) net-client-rootfs
 	$(MAKE) build-server
 
 build-server:
@@ -24,11 +24,11 @@ net-client-rootfs:
 	$(MYST) mkext2 net-appdir net-client-rootfs
 
 ifdef STRACE-FILTER
-OPTS = --strace-filter SYS_epoll_pwait:SYS_socket:SYS_myst_clone:SYS_exit:SYS_setsockopt:SYS_connect:SYS_exit_group:SYS_exit
+OPTS += --strace-filter SYS_socket:SYS_myst_clone:SYS_exit:SYS_setsockopt:SYS_connect:SYS_exit_group:SYS_exit:SYS_epoll_create1:SYS_epoll_ctl:SYS_epoll_pwait:SYS_epoll_wait
 endif
 
 ifdef STRACE
-OPTS = --strace
+OPTS += --strace
 endif
 
 HOSTDIR=/tmp/hostfs_uds_test/
@@ -42,7 +42,7 @@ ls-hostdir:
 rm-hostdir:
 	rm -rf $(HOSTDIR) || true
 
-tests: all
+tests-c: all
 	$(MAKE) rm-hostdir
 	$(MAKE) mk-hostdir
 	$(MAKE) server
@@ -52,9 +52,9 @@ server:
 	./host_uds_server $(HOSTDIR) &
 
 client-c:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) c-client-rootfs /bin/$(PROG) $(HOSTDIR)
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) --host-uds c-client-rootfs /bin/$(PROG) $(HOSTDIR)
 
-tests-net:
+tests:
 	$(MAKE) rm-hostdir
 	$(MAKE) mk-hostdir
 	$(MAKE) server

@@ -27,5 +27,6 @@
           "Target": "/mnt/host",
           "Type": "hostfs"
         }
-    ]
+    ],
+    "HostUDS": true
 }

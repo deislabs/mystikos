@@ -229,6 +229,9 @@ typedef struct myst_kernel_args
     /* true if --report-native-tids is present */
     bool report_native_tids;
 
+    /* true if --host-uds on command line or HostUDS in json config */
+    bool host_uds;
+
     // From the --main-stack-size=<size> option.
     size_t main_stack_size;
 

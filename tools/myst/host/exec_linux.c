@@ -157,6 +157,10 @@ static void _get_options(
     if (cli_getopt(argc, argv, "--report-native-tids", NULL) == 0)
         opts->report_native_tids = true;
 
+    /* Get --nobrk option */
+    if (cli_getopt(argc, argv, "--host-uds", NULL) == 0)
+        opts->nobrk = true;
+
     if (get_fork_mode_opts(argc, argv, &opts->fork_mode) != 0)
         _err(
             "%s: invalid --fork-mode option. Only \"none\", "
@@ -495,19 +499,13 @@ static int _enter_kernel(
         }
     }
 
-    /* set the shell mode flag */
     kernel_args.shell_mode = final_options.base.shell_mode;
-
-    /* set whether debug symbols are needed */
     kernel_args.debug_symbols = final_options.base.debug_symbols;
-
     kernel_args.memcheck = final_options.base.memcheck;
-
     kernel_args.nobrk = final_options.base.nobrk;
-
     kernel_args.exec_stack = final_options.base.exec_stack;
-
     kernel_args.perf = final_options.base.perf;
+    kernel_args.host_uds = final_options.base.host_uds;
 
     /* check whether FSGSBASE instructions are supported */
     if (test_user_space_fsgsbase() == 0)
