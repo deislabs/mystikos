@@ -2374,30 +2374,21 @@ int myst_syscall_bind(
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t *sd, *new_sd;
-    myst_sock_t *sock, *new_sock;
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
     struct sockaddr* new_addr;
     socklen_t new_addrlen;
     bool reresolved;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ECHECK(myst_sockdev_reresolve(
-        sockfd,
-        sd,
-        sock,
-        addr,
-        addrlen,
-        &reresolved,
-        &new_sd,
-        &new_sock,
-        &new_addr,
-        &new_addrlen));
+    ECHECK(myst_host_uds_addr_reresolve(
+        sockfd, sd, sock, addr, addrlen, &reresolved, &new_addr, &new_addrlen));
 
     if (!reresolved)
         ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
     else
     {
-        ret = (*new_sd->sd_bind)(new_sd, new_sock, new_addr, new_addrlen);
+        ret = (*sd->sd_bind)(sd, sock, new_addr, new_addrlen);
         free(new_addr);
     }
 
@@ -2412,8 +2403,8 @@ long myst_syscall_connect(
 {
     long ret = 0;
     myst_fdtable_t* fdtable = myst_fdtable_current();
-    myst_sockdev_t *sd, *new_sd;
-    myst_sock_t *sock, *new_sock;
+    myst_sockdev_t* sd;
+    myst_sock_t* sock;
     struct sockaddr* new_addr;
     socklen_t new_addrlen;
     bool reresolved;
@@ -2428,23 +2419,14 @@ long myst_syscall_connect(
     if (myst_is_bad_addr_read(addr, sizeof(struct sockaddr)))
         ERAISE(-EFAULT);
 
-    ECHECK(myst_sockdev_reresolve(
-        sockfd,
-        sd,
-        sock,
-        addr,
-        addrlen,
-        &reresolved,
-        &new_sd,
-        &new_sock,
-        &new_addr,
-        &new_addrlen));
+    ECHECK(myst_host_uds_addr_reresolve(
+        sockfd, sd, sock, addr, addrlen, &reresolved, &new_addr, &new_addrlen));
 
     if (!reresolved)
         ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
     else
     {
-        ret = (*new_sd->sd_connect)(new_sd, new_sock, new_addr, new_addrlen);
+        ret = (*sd->sd_connect)(sd, sock, new_addr, new_addrlen);
         free(new_addr);
     }
 

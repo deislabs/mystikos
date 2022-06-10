@@ -470,6 +470,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         if (cli_getopt(&argc, argv, "--report-native-tids", NULL) == 0)
             options.report_native_tids = true;
 
+        /* Get --host-uds option */
+        if (cli_getopt(&argc, argv, "--host-uds", NULL) == 0)
+            options.host_uds = true;
+
         /* Get --max-affinity-cpus */
         {
             const char* arg = NULL;

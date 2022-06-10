@@ -718,6 +718,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.have_fsgsbase_instructions = args->have_fsgsbase_instructions;
     __options.report_native_tids = args->report_native_tids;
+    __options.host_uds = args->host_uds;
 
     /* enable error tracing if requested */
     if (args->trace_errors)

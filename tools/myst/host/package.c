@@ -666,6 +666,17 @@ int _exec_package(
         goto done;
     }
 
+    /* Check --host-uds option */
+    if (cli_getopt(&argc, argv, "--host-uds", NULL) == 0)
+    {
+        fprintf(
+            stderr,
+            "--host-uds not allowed for packaged applications."
+            " Can be enabled by setting HostUDS=true in "
+            "config.json\n");
+        goto done;
+    }
+
     /* Get --perf option */
     if (cli_getopt(&argc, argv, "--perf", NULL) == 0)
         options.perf = true;
@@ -864,6 +875,7 @@ int _exec_package(
     */
     options.nobrk = parsed_data.no_brk ? true : false;
     options.exec_stack = parsed_data.exec_stack ? true : false;
+    options.host_uds = parsed_data.host_uds ? true : false;
 
     if ((details = create_region_details_from_package(
              &sections, parsed_data.heap_pages)) == NULL)

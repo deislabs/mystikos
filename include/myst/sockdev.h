@@ -175,27 +175,24 @@ addr, addrlen - address being bound(server side) or connected(client
 side) to.
 
 Output params:
-reresolved - If 'sockdev' is myst kernel udsdev and 'addr' is a hostfs path, set
+reresolved - If 'sockdev' is host socket device and 'addr' is a hostfs path, set
 to true. Otherwise false.
 
 Rest of the output params are only set if 'reresolved' is true.
 
-sockdev_out, sock_out - host socket device and newly created host socket object.
 addr_out, addrlen_out - file path in input param 'addr' is a myst internal
 path. This function allocates addr_out and maps the file path to the
 corresponding host path. This is used subsequent by callers to pass as a
 parameter to host socket device function calls - like bind, connect.
 
 */
-int myst_sockdev_reresolve(
+int myst_host_uds_addr_reresolve(
     int sockfd,
     myst_sockdev_t* sockdev,
     myst_sock_t* sock,
     const struct sockaddr* addr,
     socklen_t addrlen,
     bool* reresolved,
-    myst_sockdev_t** sockdev_out,
-    myst_sock_t** sock_out,
     struct sockaddr** addr_out,
     socklen_t* addrlen_out);
 

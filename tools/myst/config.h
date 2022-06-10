@@ -75,6 +75,7 @@ typedef struct _config_parsed_data_t
     bool no_brk;
     bool exec_stack;
     bool unhandled_syscall_enosys;
+    bool host_uds;
 
     size_t main_stack_size;
     size_t thread_stack_size;

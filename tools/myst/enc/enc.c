@@ -693,6 +693,7 @@ static long _enter(void* arg_)
                                      ? final_options.base.main_stack_size
                                      : MYST_PROCESS_INIT_STACK_SIZE;
         _kargs.thread_stack_size = final_options.base.thread_stack_size;
+        _kargs.host_uds = final_options.base.host_uds;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions =
