@@ -43,16 +43,6 @@ static long _syscall_poll(
     struct timespec end;
     long lapsed = 0;
 
-    /* special case: if nfds is zero */
-    if (nfds == 0)
-    {
-        long r;
-        long params[6] = {(long)NULL, nfds, timeout};
-        ECHECK((r = myst_tcall(SYS_poll, params)));
-        ret = r;
-        goto done;
-    }
-
     if (!fds && nfds)
         ERAISE(-EFAULT);
 
