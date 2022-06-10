@@ -276,5 +276,9 @@ done:
 int myst_validate_file_path(const char* path)
 {
     struct stat st;
-    return path == NULL || (stat(path, &st) == 0 && S_ISREG(st.st_mode));
+    if (path == NULL ||
+        (stat(path, &st) == 0 && (S_ISREG(st.st_mode) || S_ISDIR(st.st_mode))))
+        return 1;
+    fprintf("The input path %s is invalid\n", path);
+    return 0;
 }
