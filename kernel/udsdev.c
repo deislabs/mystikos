@@ -1342,7 +1342,7 @@ static int _udsdev_setsockopt(
         }
         case SO_SNDTIMEO:
         {
-            if (!optval)
+            if (!optval || optlen < sizeof(struct timeval))
                 ERAISE(-EINVAL);
 
             memcpy(&_obj(sock)->so_sndtimeo, optval, sizeof(struct timeval));

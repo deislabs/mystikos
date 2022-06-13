@@ -428,7 +428,7 @@ static json_result_t _json_read_callback(
                 if (type == JSON_TYPE_BOOLEAN)
                     parsed_data->host_uds = un->boolean;
                 else if (type == JSON_TYPE_INTEGER)
-                    parsed_data->host_uds = (un->integer == 0) ? false : true;
+                    parsed_data->host_uds = (un->integer == 0);
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }

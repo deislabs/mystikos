@@ -988,7 +988,7 @@ int myst_host_uds_addr_reresolve(
 
     const struct sockaddr_un* sun = (const struct sockaddr_un*)addr;
 
-    /* abstract namespace UDSes need no address updation */
+    /* abstract namespace UDSs need no address update */
     if (*sun->sun_path == '\0')
         return 0;
 
