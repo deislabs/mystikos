@@ -372,7 +372,6 @@ static const myst_syscall_pair_t _pairs[] = {
     PAIR(SYS_myst_clone),
     PAIR(SYS_myst_poll_wake),
     PAIR(SYS_myst_run_itimer),
-    PAIR(SYS_myst_start_shell),
     PAIR(SYS_myst_gcov),
     PAIR(SYS_myst_unmap_on_exit),
     PAIR(SYS_myst_get_fork_info),
@@ -404,7 +403,6 @@ __attribute__((__unused__)) static void _check_myst_syscalls(void)
         case SYS_myst_clone:
         case SYS_myst_poll_wake:
         case SYS_myst_run_itimer:
-        case SYS_myst_start_shell:
         case SYS_myst_gcov:
         case SYS_myst_unmap_on_exit:
         case SYS_myst_get_fork_info:

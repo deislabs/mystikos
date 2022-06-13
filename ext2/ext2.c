@@ -1281,7 +1281,7 @@ static int _path_to_ino_recursive(
     myst_strarr_t toks = MYST_STRARR_INITIALIZER;
     char* p;
     char* save;
-    uint8_t i;
+    size_t i;
     ext2_ino_t previous_ino = 0;
     void* data = NULL;
     size_t size;

@@ -21,7 +21,6 @@ typedef enum
     SYS_myst_clone = 2008,
     SYS_myst_poll_wake = 2009,
     SYS_myst_run_itimer = 2010,
-    SYS_myst_start_shell = 2011,
     SYS_myst_gcov = 2012,
     SYS_myst_unmap_on_exit = 2013,
     SYS_myst_get_fork_info = 2014,
@@ -30,7 +29,8 @@ typedef enum
     SYS_myst_fork_wait_exec_exit = 2017,
     SYS_myst_get_exec_stack_option = 2018,
     SYS_myst_interrupt_thread = 2019,
-    SYS_myst_pre_launch_hook = 2020
+    SYS_myst_pre_launch_hook = 2020,
+    /* ATTN: when removing any of these, scan for any hardcoded number usage */
 } myst_syscall_t;
 
 #define MYST_MAX_SYSCALLS 3000

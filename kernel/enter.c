@@ -705,11 +705,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         args->trace_errors = false;
         args->trace_times = false;
         memset(&args->strace_config, 0, sizeof(args->strace_config));
-        args->shell_mode = false;
         args->memcheck = false;
         args->perf = false;
         args->debug_symbols = false;
-        args->shell_mode = false;
         args->report_native_tids = false;
     }
 
@@ -835,9 +833,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
     myst_times_start();
-
-    if (args->shell_mode)
-        myst_start_shell("\nMystikos shell (enter)\n");
 
     /* print how long it took to boot */
     if (__myst_kernel_args.perf || __myst_kernel_args.trace_times)
@@ -974,9 +969,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* Wait for all other processes to exit */
         while (process->prev_process || process->next_process)
             myst_sleep_msec(10, false);
-
-        if (args->shell_mode)
-            myst_start_shell("\nMystikos shell (exit)\n");
 
         /* Free CWD */
         free(process->cwd);

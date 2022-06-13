@@ -79,7 +79,6 @@ long determine_final_options(
             final_opts->base.strace_config = cmdline_opts->strace_config;
             final_opts->base.trace_errors = cmdline_opts->trace_errors;
             final_opts->base.trace_times = cmdline_opts->trace_times;
-            final_opts->base.shell_mode = cmdline_opts->shell_mode;
             final_opts->base.debug_symbols = cmdline_opts->debug_symbols;
             final_opts->base.memcheck = cmdline_opts->memcheck;
             final_opts->base.perf = cmdline_opts->perf;
@@ -94,7 +93,6 @@ long determine_final_options(
                 sizeof(final_opts->base.strace_config));
             final_opts->base.trace_errors = false;
             final_opts->base.trace_times = false;
-            final_opts->base.shell_mode = false;
             final_opts->base.debug_symbols = false;
             final_opts->base.memcheck = false;
             final_opts->base.perf = false;
