@@ -17,7 +17,6 @@ typedef struct myst_options
     bool have_fsgsbase_instructions;
     bool trace_errors;
     bool trace_times;
-    bool shell_mode;
     bool debug_symbols;
     bool memcheck;
     bool nobrk;

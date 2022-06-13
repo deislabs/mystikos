@@ -4022,18 +4022,6 @@ static long _SYS_myst_run_itimer(
     return (_return(n, myst_syscall_run_itimer(process)));
 }
 
-static long _SYS_myst_start_shell(long n, long params[6])
-{
-    (void)params;
-
-    _strace(n, NULL);
-
-    if (__myst_kernel_args.shell_mode)
-        myst_start_shell("\nMystikos shell (syscall)\n");
-
-    return (_return(n, 0));
-}
-
 static long _SYS_getitimer(long n, long params[6], myst_process_t* process)
 {
     int which = (int)params[0];
@@ -6695,10 +6683,6 @@ static long _syscall(void* args_)
         case SYS_myst_run_itimer:
         {
             BREAK(_SYS_myst_run_itimer(n, params, process));
-        }
-        case SYS_myst_start_shell:
-        {
-            BREAK(_SYS_myst_start_shell(n, params));
         }
         case SYS_getitimer:
         {

@@ -133,10 +133,6 @@ static void _get_options(
         opts->trace_times = true;
     }
 
-    /* Get --shell option */
-    if (cli_getopt(argc, argv, "--shell", NULL) == 0)
-        opts->shell_mode = true;
-
     /* Get --memcheck option */
     if (cli_getopt(argc, argv, "--memcheck", NULL) == 0)
         opts->memcheck = true;
@@ -499,7 +495,7 @@ static int _enter_kernel(
         }
     }
 
-    kernel_args.shell_mode = final_options.base.shell_mode;
+    /* set whether debug symbols are needed */
     kernel_args.debug_symbols = final_options.base.debug_symbols;
     kernel_args.memcheck = final_options.base.memcheck;
     kernel_args.nobrk = final_options.base.nobrk;

@@ -211,9 +211,6 @@ typedef struct myst_kernel_args
     /* whether debug symbols are needed */
     bool debug_symbols;
 
-    /* true if --shell option present */
-    bool shell_mode;
-
     /* true if --memcheck option present */
     bool memcheck;
 
@@ -284,8 +281,6 @@ typedef struct myst_malloc_stats
 int myst_get_malloc_stats(myst_malloc_stats_t* stats);
 
 int myst_find_leaks(void);
-
-void myst_start_shell(const char* msg);
 
 const char* myst_syscall_str(long n);
 
