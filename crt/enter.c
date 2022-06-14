@@ -271,7 +271,7 @@ bool myst_get_exec_stack_option()
 int myst_retrieve_wanted_secrets()
 {
     int ret = -1;
-    FILE* file = NULL;
+    int fd = -1;
     void* handle = NULL;
 
     if (_wanted_secrets == NULL || _wanted_secrets->secrets_count == 0)
@@ -372,8 +372,8 @@ int myst_retrieve_wanted_secrets()
         terminate_fn();
 
         /* Save the released secret to the specified file */
-        file = fopen(tmp->local_path, "w+");
-        if (file == NULL)
+        fd = open(tmp->local_path, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+        if (fd < 0)
         {
             fprintf(
                 stderr,
@@ -382,11 +382,9 @@ int myst_retrieve_wanted_secrets()
             goto done;
         }
 
-        fchmod(fileno(file), S_IWUSR | S_IRUSR | S_IRGRP);
-
-        r = fwrite(release_secret.data, 1, release_secret.length, file);
-        fclose(file);
-        file = NULL;
+        r = write(fd, release_secret.data, release_secret.length);
+        close(fd);
+        fd = -1;
         if (r != release_secret.length)
         {
             fprintf(
@@ -404,8 +402,8 @@ int myst_retrieve_wanted_secrets()
 
 done:
 
-    if (file)
-        fclose(file);
+    if (fd != -1)
+        close(fd);
 
     if (handle)
         dlclose(handle);
