@@ -244,8 +244,13 @@ int main(int argc, const char* argv[])
 
     /* if docker image argument is a file, read image id from that file */
     assert(myst_validate_file_path(docker_image));
-    if (myst_load_file(docker_image, &data, &size) == 0)
-        docker_image = data;
+    if (docker_image && strstr(docker_image, "..") == NULL)
+    {
+        if (myst_load_file(docker_image, &data, &size) == 0)
+            docker_image = data;
+    }
+    else
+        printf("Invalid path: %s\n", docker_image);
 
     /* verify that the mount directory exists */
     {
