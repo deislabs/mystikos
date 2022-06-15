@@ -23,3 +23,5 @@ __vfprintf_chk myst_gcov___vfprintf_chk
 __sprintf_chk myst_gcov___sprintf_chk
 exit myst_gcov_exit
 strcat myst_gcov_strcat
+malloc myst_gcov_malloc
+free myst_gcov_free

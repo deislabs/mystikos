@@ -20,6 +20,18 @@ long myst_gcov(const char* func, long params[6]);
 
 int myst_gcov_fprintf(FILE* stream, const char* format, ...);
 
+void* myst_gcov_malloc(size_t size)
+{
+    long params[6] = {(long)size};
+    return (void*)myst_gcov(__FUNCTION__, params);
+}
+
+void myst_gcov_free(void* ptr)
+{
+    long params[6] = {(long)ptr};
+    myst_gcov(__FUNCTION__, params);
+}
+
 _Noreturn void myst_gcov_abort(void)
 {
     myst_gcov(__FUNCTION__, NULL);
@@ -167,7 +179,7 @@ int myst_gcov_vfprintf(FILE* stream, const char* format, va_list ap)
         goto done;
     }
 
-    if (!(str = malloc(len + 1)))
+    if (!(str = myst_gcov_malloc(len + 1)))
         goto done;
 
     if ((len = vsnprintf(str, len + 1, format, ap)) < 0)
@@ -181,7 +193,7 @@ int myst_gcov_vfprintf(FILE* stream, const char* format, va_list ap)
 done:
 
     if (str)
-        free(str);
+        myst_gcov_free(str);
 
     return ret;
 }

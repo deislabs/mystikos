@@ -346,6 +346,16 @@ static int _popcountdi2(unsigned long a)
     return (int)nbits;
 }
 
+static void* _malloc(size_t size)
+{
+    return oe_host_malloc(size);
+}
+
+static void _free(void* ptr)
+{
+    oe_host_free(ptr);
+}
+
 long myst_gcov(const char* func, long params[6])
 {
     if (strcmp(func, "myst_gcov_abort") == 0)
@@ -503,9 +513,19 @@ long myst_gcov(const char* func, long params[6])
         unsigned long a = (unsigned long)params[0];
         return (long)_popcountdi2(a);
     }
+    else if (strcmp(func, "myst_gcov_malloc") == 0)
+    {
+        return (long)_malloc((size_t)params[0]);
+    }
+    else if (strcmp(func, "myst_gcov_free") == 0)
+    {
+        _free((void*)params[0]);
+        return 0;
+    }
     else
     {
-        fprintf(stderr, "unhandled gcov function: %s\n", func);
+        fprintf(stderr, "%s(%u): %s(): unhandled gcov function: %s\n",
+            __FILE__, __LINE__, __FUNCTION__, func);
         fflush(stderr);
         abort();
     }

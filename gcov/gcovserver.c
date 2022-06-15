@@ -120,9 +120,19 @@ long myst_gcov(const char* func, long p[6])
     {
         return (long)strcat((char*)p[0], (const char*)p[1]);
     }
+    else if (strcmp(func, "myst_gcov_malloc") == 0)
+    {
+        return (long)malloc((size_t)p[0]);
+    }
+    else if (strcmp(func, "myst_gcov_free") == 0)
+    {
+        free((void*)p[0]);
+        return 0;
+    }
     else
     {
-        fprintf(stderr, "unhandled gcov function: %s\n", func);
+        fprintf(stderr, "%s(%u): %s(): unhandled gcov function: %s\n",
+            __FILE__, __LINE__, __FUNCTION__, func);
         fflush(stderr);
         abort();
     }
