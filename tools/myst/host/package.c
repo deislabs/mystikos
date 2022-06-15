@@ -70,13 +70,13 @@ static int _add_image_to_elf_section(
 
     if (myst_load_file(path, &image, &image_length) != 0)
     {
-        _err("Failed to load %s", path);
+        _err_noexit("Failed to load %s", path);
         goto done;
     }
     if (elf_add_section(elf, section_name, SHT_PROGBITS, image, image_length) !=
         0)
     {
-        _err("Failed to add %s to elf image", path);
+        _err_noexit("Failed to add %s to elf image", path);
         goto done;
     }
     free(image);
@@ -128,7 +128,7 @@ int _package(int argc, const char* argv[])
     if ((argc < 4) || (cli_getopt(&argc, argv, "--help", NULL) == 0) ||
         (cli_getopt(&argc, argv, "-h", NULL) == 0))
     {
-        _err(USAGE_PACKAGE, argv[0], argv[0]);
+        _err_noexit(USAGE_PACKAGE, argv[0], argv[0]);
         goto done;
     }
 
@@ -136,7 +136,6 @@ int _package(int argc, const char* argv[])
     if (myst_getopt(&argc, argv, "--outfile", &outfile, err, sizeof(err)) < 0)
     {
         _err("%s: %s\n", argv[0], err);
-        exit(1);
     }
 
     /* Get the -o=file option (the short-form of --outfile) */
@@ -144,7 +143,6 @@ int _package(int argc, const char* argv[])
         myst_getopt(&argc, argv, "-o", &outfile, err, sizeof(err)) < 0)
     {
         _err("%s: %s\n", argv[0], err);
-        exit(1);
     }
 
     cli_getopt(&argc, argv, "--signing-engine-name", &signing_engine_name);
@@ -153,11 +151,11 @@ int _package(int argc, const char* argv[])
     if ((signing_engine_key || signing_engine_name || signing_engine_path) &&
         (!signing_engine_key || !signing_engine_name || !signing_engine_path))
     {
-        _err("If using a signing engine all three parameters are required: "
-             "--signing-engine-key, "
-             "--signing-engine-name and --signing-engine-path\n");
+        _err_noexit(
+            "If using a signing engine all three parameters are required: "
+            "--signing-engine-key, "
+            "--signing-engine-name and --signing-engine-path\n");
         _err(USAGE_PACKAGE, argv[0], argv[0]);
-        return -1;
     }
 
     // We are in the right operation, right?
@@ -188,13 +186,13 @@ int _package(int argc, const char* argv[])
     tmp_dir = mkdtemp(dir_template);
     if (tmp_dir == NULL)
     {
-        _err("Failed to create temporary directory in /tmp\n");
+        _err_noexit("Failed to create temporary directory in /tmp\n");
         goto done;
     }
 
     if (snprintf(rootfs_file, PATH_MAX, "%s/rootfs.pkg", tmp_dir) >= PATH_MAX)
     {
-        _err("File path too long? %s/rootfs.pkg\n", tmp_dir);
+        _err_noexit("File path too long? %s/rootfs.pkg\n", tmp_dir);
         goto done;
     }
 
@@ -208,7 +206,7 @@ int _package(int argc, const char* argv[])
         if (_mkcpio(
                 sizeof(mkcpio_args) / sizeof(mkcpio_args[0]), mkcpio_args) != 0)
         {
-            _err(
+            _err_noexit(
                 "Failed to create root filesystem \"%s\" from directory "
                 "\"%s\"\n",
                 rootfs_file,
@@ -241,7 +239,7 @@ int _package(int argc, const char* argv[])
     assert(myst_validate_file_path(config_file));
     if (parse_config_from_file(config_file, &parsed_data) != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to generate OE configuration file %s from Mystikos "
             "configuration file %s\n",
             scratch_path2,
@@ -265,7 +263,7 @@ int _package(int argc, const char* argv[])
     target = parsed_data.application_path;
     if ((target == NULL) || (target[0] != '/'))
     {
-        _err(
+        _err_noexit(
             "target in config file must be fully qualified path within rootfs");
         goto done;
     }
@@ -273,13 +271,13 @@ int _package(int argc, const char* argv[])
     appname = strrchr(target, '/');
     if (appname == NULL)
     {
-        _err("Failed to get appname from target path");
+        _err_noexit("Failed to get appname from target path");
         goto done;
     }
     appname++;
     if (*appname == '\0')
     {
-        _err("Failed to get appname from target path");
+        _err_noexit("Failed to get appname from target path");
         goto done;
     }
 
@@ -309,7 +307,7 @@ int _package(int argc, const char* argv[])
                 sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
                 sign_engine_args) != 0)
         {
-            _err("Failed to sign enclave file");
+            _err_noexit("Failed to sign enclave file");
             goto done;
         }
     }
@@ -336,7 +334,7 @@ int _package(int argc, const char* argv[])
                 sizeof(sign_engine_args) / sizeof(sign_engine_args[0]),
                 sign_engine_args) != 0)
         {
-            _err("Failed to sign enclave file");
+            _err_noexit("Failed to sign enclave file");
             goto done;
         }
     }
@@ -358,7 +356,7 @@ int _package(int argc, const char* argv[])
         // Sign and copy everything into app.signed directory
         if (_sign(sizeof(sign_args) / sizeof(sign_args[0]), sign_args) != 0)
         {
-            _err("Failed to sign enclave file");
+            _err_noexit("Failed to sign enclave file");
             goto done;
         }
     }
@@ -372,12 +370,12 @@ int _package(int argc, const char* argv[])
     // as named sections in the image
     if (snprintf(scratch_path, PATH_MAX, "%s/bin/myst", tmp_dir) >= PATH_MAX)
     {
-        _err("File path to long: %s/bin/myst", tmp_dir);
+        _err_noexit("File path too long: %s/bin/myst", tmp_dir);
         goto done;
     }
     if (elf_load(scratch_path, &elf) != 0)
     {
-        _err("Failed to load %s/bin/myst", tmp_dir);
+        _err_noexit("Failed to load %s/bin/myst", tmp_dir);
         goto done;
     }
 
@@ -386,12 +384,14 @@ int _package(int argc, const char* argv[])
             scratch_path, PATH_MAX, "%s/lib/openenclave/mystenc.so", tmp_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/openenclave/lib/mystenc.so", tmp_dir);
+        _err_noexit(
+            "File path too long: %s/openenclave/lib/mystenc.so", tmp_dir);
         goto done;
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".mystenc") != 0)
     {
-        _err("Failed to add %s to enclave section .mystenc", scratch_path);
+        _err_noexit(
+            "Failed to add %s to enclave section .mystenc", scratch_path);
         goto done;
     }
 
@@ -399,12 +399,12 @@ int _package(int argc, const char* argv[])
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/libmystcrt.so", tmp_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/lib/libmystcrt.so", tmp_dir);
+        _err_noexit("File path too long: %s/lib/libmystcrt.so", tmp_dir);
         goto done;
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".libmystcrt") != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .lioscrt", scratch_path);
         goto done;
     }
@@ -413,12 +413,12 @@ int _package(int argc, const char* argv[])
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/libmystkernel.so", tmp_dir) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/lib/libmystkernel.so", tmp_dir);
+        _err_noexit("File path too long: %s/lib/libmystkernel.so", tmp_dir);
         goto done;
     }
     if (_add_image_to_elf_section(&elf, scratch_path, ".libmystkernel") != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .libmystkernel",
             scratch_path);
         goto done;
@@ -427,7 +427,7 @@ int _package(int argc, const char* argv[])
     // Add the rootfs to myst
     if (_add_image_to_elf_section(&elf, rootfs_file, ".mystrootfs") != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .mystrootfs",
             rootfs_file);
         goto done;
@@ -436,7 +436,7 @@ int _package(int argc, const char* argv[])
     // Add the pubkeys to myst
     if (_add_image_to_elf_section(&elf, pubkeys_file, ".mystpubkeys") != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .mystpubkeys",
             pubkeys_file);
         goto done;
@@ -446,7 +446,7 @@ int _package(int argc, const char* argv[])
     if (_add_image_to_elf_section(&elf, roothashes_file, ".mystroothashes") !=
         0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .mystroothashes",
             roothashes_file);
         goto done;
@@ -456,7 +456,7 @@ int _package(int argc, const char* argv[])
     assert(myst_validate_file_path(config_file));
     if (_add_image_to_elf_section(&elf, config_file, ".mystconfig") != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to add image %s to enclave section .mystconfig",
             config_file);
         goto done;
@@ -466,13 +466,13 @@ int _package(int argc, const char* argv[])
     if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", tmp_dir, appname) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/bin/%s", tmp_dir, appname);
+        _err_noexit("File path too long: %s/bin/%s", tmp_dir, appname);
         goto done;
     }
     int fd = open(scratch_path, O_WRONLY | O_CREAT | O_TRUNC, 0774);
     if (fd == 0)
     {
-        _err(
+        _err_noexit(
             "Failed to epn file to write final binary image back to %s",
             scratch_path);
         goto done;
@@ -480,7 +480,8 @@ int _package(int argc, const char* argv[])
     if (myst_write_file_fd(fd, elf.data, elf.size) != 0)
     {
         close(fd);
-        _err("File to save final binary image back to: %s", scratch_path);
+        _err_noexit(
+            "File to save final binary image back to: %s", scratch_path);
         goto done;
     }
     close(fd);
@@ -493,19 +494,19 @@ int _package(int argc, const char* argv[])
     // Create destination directory myst/bin
     if ((mkdir("myst", 0775) != 0) && (errno != EEXIST))
     {
-        _err("Failed to make destination directory myst\n");
+        _err_noexit("Failed to make destination directory myst\n");
         goto done;
     }
     if ((mkdir("myst/bin", 0775) != 0) && (errno != EEXIST))
     {
-        _err("Failed to make destination directory myst/bin\n");
+        _err_noexit("Failed to make destination directory myst/bin\n");
         goto done;
     }
 
     // Destination filename
     if (snprintf(scratch_path, PATH_MAX, "myst/bin/%s", appname) >= PATH_MAX)
     {
-        _err("File path to long: myst/bin/%s", appname);
+        _err_noexit("File path too long: myst/bin/%s", appname);
         goto done;
     }
 
@@ -513,7 +514,7 @@ int _package(int argc, const char* argv[])
     if (snprintf(scratch_path2, PATH_MAX, "%s/bin/%s", tmp_dir, appname) >=
         PATH_MAX)
     {
-        _err("File path to long: %s/bin/%s", tmp_dir, appname);
+        _err_noexit("File path too long: %s/bin/%s", tmp_dir, appname);
         goto done;
     }
 
@@ -522,7 +523,7 @@ int _package(int argc, const char* argv[])
 
     if (myst_copy_file(scratch_path2, outfile) != 0)
     {
-        _err(
+        _err_noexit(
             "Failed to copy final package from %s to %s",
             scratch_path2,
             outfile);
@@ -627,26 +628,26 @@ int _exec_package(
     /* Check --nobrk option */
     if (cli_getopt(&argc, argv, "--nobrk", NULL) == 0)
     {
-        _err("--nobrk not allowed for packaged applications."
-             " Can be enabled by setting NoBrk=true in config.json\n");
+        _err_noexit("--nobrk not allowed for packaged applications."
+                    " Can be enabled by setting NoBrk=true in config.json\n");
         goto done;
     }
 
     /* Check --exec-stack option */
     if (cli_getopt(&argc, argv, "--exec-stack", NULL) == 0)
     {
-        _err("--exec-stack not allowed for packaged applications."
-             " Can be enabled by setting ExecStack=true in "
-             "config.json\n");
+        _err_noexit("--exec-stack not allowed for packaged applications."
+                    " Can be enabled by setting ExecStack=true in "
+                    "config.json\n");
         goto done;
     }
 
     /* Check --host-uds option */
     if (cli_getopt(&argc, argv, "--host-uds", NULL) == 0)
     {
-        _err("--host-uds not allowed for packaged applications."
-             " Can be enabled by setting HostUDS=true in "
-             "config.json\n");
+        _err_noexit("--host-uds not allowed for packaged applications."
+                    " Can be enabled by setting HostUDS=true in "
+                    "config.json\n");
         goto done;
     }
 
@@ -669,7 +670,8 @@ int _exec_package(
 
             if (!end || *end != '\0')
             {
-                _err("%s: bad --max-affinity-cpus=%s option\n", argv[0], arg);
+                _err_noexit(
+                    "%s: bad --max-affinity-cpus=%s option\n", argv[0], arg);
                 goto done;
             }
 
@@ -685,13 +687,13 @@ int _exec_package(
         {
             if (access(arg, R_OK) != 0)
             {
-                _err("%s: bad --rootfs option: %s", argv[0], arg);
+                _err_noexit("%s: bad --rootfs option: %s", argv[0], arg);
                 goto done;
             }
 
             if (MYST_STRLCPY(options.rootfs, arg) >= sizeof(options.rootfs))
             {
-                _err(
+                _err_noexit(
                     "--rootfs option is too long (> %zu)\n",
                     sizeof(options.rootfs));
                 goto done;
@@ -711,7 +713,7 @@ int _exec_package(
 
     if (!realpath(argv[0], full_app_path))
     {
-        _err("Invalid path %s\n", argv[0]);
+        _err_noexit("Invalid path %s\n", argv[0]);
         goto done;
     }
 
@@ -719,7 +721,7 @@ int _exec_package(
 
     if (!(app_name = strrchr(full_app_path, '/')))
     {
-        _err("Invalid path (missing slash): %s\n", full_app_path);
+        _err_noexit("Invalid path (missing slash): %s\n", full_app_path);
         goto done;
     }
 
@@ -730,45 +732,45 @@ int _exec_package(
     // as well as the directory structure we need
     if ((unpack_dir = mkdtemp(unpack_dir_template)) == NULL)
     {
-        _err("Failed to create unpack directory\n");
+        _err_noexit("Failed to create unpack directory\n");
         goto done;
     }
     if (snprintf(scratch_path, PATH_MAX, "%s/lib", unpack_dir) >= PATH_MAX)
     {
-        _err("File path %s/lib is too long\n", unpack_dir);
+        _err_noexit("File path %s/lib is too long\n", unpack_dir);
         goto done;
     }
     if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".\n", scratch_path);
+        _err_noexit("Failed to create directory \"%s\".\n", scratch_path);
         goto done;
     }
     if (snprintf(scratch_path, PATH_MAX, "%s/bin", unpack_dir) >= PATH_MAX)
     {
-        _err("File path %s/bin is too long\n", unpack_dir);
+        _err_noexit("File path %s/bin is too long\n", unpack_dir);
         goto done;
     }
     if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".\n", scratch_path);
+        _err_noexit("Failed to create directory \"%s\".\n", scratch_path);
         goto done;
     }
     if (snprintf(scratch_path, PATH_MAX, "%s/lib/openenclave", unpack_dir) >=
         PATH_MAX)
     {
-        _err("File path %s/lib/openenclave is too long\n", unpack_dir);
+        _err_noexit("File path %s/lib/openenclave is too long\n", unpack_dir);
         goto done;
     }
     if ((mkdir(scratch_path, DIR_MODE) != 0) && (errno != EEXIST))
     {
-        _err("Failed to create directory \"%s\".\n", scratch_path);
+        _err_noexit("Failed to create directory \"%s\".\n", scratch_path);
         goto done;
     }
 
     // Load main executable so we can extract sections
     if (load_sections(get_program_file(), &sections) != 0)
     {
-        _err("failed to load myst image: %s\n", get_program_file());
+        _err_noexit("failed to load myst image: %s\n", get_program_file());
         goto done;
     }
 
@@ -776,12 +778,13 @@ int _exec_package(
     if (snprintf(scratch_path, PATH_MAX, "%s/bin/%s", unpack_dir, app_name) >=
         PATH_MAX)
     {
-        _err("File path %s/bin/%s is too long\n", unpack_dir, app_name);
+        _err_noexit("File path %s/bin/%s is too long\n", unpack_dir, app_name);
         goto done;
     }
     if (myst_copy_file(get_program_file(), scratch_path) < 0)
     {
-        _err("Failed to copy %s to %s\n", get_program_file(), scratch_path);
+        _err_noexit(
+            "Failed to copy %s to %s\n", get_program_file(), scratch_path);
         goto done;
     }
 
@@ -792,14 +795,14 @@ int _exec_package(
             "%s/lib/openenclave/mystenc.so",
             unpack_dir) >= PATH_MAX)
     {
-        _err("File path %s/lib/openenclave/ is too long\n", unpack_dir);
+        _err_noexit("File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
 
     if (myst_write_file(
             scratch_path, sections.mystenc_data, sections.mystenc_size) != 0)
     {
-        _err("Failed to write %s\n", scratch_path);
+        _err_noexit("Failed to write %s\n", scratch_path);
         goto done;
     }
 
@@ -812,7 +815,7 @@ int _exec_package(
             sections.mystconfig_size,
             &parsed_data) != 0)
     {
-        _err("Failed to process configuration\n");
+        _err_noexit("Failed to process configuration\n");
     }
     if ((parsed_data.allow_host_parameters == 0) && (argc > 1))
     {
@@ -821,7 +824,7 @@ int _exec_package(
     }
     if (parsed_data.application_path == NULL)
     {
-        _err(
+        _err_noexit(
             "No target filename in configuration. This should be the fully "
             "qualified path to the executable within the "
             "%s directory, but should be relative to this directory\n",
@@ -840,7 +843,7 @@ int _exec_package(
     if ((details = create_region_details_from_package(
              &sections, parsed_data.heap_pages)) == NULL)
     {
-        _err("Failed to extract all sections\n");
+        _err_noexit("Failed to extract all sections\n");
         goto done;
     }
 
@@ -853,19 +856,19 @@ int _exec_package(
 
             if (!(env = getenv("MYST_ROOTFS_PATH")))
             {
-                _err("MYST_ROOTFS_PATH is undefined\n");
+                _err_noexit("MYST_ROOTFS_PATH is undefined\n");
                 goto done;
             }
 
             if (access(env, R_OK) != 0)
             {
-                _err("MYST_ROOTFS_PATH=%s not found\n", env);
+                _err_noexit("MYST_ROOTFS_PATH=%s not found\n", env);
                 goto done;
             }
 
             if (MYST_STRLCPY(options.rootfs, env) >= sizeof(options.rootfs))
             {
-                _err(
+                _err_noexit(
                     "MYST_ROOTFS_PATH is too long (> %zu)\n",
                     sizeof(options.rootfs));
                 goto done;
@@ -885,7 +888,7 @@ int _exec_package(
     exec_args = malloc((num_args + 1) * sizeof(char*));
     if (exec_args == NULL)
     {
-        _err("out of memory\n");
+        _err_noexit("out of memory\n");
         goto done;
     }
     exec_args[0] = parsed_data.application_path;
@@ -903,7 +906,7 @@ int _exec_package(
             "%s/lib/openenclave/mystenc.so",
             unpack_dir) >= PATH_MAX)
     {
-        _err("File path %s/lib/openenclave/ is too long\n", unpack_dir);
+        _err_noexit("File path %s/lib/openenclave/ is too long\n", unpack_dir);
         goto done;
     }
 
@@ -911,7 +914,7 @@ int _exec_package(
         scratch_path, type, flags, exec_args, envp, &mount_mappings, &options);
     if (ret != 0)
     {
-        _err("Enclave %s returned %d\n", scratch_path, ret);
+        _err_noexit("Enclave %s returned %d\n", scratch_path, ret);
         goto done;
     }
 

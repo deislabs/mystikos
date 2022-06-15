@@ -105,6 +105,17 @@ __attribute__((format(printf, 1, 2))) void _err(const char* fmt, ...)
     exit(1);
 }
 
+__attribute__((format(printf, 1, 2))) void _err_noexit(const char* fmt, ...)
+{
+    va_list ap;
+
+    fprintf(stderr, "%s: error: ", get_program_file());
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fprintf(stderr, "\n");
+}
+
 int unlink_cb(
     const char* fpath,
     const struct stat* sb,

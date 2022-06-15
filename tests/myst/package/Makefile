@@ -57,7 +57,7 @@ test4:
 test5:
 	@ echo "=== TEST5"
 	$(MYST) package --roothash=bad_roothash private.pem config.json
-	( MYST_ROOTFS_PATH=rootfs.ext2 ./myst/bin/hello; test "$$?" -eq "1" )
+	( MYST_ROOTFS_PATH=rootfs.ext2 ./myst/bin/hello; test "$$?" -eq "234" )
 
 # test package with --pubkey=<pemfile> (with right public key)
 test6:
@@ -70,7 +70,7 @@ test6:
 test7:
 	@ echo "=== TEST7"
 	$(MYST) package --pubkey=bad_public.pem bad_private.pem config.json
-	( MYST_ROOTFS_PATH=rootfs.ext2 ./myst/bin/hello 2> /dev/null; test "$$?" -eq "1" )
+	( MYST_ROOTFS_PATH=rootfs.ext2 ./myst/bin/hello 2> /dev/null; test "$$?" -eq "234" )
 
 # test package with nobrk enabled in config
 test8:
@@ -82,7 +82,7 @@ test8:
 test9:
 	@ echo "=== TEST9"
 	$(MYST) package appdir private.pem config.json
-	( ./myst/bin/hello --nobrk 2> result; test "$$?" -eq "1" )
+	( ./myst/bin/hello --nobrk 2> result; test "$$?" -eq "255" )
 
 clean:
 	rm -rf appdir rootfs.ext2 myst private.pem public.pem bad_roothash roothash bad_public.pem bad_private.pem .built result
