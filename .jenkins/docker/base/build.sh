@@ -15,8 +15,8 @@ usage() {
     echo "Create a base Docker image for Mystikos" 1>&2
     echo "  -m     Mystikos release version (Example: 0.5.0) or path to Mystikos tar.gz"
     echo "           See https://github.com/deislabs/mystikos/releases for release versions"
-    echo "  -o     Open Enclave Base Docker Image tag (Examples: latest, SGX-2.15.100)"
-    echo "           See https://hub.docker.com/repository/docker/oeciteam/openenclave-base-ubuntu-18.04 for release versions"
+    echo "  -o     Open Enclave Base Docker Image tag."
+    echo "           See https://github.com/openenclave/openenclave/blob/master/DOCKER_IMAGES.md for release versions"
     echo ""
     echo "Options:" 1>&2
     echo "  -u     Ubuntu release version [Default: 18.04]" 1>&2
@@ -64,7 +64,7 @@ case "${UBUNTU_VERSION}" in
            ;;
 esac
 
-if [[ "${MYSTIKOS_RELEASE_VERSION}" =~ [0-9]+\\.[0-9]+\\.[0-9]+ ]]; then
+if [[ "${MYSTIKOS_RELEASE_VERSION}" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
     # Download Mystikos release
     MYST_TARBALL="Ubuntu-${UBUNTU_VERSION//.}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
     if [[ -f "${BUILD_DIR}/${MYST_TARBALL}" ]]; then

@@ -1,6 +1,6 @@
 ARG UBUNTU_VERSION
 ARG OPENENCLAVE_BASE_IMAGE_TAG
-FROM oeciteam/openenclave-base-ubuntu-${UBUNTU_VERSION}:${OPENENCLAVE_BASE_IMAGE_TAG}
+FROM openenclavedockerregistry.azurecr.io/openenclave-base-ubuntu-${UBUNTU_VERSION}:${OPENENCLAVE_BASE_IMAGE_TAG}
 ARG MYSTIKOS_TARBALL
 
 ADD ${MYSTIKOS_TARBALL} /opt

@@ -46,7 +46,7 @@ pipeline {
         stage("Obtain Mystikos package") {
             when {
                 expression {
-                    return !(params.MYST_VERSION ==~ "\\d+\\.\\d+\\.\\d+.")
+                    return !(params.MYST_VERSION ==~ "\\d+\\.\\d+\\.\\d+")
                 }
             }
             steps {
