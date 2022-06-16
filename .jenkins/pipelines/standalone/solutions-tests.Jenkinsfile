@@ -75,15 +75,17 @@ pipeline {
         }
         stage('Init Config') {
             steps {
-                sh """
-                   # Initialize dependencies repo
-                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                   ${JENKINS_SCRIPTS}/global/init-config.sh
+                retry(5) {
+                    sh """
+                        # Initialize dependencies repo
+                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
+                        ${JENKINS_SCRIPTS}/global/init-config.sh
 
-                   # Install global dependencies
-                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                   ${JENKINS_SCRIPTS}/global/init-install.sh
-                   """
+                        # Install global dependencies
+                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
+                        ${JENKINS_SCRIPTS}/global/init-install.sh
+                    """
+                }
             }
         }
         stage('Build repo source') {
