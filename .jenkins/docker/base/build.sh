@@ -64,7 +64,7 @@ case "${UBUNTU_VERSION}" in
            ;;
 esac
 
-if [[ "${MYSTIKOS_RELEASE_VERSION}" =~ [0-9]+\.[0-9]+\.[0-9]+ ]]; then
+if [[ "${MYSTIKOS_RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
     # Download Mystikos release
     MYST_TARBALL="Ubuntu-${UBUNTU_VERSION//.}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
     if [[ -f "${BUILD_DIR}/${MYST_TARBALL}" ]]; then
