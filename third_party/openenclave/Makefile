@@ -67,6 +67,7 @@ openenclave:
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL )
+	$(MAKE) configure_oe
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
