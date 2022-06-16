@@ -6,7 +6,7 @@ BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
 BRANCH=master
-COMMIT=cce575a3e0781eb4ae1e4e83a30acb655a116151
+COMMIT=d8e6c143eef73bce8306960c874b694e5317e02e
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
