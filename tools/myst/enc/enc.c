@@ -171,7 +171,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         asm volatile("mov %%rsp, %0" : "=r"(rsp));
         asm volatile("mov %%rbp, %0" : "=r"(rbp));
 
-        oe_context->rip = _kargs.myst_handle_host_signal;
+        oe_context->rip = (uint64_t)_kargs.myst_handle_host_signal;
+
         // Update the rsp so that the myst_handle_host_signal can continue
         // from the current stack frame on which siginfo and mcontext are
         // saved. Also, make rsp 16-byte aligned and mimic the behavior of
@@ -179,8 +180,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         // convention as myst_handle_host_signal is expected to be called
         oe_context->rsp = (rsp & -16) - 8;
         oe_context->rbp = rbp;
-        oe_context->rdi = &siginfo;
-        oe_context->rsi = &mcontext;
+        oe_context->rdi = (uint64_t)&siginfo;
+        oe_context->rsi = (uint64_t)&mcontext;
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
