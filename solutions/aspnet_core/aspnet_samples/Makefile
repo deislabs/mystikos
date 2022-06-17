@@ -25,7 +25,9 @@ clean: kill-db
 	rm -rf appdir rootfs client.output
 
 _run:
-	$(MAKE) run-podcast
+	# Disable for now as run-db step can be sometimes unstable
+	# See commit message for more error details
+	# $(MAKE) run-podcast
 	$(MAKE) run-flight
 	$(MAKE) run-todo
 
