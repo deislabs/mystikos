@@ -21,7 +21,6 @@ int myst_strsplit(
     size_t* ntoks_out)
 {
     int ret = 0;
-    size_t alloc_size;
     char** toks = NULL;
     size_t ntoks = 0;
     size_t nchars = 0;
@@ -59,8 +58,25 @@ int myst_strsplit(
 
     /* Allocate the array of pointers followed by the strings */
     {
-        /* allocate an extra array entry for the null terminator */
-        alloc_size = ((ntoks + 1) * sizeof(char*)) + nchars;
+        // To better detect overflow, following calculation has been
+        // broken down into smaller pieces
+        // alloc_size = ((ntoks + 1) * sizeof(char*)) + nchars;
+
+        // allocate an extra array entry for the null terminator
+        // ntoks_plus_one = ntoks + 1
+        size_t ntoks_plus_one = 0;
+        if (__builtin_uaddl_overflow(ntoks, 1, &ntoks_plus_one))
+            ERAISE(-ERANGE);
+
+        // ntoks_mul = (ntoks + 1) * sizeof(char*)
+        size_t ntoks_mul = 0;
+        if (__builtin_umull_overflow(ntoks_plus_one, sizeof(char*), &ntoks_mul))
+            ERAISE(-ERANGE);
+
+        // alloc_size = ((ntoks + 1) * sizeof(char*)) + nchars
+        size_t alloc_size = 0;
+        if (__builtin_uaddl_overflow(ntoks_mul, nchars, &alloc_size))
+            ERAISE(-ERANGE);
 
         if (!(toks = malloc(alloc_size)))
             ERAISE(-ENOMEM);
