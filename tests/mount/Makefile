@@ -29,22 +29,19 @@ build-extra:
 	$(MKROOTFS) $(SUBBINDIR)/mount rootfs
 	$(MYST) excpio rootfs appdir
 	# Can only mount ramfs that are located INSIDE enclave
-	$(MYST) mkcpio datafs appdir/ramfs
+	$(MYST) mkcpio data appdir/ramfs
 	# Can only mount ext2fs that are located OUTSIDE enclave
-	$(MYST) mkext2 datafs ext2fs
+	$(MYST) mkext2 data ext2fs
 
 	# Make mounting point in rootfs
-	mkdir -p appdir/mnt/datafs
-	mkdir -p appdir/mnt/hostfs
-	mkdir -p appdir/mnt/ramfs
-	mkdir -p appdir/mnt/ext2fs
+	mkdir -p appdir/mnt/
 
 	# Create rootfs
 	sudo chown -R $(USER).$(USER) appdir
 	$(MYST) mkcpio appdir rootfs
 
 tests-hostfs:
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/mount hostfs --app-config-path config-hostfs.json --mount $(CURDIR)/datafs=/mnt/hostfs
+	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/mount hostfs --app-config-path config-hostfs.json --mount $(CURDIR)/data=/mnt/hostfs
 
 tests-ramfs:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/mount ramfs --app-config-path config-ramfs.json --mount /ramfs=/mnt/ramfs
@@ -58,4 +55,4 @@ tests: build-extra
 	$(MAKE) tests-ext2fs
 
 gdb:
-	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /bin/mount ext2fs --app-config-path config-ext2fs.json --mount /ext2fs=/mnt/ext2fs
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) rootfs /bin/mount ramfs --app-config-path config-ramfs.json --mount /ramfs=/mnt/ramfs
