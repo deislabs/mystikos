@@ -62,7 +62,7 @@ export PATH="$PATH:$(pwd)/mystikos/bin"
 
 ```
 # change this to match the latest version
-LATEST='0.8.0'
+LATEST='0.9.0'
 RELEASE="Ubuntu-2004_mystikos-${LATEST}-x86_64"
 
 # this will install Mystikos in /opt/mystikos
