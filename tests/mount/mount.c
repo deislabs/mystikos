@@ -37,11 +37,17 @@ int validate_file(const char filename[])
     return 0;
 }
 
+// test C mount API
 int test_mount_and_access()
 {
+    const char source[] = "/ramfs";
+    const char target[] = "/mnt/datafs";
     const char filename[] = "/mnt/datafs/myfile";
 
-    if (mount("/ramfs", "/mnt/datafs", "ramfs", 0, NULL) != 0)
+    // create /mnt/datafs
+    assert(mkdir(target, 0777) == 0);
+
+    if (mount(source, target, "ramfs", 0, NULL) != 0)
     {
         printf("errno: %d\n", errno);
         assert(false);
@@ -78,8 +84,10 @@ int main(int argc, const char* argv[])
         return 1;
     }
 
+    // Test C mount API
     test_mount_and_access();
 
+    // Test mount configuration in config.json
     if (0 == strcmp(argv[1], "hostfs"))
     {
         test_access_hostfs();

@@ -38,6 +38,7 @@
 #include <myst/procfs.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
+#include <myst/realpath.h>
 #include <myst/signal.h>
 #include <myst/stack.h>
 #include <myst/strings.h>
@@ -71,6 +72,67 @@ long myst_tcall(long n, long params[6])
     return ret;
 }
 
+/**
+ * Create target directory if do not exist
+ * Then call mount syscall
+ */
+static int _create_and_mount(
+    const char* source,
+    const char* target,
+    const char* fs_type,
+    unsigned long mountflags,
+    const void* data,
+    bool is_auto)
+{
+    int ret = 0;
+    struct locals
+    {
+        myst_path_t normalized_target;
+        myst_path_t suffix;
+    };
+    struct locals* locals = NULL;
+    myst_fs_t* parent_fs;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_realpath(target, &locals->normalized_target));
+
+    // target has to be an absolute path
+    if (locals->normalized_target.buf[0] != '/')
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_mount_resolve(
+        locals->normalized_target.buf, locals->suffix.buf, &parent_fs));
+
+    // check if target exists and is directory
+    // if not, create target directory
+    {
+        struct stat buf;
+        int errornum = (*parent_fs->fs_stat)(
+            parent_fs, locals->normalized_target.buf, &buf);
+
+        if (errornum == -ENOENT)
+            // target do not exist, create directory
+            ECHECK(myst_syscall_mkdir(locals->normalized_target.buf, 0777));
+        else if (errornum == 0 && !S_ISDIR(buf.st_mode))
+            // target exists but is not directory
+            ERAISE(-ENOTDIR);
+        else
+            ECHECK(errornum);
+    }
+
+    ret =
+        myst_syscall_mount(source, target, fs_type, mountflags, data, is_auto);
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static int _process_mount_configuration(myst_mounts_config_t* mounts)
 {
     size_t i;
@@ -82,13 +144,14 @@ static int _process_mount_configuration(myst_mounts_config_t* mounts)
 
     for (i = 0; i < mounts->mounts_count; i++)
     {
-        ret = myst_syscall_mount(
+        ret = _create_and_mount(
             mounts->mounts[i].source,
             mounts->mounts[i].target,
             mounts->mounts[i].fs_type,
             0,
             NULL,
             true);
+
         if (ret != 0)
         {
             myst_eprintf(
