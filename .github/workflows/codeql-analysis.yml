@@ -39,33 +39,5 @@ jobs:
         languages: ${{ matrix.language }}
         config-file: ./.github/codeql/codeql-config.yml
     
-    - name: Install build dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y runc containerd docker.io libmbedtls-dev
-        sudo systemctl start docker
-        sudo systemctl enable docker && sudo chmod 666 /var/run/docker.sock
-        sudo apt-get install python3-setuptools
-
-    - name: Building Mystikos
-      run: |
-        make MYST_PRODUCT_BUILD=1 -j4
-              
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
-      with:
-        upload: false
-        output: sarif-results
-
-    - name: Remove third_party issues from SARIF
-      uses: zbazztian/filter-sarif@master
-      with:
-        patterns: |
-          -third_party/**
-        input: sarif-results/cpp.sarif
-        output: sarif-results/cpp.sarif
-
-    - name: Upload SARIF
-      uses: github/codeql-action/upload-sarif@v1
-      with:
-        sarif_file: sarif-results/cpp.sarif
