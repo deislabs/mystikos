@@ -9,16 +9,17 @@ pipeline {
     }
     parameters {
         string(name: "REPOSITORY_NAME", defaultValue: "deislabs/mystikos", description: "GitHub repository to checkout")
-        string(name: "BRANCH_NAME", defaultValue: "master", description: "The branch used to checkout the repository")
+        string(name: "BRANCH_NAME", defaultValue: "main", description: "The branch used to checkout the repository")
         string(name: "MYST_VERSION", description: "Mystikos release version (Example: 0.5.0). See https://github.com/deislabs/mystikos/releases for release versions. Alternatively can be pulled from a storage blob given a file name")
         string(name: "STORAGE_BLOB", defaultValue: '', description: '[OPTIONAL] Pull Mystikos release from a storage blob')
         string(name: "STORAGE_BLOB_CRED_ID", defaultValue: '', description: '[OPTIONAL] Credential ID to use to access STORAGE_BLOB')
-        string(name: "OE_BASE_CONTAINER_TAG", defaultValue: "SGX-2.15.100", description: "The tag for the base OE Docker container. Use SGX-<version> for releases. Example: SGX-2.15.100")
+        string(name: "OE_BASE_CONTAINER_TAG", defaultValue: "latest", description: "The tag for the base OE Docker container. Use SGX-<version> for releases. Example: SGX-2.15.100")
         string(name: "MYST_BASE_CONTAINER_TAG", defaultValue: "latest", description: "The tag for the new Mystikos base Docker container.")
-        booleanParam(name: "PUBLISH_INTERNAL", defaultValue: false, description: "Publish container to internal registry?")
         string(name: "INTERNAL_REPO", defaultValue: "https://mystikos.azurecr.io", description: "Url for internal Docker repository")
-        string(name: "INTERNAL_REPO_CRED_ID", defaultValue: 'mystikos-internal-container-registry', description: "Credential ID for internal Docker repository")
+        string(name: "INTERNAL_REPO_CRED_ID", defaultValue: 'mystikos-public-container-registry', description: "Credential ID for internal Docker repository")
         string(name: "OECI_LIB_VERSION", defaultValue: 'master', description: 'Version of OE Libraries to use')
+        booleanParam(name: "PUBLISH_INTERNAL", defaultValue: false, description: "Publish container to internal registry?")
+        booleanParam(name: "TAG_LATEST", defaultValue: false, description: "Publish container as the latest tag?")
     }
     environment {
         INTERNAL_REPO_CREDS = "${params.INTERNAL_REPO_CRED_ID}"
@@ -79,7 +80,7 @@ pipeline {
                         common.exec_with_retry { base_1804_image.push() }
                         common.exec_with_retry { base_2004_image.push() }
 
-                        if ( params.MYST_BASE_CONTAINER_TAG != 'latest' ) {
+                        if ( params.TAG_LATEST ) {
                             common.exec_with_retry { base_1804_image.push('latest') }
                             common.exec_with_retry { base_2004_image.push('latest') }
                         }
