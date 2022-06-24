@@ -2,6 +2,7 @@ TOP=$(abspath ../../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
+MYST_RETRY=$(TOP)/scripts/myst-retry
 
 ifdef STRACE
 OPTS += --strace
@@ -50,7 +51,7 @@ run-todo:
 	./kill.sh Todo
 
 run-podcast-with-retry:
-	./run_podcast_with_retry.sh
+	$(MYST_RETRY) $(MAKE) run-podcast
 
 run-podcast:
 	@echo "Running podcast sample"
