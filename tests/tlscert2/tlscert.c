@@ -56,7 +56,11 @@ int main(int argc, const char* argv[])
         size_t size = fread(report, 1, 8192, fp);
         assert(size < 8192);
         fclose(fp);
-
+        printf(
+            "generated report: \n ------ REPORT BODY ------ \n%.*s\n ------ "
+            "END REPORT ------\n",
+            (int)size,
+            report);
         oe_report_t parsed_report;
         uint64_t args[] = {
             (uint64_t)report, (uint64_t)size, (uint64_t)&parsed_report};
