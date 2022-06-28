@@ -36,6 +36,8 @@ touch "${MYST_ROOT}"/target/shared/crypto.gcda
 touch "${MYST_ROOT}"/target/shared/crypto.gcno
 
 rm $(find "${MYST_ROOT}"/build/obj/ -name "*.gc*")
+rm $(find "${MYST_ROOT}" -wholename "*build*gcno")
+rm $(find "${MYST_ROOT}" -wholename "*build*gcda")
 
 # remove the gcda files created in the test directories
 rm $(find "${MYST_ROOT}"/tests/ -name "*.gc*")
