@@ -243,9 +243,11 @@ int main(int argc, const char* argv[])
     const char* mount_dir = argv[2];
 
     /* if docker image argument is a file, read image id from that file */
-    assert(myst_validate_file_path(docker_image));
-    if (myst_load_file(docker_image, &data, &size) == 0)
+    if (myst_validate_file_path(docker_image) &&
+        myst_load_file(docker_image, &data, &size) == 0)
+    {
         docker_image = data;
+    }
 
     /* verify that the mount directory exists */
     {
