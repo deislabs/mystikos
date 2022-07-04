@@ -12,11 +12,14 @@
 
 #define LOCKFS_MAGIC 0x94639c1a101f4a1d
 
+myst_mutex_t _global_lock;
+
+static bool _inited;
+
 typedef struct lockfs
 {
     myst_fs_t base;
     uint64_t magic;
-    myst_mutex_t lock;
     myst_fs_t* fs;
 } lockfs_t;
 
@@ -41,14 +44,29 @@ static void lock(lockfs_t* lockfs, sigset_t* mask_old)
     sigset_t mask;
     myst_sigfillset(&mask);
 
+    (void)lockfs;
+
     myst_signal_sigprocmask(SIG_BLOCK, &mask, mask_old);
-    myst_mutex_lock(&lockfs->lock);
+    myst_mutex_lock(&_global_lock);
 }
 
 static void unlock(lockfs_t* lockfs, sigset_t* mask_old)
 {
-    myst_mutex_unlock(&lockfs->lock);
+    (void)lockfs;
+    myst_mutex_unlock(&_global_lock);
     myst_signal_sigprocmask(SIG_SETMASK, mask_old, NULL);
+}
+
+void myst_lockfs_lock(void)
+{
+    if (_inited)
+        myst_mutex_lock(&_global_lock);
+}
+
+void myst_lockfs_unlock(void)
+{
+    if (_inited)
+        myst_mutex_unlock(&_global_lock);
 }
 
 static int _fs_release(myst_fs_t* fs)
@@ -712,6 +730,7 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
     lockfs->magic = LOCKFS_MAGIC;
     lockfs->fs = fs;
     *lockfs_out = &lockfs->base;
+    _inited = true;
 
 done:
 

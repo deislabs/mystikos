@@ -3686,8 +3686,10 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
         }
     }
 
-    /* this can return (void*)-errno */
+    if (fd >= 0)
+        myst_lockfs_lock();
     myst_mman_lock();
+    /* this can return (void*)-errno */
     long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
     // ATTN : temporary workaround for myst_mmap()  inaccurate return
@@ -3711,6 +3713,8 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
         ret = (long)ptr;
     }
     myst_mman_unlock();
+    if (fd >= 0)
+        myst_lockfs_unlock();
 
     return (_return(n, ret));
 }
@@ -3743,6 +3747,7 @@ static long _SYS_munmap(
     myst_thread_t* thread,
     const myst_td_t* crt_td)
 {
+    long ret = 0;
     void* addr = (void*)params[0];
     size_t length = (size_t)params[1];
 
@@ -3767,34 +3772,140 @@ static long _SYS_munmap(
         }
     }
 
+    myst_lockfs_lock();
+    myst_mman_lock();
+
     /* Handle MAP_SHARED unmapping */
     {
         bool is_shmem;
         if (myst_shmem_handle_munmap(addr, length, &is_shmem) < 0)
-            return (_return(n, -EINVAL));
+            ERAISE(-EINVAL);
 
         if (is_shmem)
-            return (_return(n, 0));
+            goto done;
     }
 
     if (!myst_process_owns_mem_range(addr, length, true))
-        return (_return(n, -EINVAL));
+        ERAISE(-EINVAL);
 
-    myst_mman_lock();
-    long ret = (long)myst_munmap(addr, length);
+    ret = (long)myst_munmap(addr, length);
 
     if (ret == 0)
     {
         /* set ownership this mapping to nobody */
         if (myst_mman_pids_set(addr, length, 0) != 0)
         {
+            myst_lockfs_unlock();
             myst_mman_unlock();
             myst_panic("myst_mman_pids_set()");
         }
     }
+
+done:
     myst_mman_unlock();
+    myst_lockfs_unlock();
 
     return (_return(n, ret));
+}
+
+static long _SYS_mremap(long n, long params[6])
+{
+    void* old_address = (void*)params[0];
+    size_t old_size = (size_t)params[1];
+    size_t new_size = (size_t)params[2];
+    int flags = (int)params[3];
+    void* new_address = (void*)params[4];
+    long ret;
+    map_type_t old_map_type = NONE;
+
+    _strace(
+        n,
+        "old_address=%p "
+        "old_size=%zu "
+        "new_size=%zu "
+        "flags=%d "
+        "new_address=%p ",
+        old_address,
+        old_size,
+        new_size,
+        flags,
+        new_address);
+
+    if (new_size < old_size)
+        myst_lockfs_lock();
+    myst_mman_lock();
+
+    if (!(old_map_type =
+              myst_process_owns_mem_range(old_address, old_size, NULL)))
+        ERAISE(-EINVAL);
+
+    ret =
+        (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
+
+    if (old_map_type != SHARED && ret >= 0)
+    {
+        const pid_t pid = myst_getpid();
+
+        /* set ownership of old mapping to nobody */
+        if (myst_mman_pids_set(old_address, old_size, 0) != 0)
+        {
+            myst_mman_unlock();
+            if (new_size < old_size)
+                myst_lockfs_unlock();
+            myst_panic("myst_mman_pids_set()");
+        }
+
+        /* set ownership of new mapping to pid */
+        if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
+        {
+            myst_mman_unlock();
+            if (new_size < old_size)
+                myst_lockfs_unlock();
+            myst_panic("myst_mman_pids_set()");
+        }
+    }
+
+done:
+    myst_mman_unlock();
+    if (new_size < old_size)
+        myst_lockfs_unlock();
+
+    return (_return(n, ret));
+}
+
+static long _SYS_msync(long n, long params[6])
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int flags = (int)params[2];
+    long ret = 0;
+
+    _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
+    myst_lockfs_lock();
+    myst_mman_lock();
+
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_msync(addr, length, flags);
+
+done:
+    myst_mman_unlock();
+    myst_lockfs_unlock();
+
+    return (_return(n, ret));
+}
+
+static long _SYS_madvise(long n, long params[6])
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int advice = (int)params[2];
+
+    _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
+
+    return (_return(n, 0));
 }
 
 static long _SYS_brk(long n, long params[6])
@@ -3940,85 +4051,6 @@ static long _SYS_sched_yield(long n, long params[6])
     _strace(n, NULL);
 
     return (_return(n, myst_syscall_sched_yield()));
-}
-
-static long _SYS_mremap(long n, long params[6])
-{
-    void* old_address = (void*)params[0];
-    size_t old_size = (size_t)params[1];
-    size_t new_size = (size_t)params[2];
-    int flags = (int)params[3];
-    void* new_address = (void*)params[4];
-    long ret;
-    map_type_t old_map_type = NONE;
-
-    _strace(
-        n,
-        "old_address=%p "
-        "old_size=%zu "
-        "new_size=%zu "
-        "flags=%d "
-        "new_address=%p ",
-        old_address,
-        old_size,
-        new_size,
-        flags,
-        new_address);
-
-    if (!(old_map_type =
-              myst_process_owns_mem_range(old_address, old_size, NULL)))
-        return (_return(n, -EINVAL));
-
-    myst_mman_lock();
-    ret =
-        (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
-
-    if (old_map_type != SHARED && ret >= 0)
-    {
-        const pid_t pid = myst_getpid();
-
-        /* set ownership of old mapping to nobody */
-        if (myst_mman_pids_set(old_address, old_size, 0) != 0)
-        {
-            myst_mman_unlock();
-            myst_panic("myst_mman_pids_set()");
-        }
-
-        /* set ownership of new mapping to pid */
-        if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
-        {
-            myst_mman_unlock();
-            myst_panic("myst_mman_pids_set()");
-        }
-    }
-    myst_mman_unlock();
-
-    return (_return(n, ret));
-}
-
-static long _SYS_msync(long n, long params[6])
-{
-    void* addr = (void*)params[0];
-    size_t length = (size_t)params[1];
-    int flags = (int)params[2];
-
-    _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
-
-    if (!myst_process_owns_mem_range(addr, length, NULL))
-        return (_return(n, -EINVAL));
-
-    return (_return(n, myst_msync(addr, length, flags)));
-}
-
-static long _SYS_madvise(long n, long params[6])
-{
-    void* addr = (void*)params[0];
-    size_t length = (size_t)params[1];
-    int advice = (int)params[2];
-
-    _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
-
-    return (_return(n, 0));
 }
 
 static long _SYS_dup(long n, long params[6])
