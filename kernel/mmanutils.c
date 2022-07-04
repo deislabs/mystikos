@@ -14,6 +14,7 @@
 #include <myst/fdtable.h>
 #include <myst/file.h>
 #include <myst/kernel.h>
+#include <myst/lockfs.h>
 #include <myst/malloc.h>
 #include <myst/mman.h>
 #include <myst/mmanutils.h>
@@ -64,6 +65,21 @@ MYST_INLINE void _runlock(bool* locked)
     if (*locked)
     {
         myst_rspin_unlock(&_mman.lock);
+        *locked = false;
+    }
+}
+
+MYST_INLINE void _fslock(bool* locked)
+{
+    assert(*locked == false);
+    myst_lockfs_lock();
+}
+
+MYST_INLINE void _fsunlock(bool* locked)
+{
+    if (*locked)
+    {
+        myst_lockfs_unlock();
         *locked = false;
     }
 }
@@ -482,6 +498,8 @@ static int _move_file_mapping(
     {
         // Case: Grow in-place
         if (old_size <= new_size)
+            // We don't need update file mappings vector here as the new region
+            // does not correspond to the file.
             goto done;
         else // Shrink in-place
         {
@@ -654,6 +672,7 @@ long myst_mmap(
     off_t offset)
 {
     long ret = -1;
+    bool locked = false;
 
     /* fail if length is zero. Note that the page-alignment will
      * be enforced by myst_mman_mprotect and myst_mman_mmap */
@@ -670,13 +689,23 @@ long myst_mmap(
 
     ECHECK(_mmap_fd_checks(prot, flags, fd));
 
-    /* Check if posix shm file */
-    /* addr hint is not allowed for POSIX shm memory */
+    _rlock(&locked);
+
+    /* Case: POSIX shared memory file mapping */
     if (fd >= 0 && !addr && myst_is_posix_shm_file_handle(fd, flags))
     {
+        /* ATTN vat: fail for the addr hint case here.
+        addr hint is not allowed for POSIX shm memory */
+
+        /* Right now that case falls throw into the next else and fails in
+         * myst_mman_map */
+
         ECHECK((
             ret = myst_posix_shm_handle_mmap(fd, addr, length, offset, flags)));
     }
+    /* Case: Map file onto existing mapping.
+    Process owns [addr,addr+length] was checked in the syscall handler _SYS_mmap
+  */
     else if (fd >= 0 && addr)
     {
         // ATTN: call mmap or mremap here so that this range refers to
@@ -695,6 +724,9 @@ long myst_mmap(
 
         ret = (long)addr;
     }
+    /* Case: Memory allocation needs to happen.
+    Subcases: file mapping and
+    */
     else
     {
         int tflags = 0;
@@ -746,6 +778,8 @@ long myst_mmap(
     assert(end >= _mman_start && end <= _mman_end);
 
 done:
+
+    _runlock(&locked);
     return ret;
 }
 
@@ -848,7 +882,6 @@ int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
     _rlock(&locked);
     ECHECK(myst_mman_munmap(&_mman, addr, length));
     ECHECK(_remove_file_mappings(addr, length, head_out));
-    _runlock(&locked);
 
 done:
     _runlock(&locked);
@@ -917,8 +950,11 @@ int myst_release_process_mappings(pid_t pid)
 
     assert(pid > 0);
 
+    myst_lockfs_lock();
+    _rlock(&locked);
+
     if (pid <= 0)
-        ERAISE(-EINVAL);
+        return -EINVAL;
 
     /* Release shared memory mappings for this process */
     ECHECK(myst_shmem_handle_release_mappings(pid));
@@ -939,7 +975,6 @@ int myst_release_process_mappings(pid_t pid)
         assert(index < v.pids_count);
         assert(index + count <= v.pids_count);
 
-        _rlock(&locked);
         {
             const size_t n = index + count;
 
@@ -1022,7 +1057,6 @@ int myst_release_process_mappings(pid_t pid)
                 }
             }
         }
-        _runlock(&locked);
     }
 
 done:
@@ -1031,6 +1065,7 @@ done:
 
     // close file handles outside of mman lock
     _close_file_handles(catchall);
+    myst_lockfs_unlock();
 
     return ret;
 }
@@ -1097,6 +1132,7 @@ int proc_pid_maps_vcallback(
     myst_process_t* process;
 
     myst_spin_lock(&myst_process_list_lock);
+    myst_lockfs_lock();
 
     if (!vbuf && !entrypath)
         ERAISE(-EINVAL);
@@ -1228,6 +1264,7 @@ int proc_pid_maps_vcallback(
 done:
     _runlock(&locked);
 
+    myst_lockfs_unlock();
     myst_spin_unlock(&myst_process_list_lock);
 
     if (ret != 0)

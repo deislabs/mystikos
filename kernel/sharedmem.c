@@ -68,7 +68,6 @@ typedef struct shared_mapping
 } shared_mapping_t;
 
 static myst_list_t _shared_mappings;
-static myst_rspinlock_t _shared_mappings_lock;
 static myst_fs_t* _posix_shmfs;
 
 static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid);
@@ -112,6 +111,22 @@ int shmfs_teardown()
     return 0;
 }
 
+MYST_INLINE void _rlock(bool* locked)
+{
+    assert(*locked == false);
+    myst_mman_lock();
+    *locked = true;
+}
+
+MYST_INLINE void _runlock(bool* locked)
+{
+    if (*locked)
+    {
+        myst_mman_unlock();
+        *locked = false;
+    }
+}
+
 #ifdef TRACE
 static const char* shmem_type_to_string(shmem_type_t mem_type)
 {
@@ -131,10 +146,12 @@ static const char* shmem_type_to_string(shmem_type_t mem_type)
 }
 static void _dump_shared_mappings(char* msg)
 {
+    bool locked = false;
+
     if (msg)
         printf("\n%s\n", msg);
 
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
     if (sm)
     {
@@ -169,7 +186,7 @@ static void _dump_shared_mappings(char* msg)
         sm = (shared_mapping_t*)sm->base.next;
         printf("==================================== \n\n");
     }
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 }
 #endif
 
@@ -263,7 +280,6 @@ static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid)
     {
         if (!(pn = calloc(1, sizeof(proc_w_count_t))))
         {
-            myst_rspin_unlock(&_shared_mappings_lock);
             ERAISE(-ENOMEM);
         }
         pn->pid = pid;
@@ -346,12 +362,14 @@ bool myst_is_address_within_shmem(
     const size_t length,
     shared_mapping_t** sm_out)
 {
+    bool locked = false;
+
     if (sm_out)
         *sm_out = NULL;
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     shared_mapping_t* sm;
     _lookup_shmem_map(addr, length, &sm);
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
     if (sm)
     {
@@ -386,6 +404,7 @@ long myst_posix_shm_handle_mmap(
     off_t offset,
     int flags)
 {
+    bool locked = false;
     long ret = -1;
     void* buf_data_addr;
     mman_file_handle_t* file_handle;
@@ -440,7 +459,7 @@ long myst_posix_shm_handle_mmap(
     }
 
     // get or create shared mapping
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
 
     // Check for existing mapping
@@ -450,7 +469,7 @@ long myst_posix_shm_handle_mmap(
         {
             assert(sm->start_addr == buf_data_addr);
             ECHECK_LABEL(_add_proc_to_sharers(sm, myst_getpid()), unlock);
-            myst_rspin_unlock(&_shared_mappings_lock);
+            _runlock(&locked);
             ret = (long)((int8_t*)sm->start_addr + offset);
             goto done;
         }
@@ -462,7 +481,7 @@ long myst_posix_shm_handle_mmap(
     {
         if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
         {
-            myst_rspin_unlock(&_shared_mappings_lock);
+            _runlock(&locked);
             ERAISE(-ENOMEM);
         }
         new_sm->file_handle = file_handle;
@@ -482,7 +501,7 @@ unlock:
     if (new_sm)
         free(new_sm);
 
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
 done:
 
@@ -504,15 +523,16 @@ int myst_shmem_register_mapping(
     size_t length,
     size_t offset)
 {
+    bool locked = false;
     int ret = 0;
     shared_mapping_t* new_sm = NULL;
     mman_file_handle_t* file_handle = NULL;
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     // Create a new shared mapping
     {
         if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
         {
-            myst_rspin_unlock(&_shared_mappings_lock);
+            _runlock(&locked);
             ERAISE(-ENOMEM);
         }
         new_sm->start_addr = addr;
@@ -540,7 +560,7 @@ unlock:
         myst_mman_file_handle_put(file_handle);
     }
 
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
 #ifdef TRACE
     _dump_shared_mappings("regular mmap exit");
@@ -586,13 +606,14 @@ done:
 int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
 {
     int ret = 0;
+    bool locked = false;
 
     if (!is_shmem)
         ERAISE(-EINVAL);
 
     *is_shmem = false;
 
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     {
         shared_mapping_t* sm;
         // lookup fails for munmaps overlapping partially with a shared memory
@@ -633,7 +654,7 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
         }
     }
 unlock:
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
 done:
 
@@ -643,12 +664,14 @@ done:
 int myst_shmem_handle_release_mappings(pid_t pid)
 {
     int ret = 0;
+    bool locked = false;
+
 #ifdef TRACE
     printf("pid=%d\n", pid);
     _dump_shared_mappings("At process release entry");
 #endif
 
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     {
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
@@ -671,7 +694,7 @@ int myst_shmem_handle_release_mappings(pid_t pid)
     }
 
 done:
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
 #ifdef TRACE
     _dump_shared_mappings("At process release exit");
@@ -683,9 +706,10 @@ done:
 int myst_shmem_share_mappings(pid_t childpid)
 {
     int ret = 0;
+    bool locked = false;
     pid_t self = myst_getpid();
 
-    myst_rspin_lock(&_shared_mappings_lock);
+    _rlock(&locked);
     {
         shared_mapping_t* sm = (shared_mapping_t*)_shared_mappings.head;
         while (sm)
@@ -698,7 +722,7 @@ int myst_shmem_share_mappings(pid_t childpid)
     }
 
 done:
-    myst_rspin_unlock(&_shared_mappings_lock);
+    _runlock(&locked);
 
     return ret;
 }
