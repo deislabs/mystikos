@@ -703,9 +703,9 @@ long myst_mmap(
         ECHECK((
             ret = myst_posix_shm_handle_mmap(fd, addr, length, offset, flags)));
     }
-    /* Case: Map file onto existing mapping.
+    /* Case: File mapping && no addr hint. Map file onto existing mapping.
     Process owns [addr,addr+length] was checked in the syscall handler _SYS_mmap
-  */
+    */
     else if (fd >= 0 && addr)
     {
         // ATTN: call mmap or mremap here so that this range refers to
@@ -724,9 +724,16 @@ long myst_mmap(
 
         ret = (long)addr;
     }
-    /* Case: Memory allocation needs to happen.
-    Subcases: file mapping and
-    */
+    // Cases:
+    //    Anonymous mapping(MAP_ANON) && addr hint: only page protection
+    //    updation in myst_mman_mmap epilogue.
+    //
+    //    No addr hint: allocation, VADS list and page prot vector updation.
+    //        Anonymous mapping.
+    //        File mapping: map file onto memory, fdmapping vector updation.
+    //
+    //        For the non addr hint case, if MAP_SHARED is passed: add to shared
+    //        memory list.
     else
     {
         int tflags = 0;
@@ -741,7 +748,7 @@ long myst_mmap(
 
         // ATTN: For failures in the rest of the function, do we need to return
         // the allocated memory
-        if (fd >= 0 && !addr)
+        if (fd >= 0)
         {
             // ATTN: Use the error code returned by lower-level functions. This
             // may not conform the Linux kernel behavior.

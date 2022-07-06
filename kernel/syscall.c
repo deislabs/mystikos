@@ -3707,6 +3707,8 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
         if (myst_mman_pids_set(ptr, length, pid) != 0)
         {
             myst_mman_unlock();
+            if (fd >= 0)
+                myst_lockfs_unlock();
             myst_panic("myst_mman_pids_set()");
         }
 
@@ -3795,8 +3797,8 @@ static long _SYS_munmap(
         /* set ownership this mapping to nobody */
         if (myst_mman_pids_set(addr, length, 0) != 0)
         {
-            myst_lockfs_unlock();
             myst_mman_unlock();
+            myst_lockfs_unlock();
             myst_panic("myst_mman_pids_set()");
         }
     }
@@ -3831,6 +3833,10 @@ static long _SYS_mremap(long n, long params[6])
         flags,
         new_address);
 
+    /* filesystem lock is required only in the shrink case, for closing file
+     * handles. In the growing case, the fdmappings entries are copied
+     * over for the original memory region, no fs operations. Note, the newly
+     * allocated memory is not part of the file mapping. */
     if (new_size < old_size)
         myst_lockfs_lock();
     myst_mman_lock();
