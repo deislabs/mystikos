@@ -20,7 +20,6 @@ typedef struct myst_rspinlock
     void* owner;
     _Atomic(size_t) count;
     myst_spinlock_t lock;
-    long owner_tid;
 } myst_rspinlock_t;
 
 MYST_INLINE void* __myst_rspin_self(void)
@@ -50,12 +49,6 @@ MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
     myst_spin_lock(&s->lock);
     s->owner = __myst_rspin_self();
     s->count = 1;
-    myst_thread_t* own_thr;
-    if (myst_tcall_get_tsd((uint64_t*)&own_thr) == 0 &&
-        myst_valid_thread(own_thr))
-    {
-        s->owner_tid = own_thr->tid;
-    }
 }
 
 MYST_INLINE void myst_rspin_unlock(myst_rspinlock_t* s)
