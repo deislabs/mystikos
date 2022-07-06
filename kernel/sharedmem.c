@@ -62,6 +62,7 @@ typedef struct shared_mapping
     myst_list_t sharers; // processes sharing this mapping
     void* start_addr;
     size_t length;
+    size_t filesz;
     mman_file_handle_t* file_handle;
     size_t offset;
     shmem_type_t type;
@@ -167,9 +168,7 @@ static void _dump_shared_mappings(char* msg)
         printf(
             "start_addr=%p length=%ld nusers=%ld type=%s\n",
             sm->start_addr,
-            sm->type == SHMEM_POSIX_SHM
-                ? myst_mman_backing_file_size(sm->file_handle)
-                : sm->length,
+            sm->type == SHMEM_POSIX_SHM ? sm->filesz : sm->length,
             sm->sharers.size,
             shmem_type_to_string(sm->type));
         printf("sharer pids: [ ");
@@ -316,14 +315,13 @@ static int _lookup_shmem_map(
     while (sm)
     {
         size_t rounded_up_sm_length =
-            sm->type == SHMEM_POSIX_SHM
-                ? myst_mman_backing_file_size(sm->file_handle)
-                : sm->length;
+            sm->type == SHMEM_POSIX_SHM ? sm->filesz : sm->length;
         myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
         void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
 
         bool start_addr_within_range =
             (sm->start_addr <= start_addr && start_addr < sm_end_addr);
+
         bool end_addr_within_range =
             (sm->start_addr < end_addr && end_addr <= sm_end_addr);
 
@@ -349,6 +347,7 @@ static int _lookup_shmem_map(
                 len);
             myst_panic("Unsupported.\n");
         }
+
         // else no overlap at all, keep searching
         sm = (shared_mapping_t*)sm->base.next;
     }
@@ -408,6 +407,7 @@ long myst_posix_shm_handle_mmap(
     long ret = -1;
     void* buf_data_addr;
     mman_file_handle_t* file_handle;
+    size_t backing_file_size;
 
 #ifdef TRACE
     _dump_shared_mappings("mmap entry");
@@ -438,7 +438,7 @@ long myst_posix_shm_handle_mmap(
 
     // check [offset, offset+length] range is within file limits
     {
-        size_t backing_file_size = myst_mman_backing_file_size(file_handle);
+        backing_file_size = myst_mman_backing_file_size(file_handle);
 
         void* file_end_addr = (char*)buf_data_addr + backing_file_size;
         void* request_end_addr = (char*)buf_data_addr + offset + length;
@@ -485,6 +485,7 @@ long myst_posix_shm_handle_mmap(
             ERAISE(-ENOMEM);
         }
         new_sm->file_handle = file_handle;
+        new_sm->filesz = backing_file_size;
         new_sm->start_addr = buf_data_addr;
         new_sm->type = SHMEM_POSIX_SHM;
         // notify fs that mapping is active
@@ -587,7 +588,7 @@ static int __shm_unmap(shared_mapping_t* sm, void* addr, size_t length)
     {
         if (sm->type == SHMEM_REG_FILE)
         {
-            size_t file_size = myst_mman_backing_file_size(sm->file_handle);
+            size_t file_size = sm->filesz;
 
             if (sm->offset < file_size)
             {
