@@ -73,6 +73,7 @@ MYST_INLINE void _fslock(bool* locked)
 {
     assert(*locked == false);
     myst_lockfs_lock();
+    *locked = true;
 }
 
 MYST_INLINE void _fsunlock(bool* locked)
@@ -672,7 +673,7 @@ long myst_mmap(
     off_t offset)
 {
     long ret = -1;
-    bool locked = false;
+    bool locked = false, fs_locked = false;
 
     /* fail if length is zero. Note that the page-alignment will
      * be enforced by myst_mman_mprotect and myst_mman_mmap */
@@ -687,9 +688,11 @@ long myst_mmap(
     if (flags & MAP_ANONYMOUS)
         fd = -1;
 
-    ECHECK(_mmap_fd_checks(prot, flags, fd));
-
+    if (fd >= 0)
+        _fslock(&fs_locked);
     _rlock(&locked);
+
+    ECHECK(_mmap_fd_checks(prot, flags, fd));
 
     /* Case: POSIX shared memory file mapping */
     if (fd >= 0 && !addr && myst_is_posix_shm_file_handle(fd, flags))
@@ -787,6 +790,8 @@ long myst_mmap(
 done:
 
     _runlock(&locked);
+    if (fd >= 0)
+        _fsunlock(&fs_locked);
     return ret;
 }
 
@@ -797,13 +802,17 @@ void* myst_mremap(
     int flags,
     void* new_address)
 {
+    long ret;
     void* p;
-    int r;
     shared_mapping_t* shm_mapping;
+    bool locked = false, fs_locked = false;
 
     if (new_address)
-        return (void*)-EINVAL;
+        ERAISE(-EINVAL);
 
+    if (new_size < old_size)
+        _fslock(&fs_locked);
+    _rlock(&locked);
     if (myst_is_address_within_shmem(old_address, old_size, &shm_mapping))
     {
         if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
@@ -811,14 +820,12 @@ void* myst_mremap(
             MYST_WLOG("Unsupported mremap operation detected. For shared "
                       "mappings, mremap is only allowed if there is a single "
                       "user of the mapping.\n");
-            return (void*)-EINVAL;
+            ERAISE(-EINVAL);
         }
     }
 
-    r = myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p);
-
-    if (r != 0)
-        return (void*)(long)r;
+    ECHECK(
+        myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p));
 
     // fixup shared mapping
     if (shm_mapping)
@@ -826,10 +833,16 @@ void* myst_mremap(
         myst_shmem_mremap_update(shm_mapping, p, new_size);
     }
 
-    if ((r = _move_file_mapping(old_address, old_size, p, new_size)) != 0)
-        return (void*)(long)r;
+    ECHECK(_move_file_mapping(old_address, old_size, p, new_size));
 
-    return p;
+    ret = (long)p;
+
+done:
+    _runlock(&locked);
+    if (new_size < old_size)
+        _fsunlock(&fs_locked);
+
+    return (void*)ret;
 }
 
 int myst_mprotect(const void* addr, const size_t len, const int prot)
@@ -899,13 +912,18 @@ int myst_munmap(void* addr, size_t length)
 {
     int ret = 0;
     fdlist_t* head = NULL;
+    bool locked = false, fs_locked = false;
 
+    _fslock(&fs_locked);
+    _rlock(&locked);
     ECHECK(__myst_munmap(addr, length, &head));
 
     // close file handles outside of mman lock
     _close_file_handles(head);
 
 done:
+    _runlock(&locked);
+    _fsunlock(&fs_locked);
     return ret;
 }
 
@@ -952,16 +970,17 @@ int myst_get_free_ram(size_t* size)
 int myst_release_process_mappings(pid_t pid)
 {
     int ret = 0;
-    bool locked = false;
+    bool locked = false, fs_locked = false;
     fdlist_t* catchall = NULL;
 
     assert(pid > 0);
-
-    myst_lockfs_lock();
-    _rlock(&locked);
-
     if (pid <= 0)
         return -EINVAL;
+
+    /* Acquire filesystem lock, as writeback may happen for process owned
+     * MAP_SHARED mappings. */
+    _fslock(&fs_locked);
+    _rlock(&locked);
 
     /* Release shared memory mappings for this process */
     ECHECK(myst_shmem_handle_release_mappings(pid));
@@ -1072,7 +1091,7 @@ done:
 
     // close file handles outside of mman lock
     _close_file_handles(catchall);
-    myst_lockfs_unlock();
+    _fsunlock(&fs_locked);
 
     return ret;
 }
@@ -1130,7 +1149,7 @@ int proc_pid_maps_vcallback(
 {
     (void)self;
     int ret = 0;
-    bool locked = false;
+    bool locked = false, fs_locked = false;
     pid_t pid = 0;
     struct locals
     {
@@ -1139,7 +1158,10 @@ int proc_pid_maps_vcallback(
     myst_process_t* process;
 
     myst_spin_lock(&myst_process_list_lock);
-    myst_lockfs_lock();
+    /* We already hold the lockfs lock, as this function is called on an
+    open("/proc/[pid]/maps"). lockfs lock is recursive, so it doesn't hurt to
+    re-acquire. */
+    _fsunlock(&fs_locked);
 
     if (!vbuf && !entrypath)
         ERAISE(-EINVAL);
@@ -1270,8 +1292,7 @@ int proc_pid_maps_vcallback(
 
 done:
     _runlock(&locked);
-
-    myst_lockfs_unlock();
+    _fsunlock(&fs_locked);
     myst_spin_unlock(&myst_process_list_lock);
 
     if (ret != 0)
@@ -1316,7 +1337,7 @@ done:
 int myst_msync(void* addr, size_t length, int flags)
 {
     int ret = 0;
-    bool locked = false;
+    bool locked = false, fs_locked = false;
     size_t index;
     vectors_t v = _get_vectors();
     const int mask = MS_SYNC | MS_ASYNC | MS_INVALIDATE;
@@ -1333,6 +1354,7 @@ int myst_msync(void* addr, size_t length, int flags)
     ECHECK(myst_round_up(length, PAGE_SIZE, &rounded_up_length));
     ECHECK((index = _get_page_index(addr, rounded_up_length)));
 
+    _fslock(&fs_locked);
     _rlock(&locked);
     {
         int prot;
@@ -1365,10 +1387,10 @@ int myst_msync(void* addr, size_t length, int flags)
             length -= PAGE_SIZE;
         }
     }
-    _runlock(&locked);
 
 done:
     _runlock(&locked);
+    _fsunlock(&fs_locked);
 
     return ret;
 }
@@ -1621,9 +1643,9 @@ const char* myst_mman_flags_to_string(int flags)
         case MYST_MAP_FIXED | MYST_MAP_PRIVATE:
             return "MAP_FIXED|MAP_PRIVATE";
         case MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
-            return "MAP_ANONYMOUS|MYST_PRIVATE";
+            return "MAP_ANONYMOUS|MAP_PRIVATE";
         case MYST_MAP_FIXED | MYST_MAP_ANONYMOUS | MYST_MAP_PRIVATE:
-            return "MAP_FIXED|MAP_ANONYMOUS|MYST_PRIVATE";
+            return "MAP_FIXED|MAP_ANONYMOUS|MAP_PRIVATE";
         default:
             return "unknown";
     }
