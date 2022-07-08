@@ -21,7 +21,7 @@ $(PACKAGE): appdir package.pem
 	$(MYST) package-sgx --roothash=roothash package.pem config.json
 
 # running both service and client in one recipe
-_run:
+run: $(PACKAGE)
 	./kill.sh $(PACKAGE) $(APP_PATH)
 	@echo "\n------Starting Pytorch Inference Service(package mode)------\n"
 	$(PACKAGE) --rootfs=rootfs &
@@ -44,9 +44,6 @@ _run:
 	@echo "\n------Terminating Pytorch Inference Service------\n"
 	./kill.sh $(PACKAGE) $(APP_PATH)
 	
-run:
-	$(RUNTEST) make -C $(CURDIR) _run
-
 package.pem:
 	./gen_pkey.sh package.pem
 
