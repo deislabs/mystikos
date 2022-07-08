@@ -697,9 +697,11 @@ long myst_mmap(
     /* Case: POSIX shared memory file mapping */
     if (fd >= 0 && !addr && myst_is_posix_shm_file_handle(fd, flags))
     {
-        /* ATTN vat: fail for the addr hint case here.
-        addr hint is not allowed for POSIX shm memory */
-
+        /* If the file descriptor is a POSIX shm file and addr hint is provided:
+            MAP_PRIVATE - will fail in myst_posix_shm_handle_mmap param
+           validation. MAP_SHARED - we don't support addr hint for shared
+           mappings. Already handled in the syscall handler _SYS_mmap.
+        */
         /* Right now that case falls throw into the next else and fails in
          * myst_mman_map */
 
@@ -802,7 +804,7 @@ void* myst_mremap(
     int flags,
     void* new_address)
 {
-    long ret;
+    long ret = 0;
     void* p;
     shared_mapping_t* shm_mapping;
     bool locked = false, fs_locked = false;
@@ -813,15 +815,22 @@ void* myst_mremap(
     if (new_size < old_size)
         _fslock(&fs_locked);
     _rlock(&locked);
-    if (myst_is_address_within_shmem(old_address, old_size, &shm_mapping))
     {
-        if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
+        int lookup_ret = myst_addr_within_process_owned_shmem(
+            old_address, old_size, 0, &shm_mapping);
+        if (lookup_ret == 1)
         {
-            MYST_WLOG("Unsupported mremap operation detected. For shared "
-                      "mappings, mremap is only allowed if there is a single "
-                      "user of the mapping.\n");
-            ERAISE(-EINVAL);
+            if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
+            {
+                MYST_WLOG(
+                    "Unsupported mremap operation detected. For shared "
+                    "mappings, mremap is only allowed if there is a single "
+                    "user of the mapping.\n");
+                ERAISE(-EINVAL);
+            }
         }
+        else if (lookup_ret < 0)
+            ERAISE(lookup_ret);
     }
 
     ECHECK(
@@ -847,7 +856,9 @@ done:
 
 int myst_mprotect(const void* addr, const size_t len, const int prot)
 {
+    int ret = 0;
     shared_mapping_t* shm_mapping;
+    bool locked = false;
 
     if (!addr)
         return -EINVAL;
@@ -863,28 +874,42 @@ int myst_mprotect(const void* addr, const size_t len, const int prot)
     // we don't support changing protection left of addr
     assert(!(prot & MYST_PROT_GROWSDOWN));
 
-    if (myst_is_address_within_shmem(addr, len, &shm_mapping))
+    _rlock(&locked);
     {
-        if (!myst_shmem_can_mprotect(shm_mapping, (void*)addr, len))
+        int lookup_ret =
+            myst_addr_within_process_owned_shmem(addr, len, 0, &shm_mapping);
+
+        if (lookup_ret == 1)
         {
-            MYST_WLOG("Unsupported mprotect operation detected. For shared "
-                      "mappings, mprotect is only allowed if there is a single "
-                      "user of the mapping. Mystikos relies on host for page "
-                      "protection. On x86-64 and Linux, page protection is per "
-                      "address space. As we "
-                      "are single process on the host, supporting mprotect for "
-                      "memory shared between two process threads becomes "
-                      "difficult.\n");
-            return -EINVAL;
+            if (!myst_shmem_can_mprotect(shm_mapping, (void*)addr, len))
+            {
+                MYST_WLOG(
+                    "Unsupported mprotect operation detected. For shared "
+                    "mappings, mprotect is only allowed if there is a single "
+                    "user of the mapping. Mystikos relies on host for page "
+                    "protection. On x86-64 and Linux, page protection is per "
+                    "address space. As we "
+                    "are single process on the host, supporting mprotect for "
+                    "memory shared between two process threads becomes "
+                    "difficult.\n");
+                ERAISE(-EINVAL);
+            }
         }
+        else if (lookup_ret < 0)
+            ERAISE(lookup_ret);
     }
 
     {
         /* Current implementation for mprotect ignore bits beyond
             PROT_READ|PROT_WRITE|PROT_EXEC
         */
-        return (myst_mman_mprotect(&_mman, (void*)addr, len, prot));
+        ECHECK(myst_mman_mprotect(&_mman, (void*)addr, len, prot));
     }
+
+done:
+
+    _runlock(&locked);
+    return ret;
 }
 
 int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
@@ -1043,6 +1068,9 @@ int myst_release_process_mappings(pid_t pid)
                     len = m * PAGE_SIZE;
 
                     fdlist_t* unmap_fds = NULL;
+                    /* ATTN: remove code for closing file handles outside mman
+                     * lock.
+                     */
                     if (__myst_munmap(addr, len, &unmap_fds) != 0)
                     {
                         /* The unmap operation is not expected to fail, even for
@@ -1055,6 +1083,9 @@ int myst_release_process_mappings(pid_t pid)
 
                         // myst_eprintf("myst_munmap() %p failed, pid=%d.
                         // len=0x%lx err=%s\n", addr, pid, len, _mman.err);
+                        // We are really expecting for this to not fail. Failing
+                        // will cause mman and lockfs lock to be un-acquirable
+                        // by other threads for posterity.
                         assert("myst_munmap() failed" == NULL);
                         ERAISE(-EINVAL);
                     }
@@ -1088,7 +1119,7 @@ int myst_release_process_mappings(pid_t pid)
 done:
 
     _runlock(&locked);
-
+    // ATTN: not required now.
     // close file handles outside of mman lock
     _close_file_handles(catchall);
     _fsunlock(&fs_locked);
@@ -1511,6 +1542,8 @@ map_type_t myst_process_owns_mem_range(
     size_t length,
     bool private_only)
 {
+    bool locked = false;
+    map_type_t map_type = NONE;
     pid_t pid = myst_getpid();
     uint64_t page_addr = myst_round_down_to_page_size((uint64_t)addr);
 
@@ -1528,17 +1561,31 @@ map_type_t myst_process_owns_mem_range(
     if (myst_round_up(length ? length : 1, PAGE_SIZE, &length) < 0)
         return NONE;
 
+    _rlock(&locked);
     /* check for MAP_PRIVATE mappings */
     ssize_t test_ret = myst_mman_pids_test((const void*)page_addr, length, pid);
     if (test_ret == (ssize_t)length)
-        return PRIVATE;
+    {
+        map_type = PRIVATE;
+        goto done;
+    }
 
+    /* check for MAP_SHARED mappings */
     if (!private_only)
-        /* check for MAP_SHARED mappings */
-        if (myst_addr_within_process_owned_shmem((void*)page_addr, length, pid))
-            return SHARED;
+    {
+        int ret = myst_addr_within_process_owned_shmem(
+            (void*)page_addr, length, pid, NULL);
+        if (ret == 1)
+        {
+            map_type = SHARED;
+            goto done;
+        }
+    }
 
-    return NONE;
+done:
+
+    _runlock(&locked);
+    return map_type;
 }
 
 bool myst_is_bad_addr(const void* addr, size_t length, int prot)
