@@ -300,6 +300,8 @@ done:
     return ret;
 }
 
+#define FOUND 1
+
 static int _lookup_shmem_map(
     const void* start_addr,
     const size_t len,
@@ -328,6 +330,7 @@ static int _lookup_shmem_map(
         if (start_addr_within_range && end_addr_within_range)
         {
             *sm_out = sm;
+            ret = FOUND;
             goto done;
         }
         else if (start_addr_within_range || end_addr_within_range)
@@ -345,7 +348,7 @@ static int _lookup_shmem_map(
                 "shared memory region.\naddr=%p length=%ld\n",
                 start_addr,
                 len);
-            myst_panic("Unsupported.\n");
+            ERAISE(-EINVAL);
         }
 
         // else no overlap at all, keep searching
@@ -356,44 +359,34 @@ done:
     return ret;
 }
 
-bool myst_is_address_within_shmem(
+int myst_addr_within_process_owned_shmem(
     const void* addr,
     const size_t length,
+    pid_t pid,
     shared_mapping_t** sm_out)
 {
     bool locked = false;
+    int ret = 0;
+    shared_mapping_t* sm = NULL;
 
-    if (sm_out)
-        *sm_out = NULL;
-    _rlock(&locked);
-    shared_mapping_t* sm;
-    _lookup_shmem_map(addr, length, &sm);
-    _runlock(&locked);
-
-    if (sm)
-    {
-        if (sm_out)
-            *sm_out = sm;
-        return true;
-    }
-
-    return false;
-}
-
-bool myst_addr_within_process_owned_shmem(
-    const void* addr,
-    const size_t length,
-    pid_t pid)
-{
-    shared_mapping_t* sm;
+    /* Assumption is that the kernel doesn't use shared memory for its own
+     * purposes. */
     if (!pid)
         pid = myst_getpid();
 
-    if (myst_is_address_within_shmem(addr, length, &sm) &&
-        _lookup_sharers_by_proc(sm, pid))
-        return true;
+    if (sm_out)
+        *sm_out = NULL;
 
-    return false;
+    _rlock(&locked);
+    ret = _lookup_shmem_map(addr, length, &sm);
+    if (ret == FOUND && _lookup_sharers_by_proc(sm, pid))
+    {
+        if (sm_out && sm)
+            *sm_out = sm;
+    }
+    _runlock(&locked);
+
+    return ret;
 }
 
 long myst_posix_shm_handle_mmap(
@@ -506,6 +499,7 @@ unlock:
 
 done:
 
+    _runlock(&locked);
     // if failed or found existing mapping
     if (file_handle && !file_handle->npages)
     {
@@ -620,8 +614,12 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
         // lookup fails for munmaps overlapping partially with a shared memory
         // object
         ECHECK_LABEL(_lookup_shmem_map(addr, length, &sm), unlock);
-        if (sm)
+        int lookup_ret =
+            myst_addr_within_process_owned_shmem(addr, length, 0, &sm);
+
+        if (lookup_ret == 1)
         {
+            assert(sm);
             if (sm->start_addr != addr && sm->length != length)
             {
                 MYST_ELOG(
@@ -653,6 +651,8 @@ int myst_shmem_handle_munmap(void* addr, size_t length, bool* is_shmem)
                 free(sm);
             }
         }
+        else
+            ret = lookup_ret;
     }
 unlock:
     _runlock(&locked);

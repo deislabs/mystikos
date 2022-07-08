@@ -53,9 +53,16 @@ void myst_shmem_mremap_update(
 
 bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length);
 
-bool myst_addr_within_process_owned_shmem(
+/*
+Return value:
+0 - if no shared memory region corresponding to entire range.
+1 - if shared memory region found without partial overlap.
+<0 - if shared memory region found but with partial overlap.
+*/
+int myst_addr_within_process_owned_shmem(
     const void* addr,
     const size_t length,
-    pid_t pid);
+    pid_t pid,
+    shared_mapping_t** sm_out);
 
 #endif /* _MYST_POSIXSHMMAN_H */
