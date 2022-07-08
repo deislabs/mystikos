@@ -17,7 +17,6 @@ DIRS += mhsm_ssr
 DIRS += msgpack_c
 
 DIRS += dotnet
-DIRS += confidential_ml
 DIRS += aspnet_core
 DIRS += numpy_core_tests
 DIRS += cpython-tests
