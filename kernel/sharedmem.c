@@ -406,7 +406,7 @@ long myst_posix_shm_handle_mmap(
     bool locked = false;
     long ret = -1;
     void* buf_data_addr;
-    mman_file_handle_t* file_handle;
+    mman_file_handle_t* file_handle = NULL;
     size_t backing_file_size;
 
 #ifdef TRACE
@@ -419,12 +419,12 @@ long myst_posix_shm_handle_mmap(
 
     if (offset != 0)
     {
-        MYST_ELOG(
+        MYST_WLOG(
             "\nPOSIX SHM files don't allow non-zero offset for mmap(). "
             "\nActual offset=%ld.\nExpected "
             "offset=0.",
             offset);
-        myst_panic("Unsupported");
+        ERAISE(-EINVAL);
     }
 
     if (!(flags & MAP_SHARED) || offset % PAGE_SIZE)
@@ -449,12 +449,12 @@ long myst_posix_shm_handle_mmap(
 
         if (length < backing_file_size)
         {
-            MYST_ELOG(
+            MYST_WLOG(
                 "\nPOSIX SHM files don't allow mapping the file "
                 "partially.\nActual length=%ld.\nExpected length=%ld.",
                 length,
                 backing_file_size);
-            myst_panic("Unsupported");
+            ERAISE(-EINVAL);
         }
     }
 
@@ -745,7 +745,7 @@ bool myst_shmem_can_mremap(
             old_size,
             sm->start_addr,
             sm->length);
-        myst_panic("Unsupported.\n");
+        return false;
     }
 
     if (sm->type == SHMEM_POSIX_SHM)
@@ -771,7 +771,7 @@ bool myst_shmem_can_mprotect(shared_mapping_t* sm, void* addr, size_t length)
             length,
             sm->start_addr,
             sm->length);
-        myst_panic("Unsupported.\n");
+        return false;
     }
 
     if (sm->sharers.size == 1)

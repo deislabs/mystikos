@@ -291,8 +291,7 @@ int main(int argc, char* argv[])
         Current design does not support mremap or mprotect operations at a
         non-zero offset from the start of a shared memory region. This is to
         avoid complexity in tracking of shared memory regions. None of the
-        programs we run in our CI exhibit such usage. We fail loudly with a
-        SIGSEGV, so that if we ever run such a situation its noticeable.
+        programs we run in our CI exhibit such usage.
         */
 
         // check failure of partial mremap
@@ -302,17 +301,18 @@ int main(int argc, char* argv[])
 
             if (cpid == 0)
             {
-                // partial mremap should throw SIGSEGV
-                mremap(
+                // partial mremap should fail
+                void* ret = mremap(
                     addr + PAGE_SIZE, PAGE_SIZE, 2 * PAGE_SIZE, MREMAP_MAYMOVE);
+                assert(ret == (void*)-1);
+                exit(0);
             }
             else
             {
                 int wstatus;
                 assert(waitpid(cpid, &wstatus, 0) == cpid);
-                // check child was killed with SIGSEGV
                 printf("wstatus=%d\n", wstatus);
-                assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
+                assert(!wstatus);
             }
         }
 
@@ -323,16 +323,16 @@ int main(int argc, char* argv[])
 
             if (cpid == 0)
             {
-                // partial mprotect should throw SIGSEGV
-                mprotect(addr + PAGE_SIZE, PAGE_SIZE, PROT_WRITE);
+                // partial mprotect should fail
+                int ret = mprotect(addr + PAGE_SIZE, PAGE_SIZE, PROT_WRITE);
+                assert(ret == -1);
+                exit(0);
             }
             else
             {
                 int wstatus;
                 waitpid(cpid, &wstatus, 0);
-                // check child was killed with SIGSEGV
-                printf("wstatus=%d\n", wstatus);
-                assert(WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
+                assert(!wstatus);
             }
         }
 
