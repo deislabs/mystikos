@@ -260,34 +260,18 @@ int main(int argc, char* argv[])
         printf("misaligned offset addr=%p errno=%s\n", addr, strerror(errno));
         assert(addr == MAP_FAILED && errno == EINVAL);
 
-        // check failure for non-zero offset
+        // offset beyond end of file
+        // supported by Linux, unsupported by Mystikos
         {
-            pid_t pid = fork();
-            assert(pid != -1);
+            void* addr2 = mmap(
+                0,
+                PAGE_SIZE,
+                PROT_READ | PROT_WRITE,
+                MAP_SHARED,
+                fd,
+                3 * PAGE_SIZE);
 
-            if (pid == 0)
-            {
-                int fd = shm_open(shm_name, O_RDWR, 0);
-                // offset beyond end of file
-                // supported by Linux, unsupported by Mystikos
-                addr = mmap(
-                    0,
-                    PAGE_SIZE,
-                    PROT_READ | PROT_WRITE,
-                    MAP_SHARED,
-                    fd,
-                    3 * PAGE_SIZE);
-            }
-            else
-            {
-                int wstatus;
-                waitpid(pid, &wstatus, 0);
-                // check child was killed with SIGSEGV
-                printf("wstatus=%d\n", wstatus);
-                if (os == MYSTIKOS)
-                    assert(
-                        WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV);
-            }
+            assert(addr2 == MAP_FAILED && errno == EINVAL);
         }
 
 #if 0
