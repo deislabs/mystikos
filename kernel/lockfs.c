@@ -730,7 +730,12 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
     lockfs->magic = LOCKFS_MAGIC;
     lockfs->fs = fs;
     *lockfs_out = &lockfs->base;
-    _inited = true;
+
+    if (!_inited)
+    {
+        _inited = true;
+        myst_mutex_init(&_global_lock);
+    }
 
 done:
 
