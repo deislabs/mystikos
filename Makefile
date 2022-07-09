@@ -90,6 +90,7 @@ clean:
 ##==============================================================================
 
 build-prereqs:
+	sudo apt-get install -y lsb-core
 	make -C $(TOP)/prereqs/
 
 init: build-prereqs
