@@ -3681,7 +3681,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
         }
         else
         {
-            /* address hint is unsupported */
+            /* address hint is disregarded */
             addr = NULL;
         }
     }
@@ -3703,7 +3703,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
 
-        /* set ownership this mapping to pid */
+        /* set ownership of this mapping to pid */
         if (myst_mman_pids_set(ptr, length, pid) != 0)
         {
             myst_mman_unlock();
@@ -3841,9 +3841,10 @@ static long _SYS_mremap(long n, long params[6])
         new_address);
 
     /* filesystem lock is required only in the shrink case, for closing file
-     * handles. In the growing case, the fdmappings entries are copied
-     * over for the original memory region, no fs operations. Note, the newly
-     * allocated memory is not part of the file mapping. */
+     * handles related to memory range being released. In the growing case,
+     * fdmappings entries are copied over from the old memory region, no
+     * filesystem operations involved. Note, the newly allocated memory is not
+     * part of the file mapping. */
     if (new_size < old_size)
         myst_lockfs_lock();
     myst_mman_lock();
