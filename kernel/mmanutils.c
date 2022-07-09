@@ -816,6 +816,9 @@ void* myst_mremap(
         _fslock(&fs_locked);
     _rlock(&locked);
     {
+        /* If we are here, ownership check in the syscall handler has passed. We
+         * still need to call the shared memory ownership check routine to get
+         * the shared mapping object. */
         int lookup_ret = myst_addr_within_process_owned_shmem(
             old_address, old_size, 0, &shm_mapping);
         if (lookup_ret == 1)
@@ -829,6 +832,7 @@ void* myst_mremap(
                 ERAISE(-EINVAL);
             }
         }
+        // bubble-up errors.
         else if (lookup_ret < 0)
             ERAISE(lookup_ret);
     }
@@ -1192,7 +1196,7 @@ int proc_pid_maps_vcallback(
     /* We already hold the lockfs lock, as this function is called on an
     open("/proc/[pid]/maps"). lockfs lock is recursive, so it doesn't hurt to
     re-acquire. */
-    _fsunlock(&fs_locked);
+    _fslock(&fs_locked);
 
     if (!vbuf && !entrypath)
         ERAISE(-EINVAL);
@@ -1569,6 +1573,9 @@ map_type_t myst_process_owns_mem_range(
         map_type = PRIVATE;
         goto done;
     }
+
+    // ATTN: fail if test_ret > 0? Case where memory region is partially owned
+    // by pid.
 
     /* check for MAP_SHARED mappings */
     if (!private_only)
