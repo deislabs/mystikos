@@ -3723,6 +3723,7 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
 static long _SYS_mprotect(long n, long params[6])
 {
+    long ret = 0;
     const void* addr = (void*)params[0];
     const size_t length = (size_t)params[1];
     const int prot = (int)params[2];
@@ -3736,11 +3737,17 @@ static long _SYS_mprotect(long n, long params[6])
         prot,
         myst_mman_prot_to_string(prot));
 
+    myst_mman_lock();
     /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
     if (!myst_process_owns_mem_range(addr, length, NULL))
-        return (_return(n, -EINVAL));
+        ERAISE(-EINVAL);
 
-    return (_return(n, (long)myst_mprotect(addr, length, prot)));
+    ret = (long)myst_mprotect(addr, length, prot);
+
+done:
+
+    myst_mman_unlock();
+    return (_return(n, ret));
 }
 
 static long _SYS_munmap(
