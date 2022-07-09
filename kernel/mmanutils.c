@@ -941,18 +941,21 @@ int myst_munmap(void* addr, size_t length)
 {
     int ret = 0;
     fdlist_t* head = NULL;
-    bool locked = false, fs_locked = false;
+    bool locked = false;
 
-    _fslock(&fs_locked);
+    /* File system lock is acquired in the syscall handler. dlmalloc calls to
+     * myst_mmap/munmap already acquire the lock. Acquiring the file system lock
+     * here can lead to deadlock. The assumption is that in-kernel usages never
+     * do file mappings. */
     _rlock(&locked);
     ECHECK(__myst_munmap(addr, length, &head));
+    _runlock(&locked);
 
     // close file handles outside of mman lock
     _close_file_handles(head);
 
 done:
     _runlock(&locked);
-    _fsunlock(&fs_locked);
     return ret;
 }
 

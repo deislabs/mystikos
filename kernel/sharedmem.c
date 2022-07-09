@@ -62,9 +62,9 @@ typedef struct shared_mapping
     myst_list_t sharers; // processes sharing this mapping
     void* start_addr;
     size_t length;
-    size_t filesz;
+    size_t filesz; // file size at mmap() time
     mman_file_handle_t* file_handle;
-    size_t offset;
+    size_t offset; // offset in file where mapping starts
     shmem_type_t type;
 } shared_mapping_t;
 
