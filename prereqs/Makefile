@@ -34,9 +34,11 @@ packages: package_repo
 	touch package-installed
 
 install_sgx_driver:
+ifndef CDPX_BYPASS
 ifeq ("$(OS_NAME)", "bionic")
 	wget $(DRIVER_URL)/$(DRIVER)
 	sudo bash ./$(DRIVER)
+endif
 endif
 
 clean:
