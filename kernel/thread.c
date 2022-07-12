@@ -1598,9 +1598,9 @@ size_t myst_kill_thread_group()
          * so lets do it again to be sure */
         if (process->fdtable)
         {
-            myst_spin_lock(&process->fdtable->lock);
+            myst_rspin_lock(&process->fdtable->lock);
             myst_fdtable_interrupt(process->fdtable);
-            myst_spin_unlock(&process->fdtable->lock);
+            myst_rspin_unlock(&process->fdtable->lock);
         }
 
         /* wait for all other threads except ours and the process thread to go

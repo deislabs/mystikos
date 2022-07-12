@@ -61,7 +61,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
     if (!(new_fdtable = calloc(1, sizeof(myst_fdtable_t))))
         ERAISE(-ENOMEM);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
         {
@@ -85,7 +85,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
                 /* Duplicate the object */
                 if ((r = (*fdops->fd_dup)(fdops, entry->object, &object)) != 0)
                 {
-                    myst_spin_unlock(&fdtable->lock);
+                    myst_rspin_unlock(&fdtable->lock);
                     ERAISE(r);
                 }
 
@@ -99,7 +99,7 @@ int myst_fdtable_clone(myst_fdtable_t* fdtable, myst_fdtable_t** fdtable_out)
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
     *fdtable_out = new_fdtable;
     new_fdtable = NULL;
@@ -119,7 +119,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         /* close any file descriptors with FD_CLOEXEC flag */
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
@@ -133,7 +133,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
 
                 if (r < 0)
                 {
-                    myst_spin_unlock(&fdtable->lock);
+                    myst_rspin_unlock(&fdtable->lock);
                     ERAISE(r);
                 }
 
@@ -151,7 +151,7 @@ int myst_fdtable_cloexec(myst_fdtable_t* fdtable)
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
 done:
 
@@ -226,7 +226,7 @@ int myst_fdtable_assign(
     if (!fdtable || !object)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         /* Use the first available entry */
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
@@ -239,12 +239,12 @@ int myst_fdtable_assign(
                 entry->device = device;
                 entry->object = object;
                 ret = i;
-                myst_spin_unlock(&fdtable->lock);
+                myst_rspin_unlock(&fdtable->lock);
                 goto done;
             }
         }
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
     ERAISE(-EMFILE);
 
@@ -322,7 +322,7 @@ int myst_fdtable_dup(
         }
     }
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     locked = true;
 
     {
@@ -407,7 +407,7 @@ int myst_fdtable_dup(
 done:
 
     if (locked)
-        myst_spin_unlock(&fdtable->lock);
+        myst_rspin_unlock(&fdtable->lock);
 
     return ret;
 }
@@ -422,9 +422,9 @@ int myst_fdtable_remove(myst_fdtable_t* fdtable, int fd)
     if (fd < 0 || fd >= MYST_FDTABLE_SIZE)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     memset(&fdtable->entries[fd], 0, sizeof(myst_fdtable_entry_t));
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
 done:
     return ret;
@@ -448,14 +448,14 @@ int myst_fdtable_get(
     if (type == MYST_FDTABLE_TYPE_NONE)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[fd];
 
         if (entry->type != type || !(entry->object && entry->device))
         {
             myst_fdtable_type_t actual_type = entry->type;
-            myst_spin_unlock(&fdtable->lock);
+            myst_rspin_unlock(&fdtable->lock);
 
             // If the client gave us a handle that is not a socket we need to
             // return ENOTSOCK. If the socket has been closed or not used then
@@ -471,7 +471,7 @@ int myst_fdtable_get(
         *device = entry->device;
         *object = entry->object;
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
 done:
 
@@ -496,13 +496,13 @@ int myst_fdtable_get_any(
     if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
         ERAISE(-EBADF);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[fd];
 
         if (entry->type == MYST_FDTABLE_TYPE_NONE)
         {
-            myst_spin_unlock(&fdtable->lock);
+            myst_rspin_unlock(&fdtable->lock);
             ERAISE(-EBADF);
         }
 
@@ -510,7 +510,7 @@ int myst_fdtable_get_any(
         *device = entry->device;
         *object = entry->object;
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
 done:
 
@@ -616,7 +616,7 @@ long myst_fdtable_sync(myst_fdtable_t* fdtable)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     locked = true;
 
     {
@@ -636,7 +636,7 @@ long myst_fdtable_sync(myst_fdtable_t* fdtable)
 done:
 
     if (locked)
-        myst_spin_unlock(&fdtable->lock);
+        myst_rspin_unlock(&fdtable->lock);
 
     return ret;
 }
@@ -649,7 +649,7 @@ ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable)
     if (!fdtable)
         ERAISE(-EINVAL);
 
-    myst_spin_lock(&((myst_fdtable_t*)fdtable)->lock);
+    myst_rspin_lock(&((myst_fdtable_t*)fdtable)->lock);
     {
         for (int i = 0; i < MYST_FDTABLE_SIZE; i++)
         {
@@ -659,7 +659,7 @@ ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable)
                 count++;
         }
     }
-    myst_spin_unlock(&((myst_fdtable_t*)fdtable)->lock);
+    myst_rspin_unlock(&((myst_fdtable_t*)fdtable)->lock);
 
     ret = count;
 
@@ -681,21 +681,21 @@ int myst_fdtable_update_sock_entry(
     if (!(fd >= 0 && fd < MYST_FDTABLE_SIZE))
         ERAISE(-EBADF);
 
-    myst_spin_lock(&fdtable->lock);
+    myst_rspin_lock(&fdtable->lock);
     {
         myst_fdtable_entry_t* entry = &fdtable->entries[fd];
 
         if (entry->type != MYST_FDTABLE_TYPE_SOCK ||
             !(entry->device && entry->object))
         {
-            myst_spin_unlock(&fdtable->lock);
+            myst_rspin_unlock(&fdtable->lock);
             ERAISE(-ENOTSOCK);
         }
 
         entry->device = device;
         entry->object = new_sock;
     }
-    myst_spin_unlock(&fdtable->lock);
+    myst_rspin_unlock(&fdtable->lock);
 
 done:
 
