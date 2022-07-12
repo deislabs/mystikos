@@ -3687,7 +3687,10 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     }
 
     if (fd >= 0)
+    {
+        myst_rspin_lock(&myst_fdtable_current()->lock);
         myst_lockfs_lock();
+    }
     myst_mman_lock();
     /* this can return (void*)-errno */
     long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
@@ -3716,7 +3719,10 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     }
     myst_mman_unlock();
     if (fd >= 0)
+    {
+        myst_rspin_unlock(&myst_fdtable_current()->lock);
         myst_lockfs_unlock();
+    }
 
     return (_return(n, ret));
 }

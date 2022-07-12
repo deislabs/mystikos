@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include <myst/spinlock.h>
-#include <myst/thread.h>
 
 // clang-format off
 #define MYST_RSPINLOCK_INITIALIZER { 0 }

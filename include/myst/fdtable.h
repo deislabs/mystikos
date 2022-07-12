@@ -15,6 +15,7 @@
 #include <myst/fs.h>
 #include <myst/inotifydev.h>
 #include <myst/pipedev.h>
+#include <myst/rspinlock.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
 #include <myst/ttydev.h>
@@ -43,7 +44,7 @@ typedef struct myst_fdtable_entry
 typedef struct myst_fdtable
 {
     myst_fdtable_entry_t entries[MYST_FDTABLE_SIZE];
-    myst_spinlock_t lock;
+    myst_rspinlock_t lock;
 } myst_fdtable_t;
 
 int myst_fdtable_create(myst_fdtable_t** fdtable_out);
