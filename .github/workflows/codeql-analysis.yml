@@ -13,8 +13,10 @@ name: "CodeQL"
 
 on:
   schedule:
-    - cron: '0 16 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *'
+  pull_request:
+    branches:
+      - ["main"]
 
 jobs:
   analyze:
@@ -48,6 +50,22 @@ jobs:
     - name: Building Mystikos
       run: |
         make MYST_PRODUCT_BUILD=1 -j4
-              
+
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+      with:
+        upload: false
+        output: sarif-results
+
+    - name: Remove third_party issues from SARIF
+      uses: zbazztian/filter-sarif@a347e7442e403a432234e777ca5f21ec51f51b7a
+      with:
+        patterns: |
+          -third_party/**
+        input: sarif-results/cpp.sarif
+        output: sarif-results/cpp.sarif
+
+    - name: Upload SARIF
+      uses: github/codeql-action/upload-sarif@v1
+      with:
+        sarif_file: sarif-results/cpp.sarif
