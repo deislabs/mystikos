@@ -6,3 +6,4 @@
 /ltp/testcases/kernel/syscalls/poll/poll02
 /ltp/testcases/kernel/syscalls/fork/fork01          occasionally fails
 /ltp/testcases/kernel/syscalls/fork/fork12          occasionally fails
+/ltp/testcases/kernel/syscalls/signal/signal06      fails in CI

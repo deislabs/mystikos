@@ -303,7 +303,6 @@
 /ltp/testcases/kernel/syscalls/signal/signal03
 /ltp/testcases/kernel/syscalls/signal/signal04
 /ltp/testcases/kernel/syscalls/signal/signal05
-/ltp/testcases/kernel/syscalls/signal/signal06
 /ltp/testcases/kernel/syscalls/sigprocmask/sigprocmask01
 /ltp/testcases/kernel/syscalls/socket/socket01
 /ltp/testcases/kernel/syscalls/socket/socket02
