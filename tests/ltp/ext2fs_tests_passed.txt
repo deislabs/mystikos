@@ -6,6 +6,7 @@
 /ltp/testcases/kernel/syscalls/alarm/alarm05
 /ltp/testcases/kernel/syscalls/alarm/alarm06
 /ltp/testcases/kernel/syscalls/bind/bind01
+/ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod01
 /ltp/testcases/kernel/syscalls/chmod/chmod02
@@ -104,6 +105,7 @@
 /ltp/testcases/kernel/syscalls/getcwd/getcwd02
 /ltp/testcases/kernel/syscalls/getcwd/getcwd04
 /ltp/testcases/kernel/syscalls/getdomainname/getdomainname01
+/ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01
 /ltp/testcases/kernel/syscalls/getegid/getegid01
 /ltp/testcases/kernel/syscalls/getegid/getegid02
 /ltp/testcases/kernel/syscalls/geteuid/geteuid01
