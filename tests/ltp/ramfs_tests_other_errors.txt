@@ -9,7 +9,6 @@
 /ltp/testcases/kernel/syscalls/add_key/add_key05
 /ltp/testcases/kernel/syscalls/alarm/alarm07
 /ltp/testcases/kernel/syscalls/bind/bind02
-/ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/bind/bind05
 /ltp/testcases/kernel/syscalls/bind/bind06
 /ltp/testcases/kernel/syscalls/bpf/bpf_prog04
@@ -231,7 +230,6 @@
 /ltp/testcases/kernel/syscalls/get_robust_list/get_robust_list01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd03
-/ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01
 /ltp/testcases/kernel/syscalls/getegid/getegid01_16
 /ltp/testcases/kernel/syscalls/getegid/getegid02_16
 /ltp/testcases/kernel/syscalls/geteuid/geteuid01_16

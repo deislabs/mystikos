@@ -57,7 +57,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/bind/bind01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/bind/bind02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind03 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/bind/bind04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/bind/bind04 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/bind/bind05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bind/bind06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/bpf/bpf_map01 | 0 | 0 | 0 |
@@ -414,7 +414,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/getdents/getdents01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getdents/getdents02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getdomainname/getdomainname01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01 | 1 | 0 | 1 |
 | /ltp/testcases/kernel/syscalls/getegid/getegid01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/getegid/getegid01_16 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/getegid/getegid02 | 1 | 1 | 1 |

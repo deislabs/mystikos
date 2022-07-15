@@ -9,7 +9,6 @@
 /ltp/testcases/kernel/syscalls/add_key/add_key05
 /ltp/testcases/kernel/syscalls/alarm/alarm07
 /ltp/testcases/kernel/syscalls/bind/bind02
-/ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/bind/bind05
 /ltp/testcases/kernel/syscalls/bind/bind06
 /ltp/testcases/kernel/syscalls/bpf/bpf_prog04
@@ -138,6 +137,7 @@
 /ltp/testcases/kernel/syscalls/fcntl/fcntl12_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl13
 /ltp/testcases/kernel/syscalls/fcntl/fcntl13_64
+/ltp/testcases/kernel/syscalls/fcntl/fcntl14
 /ltp/testcases/kernel/syscalls/fcntl/fcntl16
 /ltp/testcases/kernel/syscalls/fcntl/fcntl16_64
 /ltp/testcases/kernel/syscalls/fcntl/fcntl17
@@ -425,10 +425,12 @@
 /ltp/testcases/kernel/syscalls/open/open11
 /ltp/testcases/kernel/syscalls/open/open12
 /ltp/testcases/kernel/syscalls/open/open12_child
+/ltp/testcases/kernel/syscalls/open/open14
 /ltp/testcases/kernel/syscalls/open_tree/open_tree01
 /ltp/testcases/kernel/syscalls/open_tree/open_tree02
 /ltp/testcases/kernel/syscalls/openat/openat02
 /ltp/testcases/kernel/syscalls/openat/openat02_child
+/ltp/testcases/kernel/syscalls/openat/openat03
 /ltp/testcases/kernel/syscalls/openat2/openat201
 /ltp/testcases/kernel/syscalls/openat2/openat202
 /ltp/testcases/kernel/syscalls/openat2/openat203
