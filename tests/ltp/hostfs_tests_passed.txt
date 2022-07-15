@@ -6,6 +6,7 @@
 /ltp/testcases/kernel/syscalls/alarm/alarm05
 /ltp/testcases/kernel/syscalls/alarm/alarm06
 /ltp/testcases/kernel/syscalls/bind/bind01
+/ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/chdir/chdir04
 /ltp/testcases/kernel/syscalls/chmod/chmod01
 /ltp/testcases/kernel/syscalls/chmod/chmod02
