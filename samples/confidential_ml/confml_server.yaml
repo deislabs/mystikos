@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: confml-service
+  namespace: default
+spec:
+  ports:
+  - name: client1
+    port: 8000
+    targetPort: 8000
+  selector:
+    app: confml-server
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: confml-server-demo
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: confml-server
+  template:
+    metadata:
+      labels:
+        app: confml-server
+    spec:
+      containers:
+      - name: confml-server-demo
+        image: mystikos/confml:0.1
+        command: ["./myst/bin/python3", "--rootfs=rootfs"]
+        env:
+        - name: MHSM_AAD_URL
+          value: 
+        - name: APP_ID
+          value: 
+        - name: CLIENT_ID 
+          value: 
+        - name: CLIENT_SECRET
+          value: 
+        volumeMounts:
+        - name: var-run-aesmd
+          mountPath: /var/run/aesmd # hardcoded in intels libarary, volume name must match that of the daemonset 
+        ports:
+        - name: client1
+          containerPort: 8000
+        imagePullPolicy: Always
+        resources:
+          limits:
+            kubernetes.azure.com/sgx_epc_mem_in_MiB: "4096"
+          requests:
+            kubernetes.azure.com/sgx_epc_mem_in_MiB: "4096"
+      # restartPolicy: "Never"
+      volumes:
+      - name: var-run-aesmd
+        hostPath:
+          path: /var/run/aesmd

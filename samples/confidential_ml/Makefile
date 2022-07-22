@@ -20,6 +20,17 @@ $(PACKAGE): appdir package.pem
 	$(MYST) fssig --roothash rootfs > roothash
 	$(MYST) package-sgx --roothash=roothash package.pem config.json
 
+server:
+	./$(PACKAGE) --rootfs=rootfs
+
+# IMPORTANT: 
+# Before running this option, please set the RESOURCE_GROUP and CLUSTER_NAME options in the confml_aks_demo.sh file
+# You may also need to set the required keys in the env vars of the confml_server.yaml file
+aks-demo: 
+	docker build -t <your-docker-registry>/confml:0.1 -f AKSDockerfile .
+	docker push <your-docker-registry>/confml:0.1
+	./confml_aks_demo.sh
+
 # running both service and client in one recipe
 run: $(PACKAGE)
 	./kill.sh $(PACKAGE) $(APP_PATH)
