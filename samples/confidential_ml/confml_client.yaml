@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: confml-client
+  namespace: default
+spec:
+  template:
+    metadata:
+      labels:
+        app: confml-client
+    spec:
+      containers:
+      - name: confml-client
+        image: mystikos/confml:0.1
+        imagePullPolicy: Always
+        command: ["/bin/bash", "-c"]
+        args:
+        - curl -F "image=@/test_samples/IMAGE_NAME" IP_ADDRESS:8000/evaluate;
+      restartPolicy: OnFailure
+  backoffLimit: 2
