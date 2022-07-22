@@ -24,7 +24,7 @@ RUN curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Mini
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     /opt/conda/bin/conda install -y python=${PYTHON_VERSION} conda-build pyyaml numpy ipython && \
-    /opt/conda/bin/pip install expecttest hypothesis typing_extensions pytest && \
+    /opt/conda/bin/pip install expecttest hypothesis==6.52.1 typing_extensions pytest && \
     /opt/conda/bin/conda clean -ya
 
 FROM dev-base as submodule-update
