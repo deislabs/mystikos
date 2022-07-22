@@ -76,7 +76,7 @@ Users can configure where to retrieve the two symmetric keys with
     ]
 ```
 
-## Run the solution
+## Run the sample
 
 To make and run this solution, use: 
 ```
@@ -90,3 +90,33 @@ encrypted files of the same images.
 For demo purpose, the results of the inferences are shown on the screen
 as plain text. We can easily augment the confidentiality, if the users
 want it, by encrypting the results as well.
+
+## Running in Azure Kubernetes Service (AKS)
+
+Set the environment variables required in: 
+1. confml_server.yaml
+```bash
+CLIENT_ID=<your-client-id-for-azure-aad> 
+CLIENT_SECRET=<your-client-secret-for-azure-aad>
+APP_ID=<your-tenant-id-for-azure>
+MHSM_AAD_URL=<the-url-for-MHSM-aad>
+```
+2. confml_aks_demo.sh
+```bash
+RESOURCE_GROUP=
+CLUSTER_NAME=
+```
+3. On the current machine (so you can run `make` and create the docker container, this only needs to be done once)
+```bash
+export CLIENT_ID=<your-client-id-for-azure-aad> 
+export CLIENT_SECRET=<your-client-secret-for-azure-aad>
+export APP_ID=<your-tenant-id-for-azure>
+export MHSM_AAD_URL=<the-url-for-MHSM-aad>
+export SSR_PKEY=<the-key-specified-in-the-release-policy>
+```
+4. Add the name of your docker container to the `Makefile` and the `confml_client.yaml` and `confml_server.yaml`
+
+Once the environment varibles have been set, run: 
+```
+make && make demo
+```

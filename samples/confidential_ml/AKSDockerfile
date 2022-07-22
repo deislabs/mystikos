@@ -1,0 +1,17 @@
+FROM mystikos.azurecr.io/mystikos-bionic:latest
+
+RUN apt-get update && apt-get install -y curl
+ENV MYST=./opt/mystikos/bin/myst
+ENV PACKAGE=myst/bin/python3
+
+ADD $PACKAGE /$PACKAGE
+ADD rootfs rootfs
+ADD config.json config.json
+
+ADD package.pem package.pem
+ADD test_samples test_samples
+
+RUN $MYST fssig --roothash rootfs > roothash
+RUN $MYST package-sgx --roothash=roothash package.pem config.json
+
+WORKDIR /
