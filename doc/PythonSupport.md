@@ -36,7 +36,7 @@ Here are several noteworthy modules we haven't supported yet:
   - `os.exec*` - not supported
   - `os.openpty` - some cpython tests have not passed (yet)
   - `os.memfd_create`
-- `multiprocessing.shared_memory` - shared memory is not supported in Mytikos (yet)
+- `multiprocessing.shared_memory` - shared memory is not supported in Mystikos (yet)
 - `subprocess` - some parameters of `subprocess.run`/`subprocess.Popen` are not supported
   - `preexec_fn`
   - `shell=True` - as Ubuntu/Debian's default shell `dash` is not supported in Mystikos, setting parameter `shell=True` may require changing the default shell, such as by adding `RUN ln -sf /bin/bash /bin/sh` in the Dockerfile
