@@ -107,12 +107,12 @@ pipeline {
             }
             steps {
                 sh """
-                git fetch origin ${OECITEAM_BRANCH}
-                if git show-ref --verify --quiet refs/remotes/origin/${OECITEAM_BRANCH}; then
-                    git checkout ${OECITEAM_BRANCH} --force
-                else
-                    git checkout -b ${OECITEAM_BRANCH} --track remotes/origin/main --force
-                fi
+                    git fetch origin ${OECITEAM_BRANCH}
+                    if git show-ref --verify --quiet refs/remotes/origin/${OECITEAM_BRANCH}; then
+                        git checkout ${OECITEAM_BRANCH} --force
+                    else
+                        git checkout -b ${OECITEAM_BRANCH} --track remotes/origin/main --force
+                    fi
                 """
                 script {
                     CONTAINER_REPO = params.CONTAINER_REPO - ~"^(https|http)://"
