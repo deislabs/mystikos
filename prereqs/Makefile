@@ -30,7 +30,7 @@ packages: package_repo
 	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config $(PIP_INSTALL)
 	$(MAKE) wait_dpkg
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
-	$(PIP) install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake
+	$(PIP) install --upgrade setuptools scikit-build && $(PIP) install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake
 	touch package-installed
 
 install_sgx_driver:
