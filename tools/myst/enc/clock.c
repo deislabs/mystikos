@@ -10,23 +10,37 @@
 
 static long _realtime0 = 0;
 static long _monotime0 = 0;
+// The address of this pointer should be 8-byte aligned
+// since it points to host address
 static volatile long* _monotime_now = 0;
 static long _realtime_delta = 0;
 static long enc_clock_res = 0;
 
 int myst_setup_clock(struct clock_ctrl* ctrl)
 {
+    // ctrl is a host address.
+    // Store a copy of its content in enclave address to
+    // avoid reading host memory multiple times.
+    struct clock_ctrl* ctrl_enclave = NULL;
     int ret = -1;
     if (ctrl != NULL)
     {
+        if (sizeof(struct clock_ctrl) % 8 != 0 || (uint64_t)ctrl % 8 != 0)
+            return ret;
+
         if (!oe_is_outside_enclave(ctrl, sizeof(struct clock_ctrl)))
             return ret;
 
-        // Copy the starting values into enclave to isolate them
-        // From attacks. Note the starting clocks don't account for
+        // Make a copy of ctrl
+        if (!(ctrl_enclave = malloc(sizeof(struct clock_ctrl))))
+            return -ENOMEM;
+        oe_memcpy_aligned(ctrl_enclave, ctrl, sizeof(struct clock_ctrl));
+
+        // Only access enclave address here, instead of host, to isolate them
+        // from attacks. Note the starting clocks don't account for
         // the time spent in entering the enclave.
-        _realtime0 = ctrl->realtime0;
-        _monotime0 = ctrl->monotime0;
+        _realtime0 = ctrl_enclave->realtime0;
+        _monotime0 = ctrl_enclave->monotime0;
 
         if (_realtime0 <= 0 || _monotime0 <= 0)
             goto done;
@@ -39,11 +53,14 @@ int myst_setup_clock(struct clock_ctrl* ctrl)
         // _get_monotime and _get_realtime are guarded against such attacks.
         _monotime_now = &ctrl->now;
 
-        enc_clock_res = (long)ctrl->interval;
+        enc_clock_res = (long)ctrl_enclave->interval;
 
         ret = 0;
     }
 done:
+    if (ctrl_enclave)
+        free(ctrl_enclave);
+
     return ret;
 }
 

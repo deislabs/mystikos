@@ -13,8 +13,13 @@ struct clock_ctrl
     long monotime0;
     volatile long now;
     unsigned long interval;
-    volatile int done;
+    // Using long to make the size of this struct a multiplier of 8 bytes
+    volatile long done;
 };
+
+_Static_assert(
+    sizeof(struct clock_ctrl) == 40,
+    "Size of clock_ctrl should be multiplier of 8 bytes");
 
 int myst_setup_clock(struct clock_ctrl*);
 
