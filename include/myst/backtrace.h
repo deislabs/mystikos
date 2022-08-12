@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+size_t myst_backtrace3(void** start_frame, void** buffer, size_t size);
+
 size_t myst_backtrace(void** buffer, size_t size);
 
 void myst_dump_backtrace(void** buffer, size_t size);

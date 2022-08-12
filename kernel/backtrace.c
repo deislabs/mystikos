@@ -21,6 +21,11 @@ size_t myst_backtrace_impl(void** start_frame, void** buffer, size_t size)
 
     while (n < size)
     {
+        /*
+        Checks:
+        - frame address lies in some kstack
+        - return address - frame[1], lies within kernel
+        */
         if (!myst_within_stack(frame) || !myst_is_addr_within_kernel(frame[1]))
             break;
 
@@ -34,6 +39,11 @@ size_t myst_backtrace_impl(void** start_frame, void** buffer, size_t size)
 size_t myst_backtrace(void** buffer, size_t size)
 {
     return myst_backtrace_impl(__builtin_frame_address(0), buffer, size);
+}
+
+size_t myst_backtrace3(void** start_frame, void** buffer, size_t size)
+{
+    return myst_backtrace_impl(start_frame, buffer, size);
 }
 
 static int _symtab_get_string(
@@ -146,10 +156,7 @@ void myst_dump_backtrace(void** buffer, size_t size)
             if (_addr_to_func_name(addr, &name) == 0)
                 myst_eprintf("%p: %s()\n", buffer[i], name);
             else
-            {
-                /* ignore unnknown addresses */
-                break;
-            }
+                myst_eprintf("%p: <unknown address>\n", buffer[i]);
         }
     }
 }
