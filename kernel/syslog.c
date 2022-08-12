@@ -30,7 +30,7 @@ void __myst_vsyslog(
     const int pri = (priority & 7);
     const char* name = _names[pri];
 
-    if (!(pri <= __myst_kernel_args.syslog_level))
+    if (__myst_kernel_args.syslog_level < pri)
         return;
 
     switch (pri)

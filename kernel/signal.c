@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/backtrace.h>
 #include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
@@ -440,7 +441,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic error "-Wstack-usage=1152"
+#pragma GCC diagnostic error "-Wstack-usage=1168"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
@@ -504,6 +505,23 @@ static long _handle_one_signal(
                 thread_sig_handler->signal_fn(
                     signum, thread_sig_handler->signal_fn_arg);
                 thread_sig_handler = thread_sig_handler->previous;
+            }
+
+            // Print out backtrace for segfault exception
+            // Current myst_backtrace implementation only supports printing
+            // stacktrace for kernel stacks, so we check for that upfront.
+            if (signum == SIGSEGV &&
+                myst_within_stack((void**)mcontext->gregs[REG_RBP]))
+            {
+                void* buf = calloc(1, 1024);
+                size_t ret = 0;
+                if ((ret = myst_backtrace3(
+                         (void**)mcontext->gregs[REG_RBP], buf, sizeof(buf))) >
+                    0)
+                {
+                    myst_dump_backtrace(buf, ret);
+                }
+                free(buf);
             }
 
             // call the default terminating signal handler
