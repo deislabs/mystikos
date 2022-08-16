@@ -22,6 +22,7 @@ TIMEOUT = 3000
 REMOVE_TESTS_TEMPORARILY= \
 /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_user_agent.py \
 
+TEST_DST=/usr/local/lib/python3.9/site-packages/pandas/tests/tseries/offsets/test_dst.py
 #the folllowing tests hang when run sequentially, but pass when run individually
 TEST_RUN_INDIVIDUAL=$(shell cat tests.individual)
 
@@ -46,6 +47,9 @@ rootfs-passed: appdir
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
 	# This file is temporarily being disabled from pandas_tests, to investigate handling
 	@ $(foreach i, $(TEST_RUN_INDIVIDUAL),  rm  -rf appdir/$(i) )
+	# Remove test failing due to pytz upgrade issue. See https://github.com/pandas-dev/pandas/pull/48065 for more.
+	# TODO: Backout once there is a newer version of pandas on PyPi - https://pypi.org/project/pandas/#history.
+	rm -rf appdir/$(TEST_DST)
 	$(MYST) mkext2 appdir rootfs-passed
 
 run-passed: rootfs-passed
@@ -54,14 +58,24 @@ run-passed: rootfs-passed
 run-individual: rootfs
 	$(foreach i, $(TEST_RUN_INDIVIDUAL), echo $i; $(MAKE) run-one TEST=$(i) $(NL) )
 
-_run: rootfs
+run-partial: rootfs
 	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
 	tail -n 26 result > test_summary
 	diff -B -w test_summary expected-test-summary
+
+run-dst: rootfs
+	rm result_test_dst || true
+	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST_DST) 2>&1 > result_test_dst || true
+	sed -i '$$d' result_test_dst
+	diff -B -w result_test_dst expected_test_dst
+
+_run: rootfs
+	$(MAKE) run-partial
 	$(MAKE) run-individual
 	$(MAKE) clean_intermediate
+	$(MAKE) run-dst
 	$(MAKE) run-passed
 	$(MAKE) clean_intermediate
 	
@@ -72,7 +86,7 @@ run-one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST)
 
 clean_intermediate:
-	rm -rf rootfs .pytest_cache result test_summary
+	rm -rf rootfs .pytest_cache result* test_summary
 
 clean:
 	$(MAKE) clean_intermediate
