@@ -441,7 +441,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic error "-Wstack-usage=1168"
+#pragma GCC diagnostic error "-Wstack-usage=1184"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
@@ -450,6 +450,15 @@ static long _handle_one_signal(
 {
     long ret = 0;
     ucontext_t context;
+
+    /* save the original fsbase */
+    void* original_fsbase = myst_get_fsbase();
+    void* gsbase = myst_get_gsbase();
+
+    /* Switch to kernel fsbase if needed. printf statements in this function are
+     * downcalls to OE, which checks for FS == GS invariant in some places */
+    if (original_fsbase != gsbase)
+        myst_set_fsbase(gsbase);
 
 #ifdef TRACE
     printf(
@@ -515,6 +524,8 @@ static long _handle_one_signal(
             {
                 void* buf = calloc(1, 1024);
                 size_t ret = 0;
+
+                myst_eprintf("*** Kernel segmentation fault \n");
                 if ((ret = myst_backtrace3(
                          (void**)mcontext->gregs[REG_RBP], buf, sizeof(buf))) >
                     0)
@@ -541,6 +552,8 @@ static long _handle_one_signal(
                 myst_gettid());
         }
         ret = 0;
+        /* Restore fsbase to value at function entry */
+        myst_set_fsbase(original_fsbase);
     }
     else
     {
@@ -568,8 +581,6 @@ static long _handle_one_signal(
         // ATTN: handle other signal flags, e.g., SA_NOCLDSTOP, SA_NOCLDWAIT,
         // SA_RESETHAND, SA_RESTART, etc.
 
-        /* save the original fsbase */
-        void* original_fsbase = myst_get_fsbase();
         stack_t* altstack = &thread->signal.altstack;
         uint64_t rsp_before_signal = 0;
 
