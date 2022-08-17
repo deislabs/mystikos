@@ -1252,6 +1252,10 @@ int myst_exec(
 
 done:
 
+    /*To make sure argv is released in case or errors*/
+    if (callback)
+        (*callback)(callback_arg);
+
     if (stack)
         myst_munmap(stack, __myst_kernel_args.main_stack_size);
 
