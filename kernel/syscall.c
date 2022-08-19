@@ -5862,6 +5862,17 @@ static long _SYS_prlimit64(long n, long params[6])
     return (_return(n, ret));
 }
 
+static long _SYS_getrlimit(long n, long params[6])
+{
+    int resource = (int)params[0];
+    struct rlimit* rlim = (struct rlimit*)params[1];
+
+    _strace(n, "resource=%d, rlim=%p", resource, rlim);
+
+    int ret = myst_limit_get_rlimit(0, resource, rlim);
+    return (_return(n, ret));
+}
+
 static long _SYS_sendmmsg(long n, long params[6], myst_thread_t* thread)
 {
     int sockfd = (int)params[0];
@@ -6876,7 +6887,9 @@ static long _syscall(void* args_)
             BREAK(_SYS_gettimeofday(n, params));
         }
         case SYS_getrlimit:
-            break;
+        {
+            BREAK(_SYS_getrlimit(n, params));
+        };
         case SYS_getrusage:
         {
             BREAK(_SYS_getrusage(n, params));
