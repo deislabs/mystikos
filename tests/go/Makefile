@@ -17,12 +17,12 @@ OPTS += --memory-size=1g
 
 SGX2_PRESENT := $(shell $(BUILDDIR)/openenclave/bin/oesgx | grep -c SGX2)
 
-__run: rootfs
+__tests: rootfs
 	$(MYST_EXEC) $(OPTS) rootfs /app/hello
 
-run:
+tests:
 ifeq ($(SGX2_PRESENT),1)
-	make __run
+	make __tests
 endif
 
 clean:
