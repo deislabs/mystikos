@@ -68,20 +68,43 @@ Options:\n\
                             main thread, where <size> may have a\n\
                             multiplier suffix: k 1024, m 1024*1024, or\n\
                             g 1024*1024*1024\n\
-    --app-config-path <json> -- specifies the configuration json file for\n\
-                                running an unsigned binary. The file can be\n\
-                                the same one used for the signing process.\n\
+    --app-config-path <json>\n\
+                         -- specifies the configuration json file for\n\
+                            running an unsigned binary. The file can be\n\
+                            the same one used for the signing process.\n\
     --host-to-enc-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
                          -- comma separated list of uid mappings between\n\
-                             the host and the enclave\n\
+                            the host and the enclave\n\
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
-                             the host and the enclave\n\
+                            the host and the enclave\n\
     --unhandled-syscall-enosys <true/false>\n\
                          -- flag indicating if the app must exit when\n\
                             it encounters an unimplemented syscall\n\
                             'true' implies the syscall would not terminate\n\
                             and instead return ENOSYS.\n\
+    --strace            \n\
+                         -- Use this option to display the system call traces of \n\
+                            the execution\n\
+    --strace-failing\n\
+                         -- When specified, all syscalls that fail will be logged.\n\
+                            Other syscalls will not be logged, unless specified via \n\
+                            filter (see below). Set a breakpoint in _strace_failure_hook \n\
+                            to stop execution whenever a syscall fails. Use breakpoint \n\
+                            conditions to control the behavior of the breakpoint.\n\
+                            E.g: Use syscall number as a condition in the breakpoint\n\
+    --strace-filter 'SYS_name1:SYS_name2:...'\n\
+                         -- Specify the set of syscalls to be traced. When filters \n\
+                            are specified, only those syscalls specified in the filter \n\
+                            will be traced, in addition to failing syscalls if\n\
+                            specified as described above.\n\
+                            E.g: To trace open and mprotect syscalls, specify\n\
+                            --strace-filter 'SYS_open:SYS_mprotect'\n\
+    --strace-exclude-filter 'SYS_name1:SYS_name2:...'\n\
+                         -- Specify a set of syscalls to exclude from the strace log. \n\
+                            All other syscalls will be logged in the strace. \n\
+                            E.g: To exclude open and mprotect syscalls, specify\n\
+                            --strace-exclude-filter 'SYS_open:SYS_mprotect'\n\
 \n\
 "
 

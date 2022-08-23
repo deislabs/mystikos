@@ -1,0 +1,2 @@
+Unknown syscall SYS_invali specified in --strace-filter or --strace-exclude-filter 
+Aborted (core dumped)
