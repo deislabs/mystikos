@@ -136,6 +136,8 @@ endif
 
 DIRS += appenv
 DIRS += go
+DIRS += strace
+
 
 .PHONY: $(DIRS)
 

@@ -65,20 +65,43 @@ Options:
                             multiplier suffix: k 1024, m 1024*1024, or
                             g 1024*1024*1024. Ignored if smaller than the
                             existing default thread stack size
-    --app-config-path <json> -- specifies the configuration json file for
-                                running an unsigned binary. The file can be
-                                the same one used for the signing process.
+    --app-config-path <json>
+                         -- specifies the configuration json file for
+                            running an unsigned binary. The file can be
+                            the same one used for the signing process.
     --host-to-enc-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>
                          -- comma separated list of uid mappings between
-                             the host and the enclave
+                            the host and the enclave
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>
                          -- comma separated list of gid mappings between
-                             the host and the enclave
+                            the host and the enclave
     --unhandled-syscall-enosys <true/false>
                          -- flag indicating if the app must exit when
                             it encounters an unimplemented syscall
                             'true' implies the syscall would not terminate
                             and instead return ENOSYS.
+    --strace            
+                         -- Use this option to display the system call traces of 
+                            the execution
+    --strace-failing
+                         -- When specified, all syscalls that fail will be logged.
+                            Other syscalls will not be logged, unless specified via 
+                            filter (see below). Set a breakpoint in _strace_failure_hook 
+                            to stop execution whenever a syscall fails. Use breakpoint 
+                            conditions to control the behavior of the breakpoint.
+                            E.g: Use syscall number as a condition in the breakpoint
+    --strace-filter 'SYS_name1:SYS_name2:...'
+                         -- Specify the set of syscalls to be traced. When filters 
+                            are specified, only those syscalls specified in the filter 
+                            will be traced, in addition to failing syscalls if
+                            specified as described above.
+                            E.g: To trace open and mprotect syscalls, specify
+                            --strace-filter 'SYS_open:SYS_mprotect'
+    --strace-exclude-filter 'SYS_name1:SYS_name2:...'
+                         -- Specify a set of syscalls to exclude from the strace log. 
+                            All other syscalls will be logged in the strace. 
+                            E.g: To exclude open and mprotect syscalls, specify
+                            --strace-exclude-filter 'SYS_open:SYS_mprotect'
 ```
 
 You can also specify many other parameters in a configuration file, conventionally called `config.json`, you will also use this configuration file to package your application.
