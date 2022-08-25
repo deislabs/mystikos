@@ -1,14 +1,0 @@
-[1m============================= test session starts ==============================[0m
-platform linux -- Python 3.9.13, pytest-7.1.2, pluggy-1.0.0
-rootdir: /, configfile: pytest.ini
-plugins: hypothesis-6.52.1
-[1mcollecting ... [0m[1mcollected 0 items / 1 error                                                    [0m
-
-==================================== ERRORS ====================================
-[31m[1m_ ERROR collecting usr/local/lib/python3.9/site-packages/pandas/tests/tseries/offsets/test_dst.py _[0m
-[1m[31m/usr/local/lib/python3.9/site-packages/pandas/tests/tseries/offsets/test_dst.py[0m:190: in <module>
-    float(pytz.__version__) <= 2020.1,  # type: ignore[attr-defined]
-[1m[31mE   ValueError: could not convert string to float: '2022.2.1'[0m
-=========================== short test summary info ============================
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/tseries/offsets/test_dst.py
-!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
