@@ -66,10 +66,7 @@ run-partial: rootfs
 	diff -B -w test_summary expected-test-summary
 
 run-dst: rootfs
-	rm result_test_dst || true
-	$(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST_DST) 2>&1 > result_test_dst || true
-	sed -i '$$d' result_test_dst
-	diff -B -w result_test_dst expected_test_dst
+	./run-test-dst.sh $(MYST_EXEC) rootfs $(OPTS) $(PYTEST_CMD) $(TEST_DST)
 
 _run: rootfs
 	$(MAKE) run-partial
