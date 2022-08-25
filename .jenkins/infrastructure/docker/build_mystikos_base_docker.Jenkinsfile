@@ -106,20 +106,34 @@ pipeline {
                 expression { return params.CONTAINER_REPO ==~ /.*mystikos\.azurecr\.io/ }
             }
             steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: 'main']],
+                    extensions: [
+                        [
+                            $class: 'PruneStaleBranch',
+                            $class: 'SubmoduleOption',
+                            disableSubmodules: true,
+                            recursiveSubmodules: false,
+                            trackingSubmodules: false
+                        ]
+                    ], 
+                    userRemoteConfigs: [[url: "https://github.com/deislabs/mystikos"]]
+                ])
                 sh """
-                    git fetch origin ${OECITEAM_BRANCH}
-                    if git show-ref --verify --quiet refs/remotes/origin/${OECITEAM_BRANCH}; then
+                    if git fetch origin ${OECITEAM_BRANCH}; then
                         git checkout ${OECITEAM_BRANCH} --force
                     else
+                        git fetch origin main
                         git checkout -b ${OECITEAM_BRANCH} --track remotes/origin/main --force
                     fi
                 """
                 script {
                     CONTAINER_REPO = params.CONTAINER_REPO - ~"^(https|http)://"
-                    BASE_2004_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${params.MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
-                    BASE_2004_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${params.MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
-                    BASE_1804_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${params.MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
-                    BASE_1804_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${params.MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
+                    BASE_2004_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
+                    BASE_2004_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
+                    BASE_1804_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
+                    BASE_1804_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
                     println "Ubuntu 20.04 PSW: ${BASE_2004_PSW}"
                     println "Ubuntu 20.04 DCAP: ${BASE_2004_DCAP}"
                     println "Ubuntu 18.04 PSW: ${BASE_1804_PSW}"
@@ -135,8 +149,8 @@ pipeline {
                             exit 1
                         fi
                         echo "\$(head -n 2 DOCKER_IMAGES.md)" > DOCKER_IMAGES_new.md
-                        echo "| Mystikos Base Ubuntu 20.04 | ${params.CONTAINER_REPO}/mystikos-focal:${params.MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_2004_PSW} | ${BASE_2004_DCAP} |" >> DOCKER_IMAGES_new.md
-                        echo "| Mystikos Base Ubuntu 18.04 | ${params.CONTAINER_REPO}/mystikos-bionic:${params.MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_1804_PSW} | ${BASE_1804_DCAP} |" >> DOCKER_IMAGES_new.md
+                        echo "| Mystikos Base Ubuntu 20.04 | ${params.CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_2004_PSW} | ${BASE_2004_DCAP} |" >> DOCKER_IMAGES_new.md
+                        echo "| Mystikos Base Ubuntu 18.04 | ${params.CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_1804_PSW} | ${BASE_1804_DCAP} |" >> DOCKER_IMAGES_new.md
                         echo "\$(tail -n +3 DOCKER_IMAGES.md)" >> DOCKER_IMAGES_new.md
                         mv DOCKER_IMAGES_new.md DOCKER_IMAGES.md
                     """
