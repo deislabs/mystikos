@@ -1,7 +1,10 @@
 1
 2
 3
-test1.txt
-test2.txt
-test3.txt
-test4.txt
+4
+5
+6
+7
+8
+9
+test*.txt

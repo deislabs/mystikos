@@ -1,0 +1,2 @@
+Invalid group name or syscall name 'SYS_invali' specified in --strace-filter or --strace-exclude-filter.
+Aborted (core dumped)

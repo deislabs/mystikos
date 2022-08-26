@@ -396,18 +396,25 @@ Options:\n\
                             to stop execution whenever a syscall fails. Use breakpoint \n\
                             conditions to control the behavior of the breakpoint.\n\
                             E.g: Use syscall number as a condition in the breakpoint\n\
-    --strace-filter 'SYS_name1:SYS_name2:...'\n\
-                         -- Specify the set of syscalls to be traced. When filters \n\
-                            are specified, only those syscalls specified in the filter \n\
+    --strace-filter 'SYS_name1:group1:SYS_name2:...'\n\
+                         -- Specify the set of syscalls or groups to be traced. When filters \n\
+                            are specified, only those syscalls/groups specified in the filter \n\
                             will be traced, in addition to failing syscalls if\n\
-                            specified as described above.\n\
-                            E.g: To trace open and mprotect syscalls, specify\n\
-                            --strace-filter 'SYS_open:SYS_mprotect'\n\
-    --strace-exclude-filter 'SYS_name1:SYS_name2:...'\n\
-                         -- Specify a set of syscalls to exclude from the strace log. \n\
-                            All other syscalls will be logged in the strace. \n\
-                            E.g: To exclude open and mprotect syscalls, specify\n\
-                            --strace-exclude-filter 'SYS_open:SYS_mprotect'\n\
+                            specified as described above. Any combination of syscalls and groups \n\
+                            can be used. For a list of all the groups and their consituents check\n\
+                            out 'man strace' \n\
+                            E.g: To trace open and mprotect syscalls, and 'desc' group of \n\
+                            syscalls (file descriptor related group), specify \n\
+                            --strace-filter 'SYS_open:SYS_mprotect:desc'\n\
+    --strace-exclude-filter 'SYS_name1:SYS_name2:group1...'\n\
+                         -- Specify a set of syscalls or groups to exclude from the strace log. \n\
+                            All other syscalls will be logged in the strace. Failing syscalls, even \n\
+                            if excluded, will also be logged if --strace-failing is specified. Any \n\
+                            combination of syscalls and groups can be used.  For a list of all the \n\
+                            groups and their consituents check out 'man strace' \n\
+                            E.g: To exclude open and mprotect syscalls and the group of \n\
+                            file syscalls, specify\n\
+                            --strace-exclude-filter='SYS_open:SYS_mprotect:file'\n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -450,7 +457,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.strace_config.trace_syscalls = true;
         }
 
-        if (myst_parse_strace_config(&argc, argv, &options.strace_config) == 0)
+        if (myst_strace_parse_config(&argc, argv, &options.strace_config) == 0)
         {
             options.strace_config.trace_syscalls = true;
         }
