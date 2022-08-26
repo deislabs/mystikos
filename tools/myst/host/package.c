@@ -600,7 +600,7 @@ int _exec_package(
             options.strace_config.trace_syscalls = true;
         }
 
-        if (myst_parse_strace_config(&argc, argv, &options.strace_config) == 0)
+        if (myst_strace_parse_config(&argc, argv, &options.strace_config) == 0)
         {
             options.strace_config.trace_syscalls = true;
         }

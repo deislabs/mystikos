@@ -8,6 +8,38 @@
 #include <myst/strings.h>
 #include <myst/syscall.h>
 
+int myst_strace_add_syscall_to_filter(
+    long num,
+    const char* name,
+    myst_strace_config_t* strace_config,
+    bool include)
+{
+    if (num >= 0)
+    {
+        if (num < MYST_MAX_SYSCALLS)
+            strace_config->trace[num] = include;
+        else
+        {
+            fprintf(
+                stderr,
+                "Syscall %s exceeds trace array. Fix "
+                "myst_syscall_config_t\n",
+                name);
+            abort();
+        }
+    }
+    else
+    {
+        fprintf(
+            stderr,
+            "Unknown syscall %s specified in --strace-filter or "
+            "--strace-exclude-filter\n",
+            name);
+        abort();
+    }
+    return 0;
+}
+
 int myst_set_strace_filter(
     int num_tokens,
     char** tokens,
@@ -22,36 +54,44 @@ int myst_set_strace_filter(
     for (size_t i = 0; i < num_tokens; ++i)
     {
         const char* name = tokens[i];
+
+        /* Check if filter is for a syscall */
         long num = myst_syscall_num(name);
-        if (num >= 0)
+
+        if (num != -ENOENT)
+            myst_strace_add_syscall_to_filter(
+                num, name, strace_config, include);
+        else
         {
-            if (num < MYST_MAX_SYSCALLS)
-                strace_config->trace[num] = include;
-            else
+            /* Check if filter is for a group of syscalls. Eg: file, memory, etc
+             */
+            const int* syscalls = myst_syscall_group(name);
+            const size_t group_size = myst_syscall_group_size(name);
+
+            /* token specified is not a syscall name or group name */
+            if (syscalls == NULL)
             {
                 fprintf(
                     stderr,
-                    "Syscall %s exceeds trace array. Fix "
-                    "myst_syscall_config_t\n",
+                    "Invalid group name or syscall name '%s' specified in "
+                    "--strace-filter or --strace-exclude-filter.\n",
                     name);
                 abort();
             }
-        }
-        else
-        {
-            fprintf(
-                stderr,
-                "Unknown syscall %s specified in --strace-filter or "
-                "--strace-exclude-filter \n",
-                name);
-            abort();
+
+            for (int j = 0; j < group_size; j++)
+            {
+                const char* name = myst_syscall_name((long)syscalls[j]);
+                myst_strace_add_syscall_to_filter(
+                    (long)syscalls[j], name, strace_config, include);
+            }
         }
     }
     strace_config->filter = 1;
     return 0;
 }
 
-int myst_parse_strace_config(
+int myst_strace_parse_config(
     int* argc,
     const char** argv,
     myst_strace_config_t* strace_config)
@@ -68,20 +108,23 @@ int myst_parse_strace_config(
         strace_config->filter = 1;
     }
 
-    if (cli_getopt(argc, argv, "--strace-filter", &filter) == 0 && filter)
+    if (cli_getopt(argc, argv, "--strace-exclude-filter", &filter) == 0 &&
+        filter)
     {
         if (myst_strsplit(filter, ":", &tokens, &num_tokens) != 0)
         {
-            fprintf(stderr, "Invalid strace-filter '%s' specified.\n", filter);
+            fprintf(
+                stderr,
+                "Invalid strace-exclude-filter '%s' specified.\n",
+                filter);
             abort();
         }
 
-        ret = myst_set_strace_filter(num_tokens, tokens, strace_config, 1);
+        ret = myst_set_strace_filter(num_tokens, tokens, strace_config, 0);
         filter_flag = true;
     }
 
-    if (cli_getopt(argc, argv, "--strace-exclude-filter", &filter) == 0 &&
-        filter)
+    if (cli_getopt(argc, argv, "--strace-filter", &filter) == 0 && filter)
     {
         if (filter_flag)
         {
@@ -94,14 +137,11 @@ int myst_parse_strace_config(
 
         if (myst_strsplit(filter, ":", &tokens, &num_tokens) != 0)
         {
-            fprintf(
-                stderr,
-                "Invalid strace-exclude-filter '%s' specified.\n",
-                filter);
+            fprintf(stderr, "Invalid strace-filter '%s' specified.\n", filter);
             abort();
         }
 
-        ret = myst_set_strace_filter(num_tokens, tokens, strace_config, 0);
+        ret = myst_set_strace_filter(num_tokens, tokens, strace_config, 1);
     }
 
     if (tokens)

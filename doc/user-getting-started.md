@@ -90,18 +90,25 @@ Options:
                             to stop execution whenever a syscall fails. Use breakpoint 
                             conditions to control the behavior of the breakpoint.
                             E.g: Use syscall number as a condition in the breakpoint
-    --strace-filter 'SYS_name1:SYS_name2:...'
-                         -- Specify the set of syscalls to be traced. When filters 
-                            are specified, only those syscalls specified in the filter 
+    --strace-filter 'SYS_name1:group1:SYS_name2:...'
+                         -- Specify the set of syscalls or groups to be traced. When filters 
+                            are specified, only those syscalls/groups specified in the filter 
                             will be traced, in addition to failing syscalls if
-                            specified as described above.
-                            E.g: To trace open and mprotect syscalls, specify
-                            --strace-filter 'SYS_open:SYS_mprotect'
-    --strace-exclude-filter 'SYS_name1:SYS_name2:...'
-                         -- Specify a set of syscalls to exclude from the strace log. 
-                            All other syscalls will be logged in the strace. 
-                            E.g: To exclude open and mprotect syscalls, specify
-                            --strace-exclude-filter 'SYS_open:SYS_mprotect'
+                            specified as described above. Any combination of syscalls and groups 
+                            can be used. For a list of all the groups and their consituents check
+                            out 'man strace' 
+                            E.g: To trace open and mprotect syscalls, and 'desc' group of 
+                            syscalls (file descriptor related group), specify 
+                            --strace-filter 'SYS_open:SYS_mprotect:desc'
+    --strace-exclude-filter 'SYS_name1:SYS_name2:group1...'
+                         -- Specify a set of syscalls or groups to exclude from the strace log. 
+                            All other syscalls will be logged in the strace. Failing syscalls, even 
+                            if excluded, will also be logged if --strace-failing is specified. Any 
+                            combination of syscalls and groups can be used.  For a list of all the 
+                            groups and their consituents check out 'man strace' 
+                            E.g: To exclude open and mprotect syscalls and the group of 
+                            file syscalls, specify
+                            --strace-exclude-filter='SYS_open:SYS_mprotect:file'
 ```
 
 You can also specify many other parameters in a configuration file, conventionally called `config.json`, you will also use this configuration file to package your application.
