@@ -3846,6 +3846,9 @@ static long _SYS_mremap(long n, long params[6])
         flags,
         new_address);
 
+    if (!new_size)
+        ERAISE(-EINVAL);
+
     /* filesystem lock is required only in the shrink case, for closing file
      * handles related to memory range being released. In the growing case,
      * fdmappings entries are copied over from the old memory region, no
@@ -3924,6 +3927,9 @@ static long _SYS_madvise(long n, long params[6])
     int advice = (int)params[2];
 
     _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
+
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        return (_return(n, -EINVAL));
 
     return (_return(n, 0));
 }

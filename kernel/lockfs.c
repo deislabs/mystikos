@@ -12,9 +12,7 @@
 
 #define LOCKFS_MAGIC 0x94639c1a101f4a1d
 
-myst_mutex_t _global_lock;
-
-static bool _inited;
+myst_mutex_t _global_lock = MYST_MUTEX_INITIALIZER;
 
 typedef struct lockfs
 {
@@ -59,14 +57,12 @@ static void unlock(lockfs_t* lockfs, sigset_t* mask_old)
 
 void myst_lockfs_lock(void)
 {
-    if (_inited)
-        myst_mutex_lock(&_global_lock);
+    myst_mutex_lock(&_global_lock);
 }
 
 void myst_lockfs_unlock(void)
 {
-    if (_inited)
-        myst_mutex_unlock(&_global_lock);
+    myst_mutex_unlock(&_global_lock);
 }
 
 static int _fs_release(myst_fs_t* fs)
@@ -730,12 +726,6 @@ int myst_lockfs_init(myst_fs_t* fs, myst_fs_t** lockfs_out)
     lockfs->magic = LOCKFS_MAGIC;
     lockfs->fs = fs;
     *lockfs_out = &lockfs->base;
-
-    if (!_inited)
-    {
-        _inited = true;
-        myst_mutex_init(&_global_lock);
-    }
 
 done:
 

@@ -62,7 +62,7 @@ typedef struct shared_mapping
     myst_list_t sharers; // processes sharing this mapping
     void* start_addr;
     size_t length;
-    size_t filesz; // file size at mmap() time
+    size_t file_size; // file size at mmap() time
     mman_file_handle_t* file_handle;
     size_t offset; // offset in file where mapping starts
     shmem_type_t type;
@@ -168,7 +168,7 @@ static void _dump_shared_mappings(char* msg)
         printf(
             "start_addr=%p length=%ld nusers=%ld type=%s\n",
             sm->start_addr,
-            sm->type == SHMEM_POSIX_SHM ? sm->filesz : sm->length,
+            sm->type == SHMEM_POSIX_SHM ? sm->file_size : sm->length,
             sm->sharers.size,
             shmem_type_to_string(sm->type));
         printf("sharer pids: [ ");
@@ -317,7 +317,7 @@ static int _lookup_shmem_map(
     while (sm)
     {
         size_t rounded_up_sm_length =
-            sm->type == SHMEM_POSIX_SHM ? sm->filesz : sm->length;
+            sm->type == SHMEM_POSIX_SHM ? sm->file_size : sm->length;
         myst_round_up(rounded_up_sm_length, PAGE_SIZE, &rounded_up_sm_length);
         void* sm_end_addr = (char*)sm->start_addr + rounded_up_sm_length;
 
@@ -478,7 +478,7 @@ long myst_posix_shm_handle_mmap(
             ERAISE(-ENOMEM);
         }
         new_sm->file_handle = file_handle;
-        new_sm->filesz = backing_file_size;
+        new_sm->file_size = backing_file_size;
         new_sm->start_addr = buf_data_addr;
         new_sm->type = SHMEM_POSIX_SHM;
         // notify fs that mapping is active
@@ -582,7 +582,7 @@ static int __shm_unmap(shared_mapping_t* sm, void* addr, size_t length)
     {
         if (sm->type == SHMEM_REG_FILE)
         {
-            size_t file_size = sm->filesz;
+            size_t file_size = sm->file_size;
 
             if (sm->offset < file_size)
             {
