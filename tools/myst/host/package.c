@@ -61,6 +61,12 @@ and <options> are one of:\n\
     --roothash=ascii_file   -- trust disks with this roothash (repeatable)\n\
     --outfile=file, -o=file -- place output in this file\n\
 \n\
+    Bring your own signing engine options:\n\
+    --signing-engine-name\n\
+    --signing-engine-path\n\
+    --signing-engine-key\n\
+    All three parameters must be passed if using a signing engine.\n\
+\n\
 "
 
 static int _add_image_to_elf_section(
@@ -409,7 +415,8 @@ int _package(int argc, const char* argv[])
     if (_add_image_to_elf_section(&elf, scratch_path, ".libmystcrt") != 0)
     {
         ERR_NOEXIT(
-            "Failed to add image %s to enclave section .lioscrt", scratch_path);
+            "Failed to add image %s to enclave section .libmystscrt",
+            scratch_path);
         goto done;
     }
 

@@ -10,6 +10,11 @@
 #include <myst/spinlock.h>
 #include <myst/thread.h>
 
+#define MYST_MUTEX_INITIALIZER    \
+    {                             \
+        MYST_SPINLOCK_INITIALIZER \
+    }
+
 typedef struct _myst_mutex myst_mutex_t;
 
 struct _myst_mutex

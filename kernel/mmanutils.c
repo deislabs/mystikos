@@ -702,7 +702,7 @@ long myst_mmap(
            validation. MAP_SHARED - we don't support addr hint for shared
            mappings. Already handled in the syscall handler _SYS_mmap.
         */
-        /* Right now that case falls throw into the next else and fails in
+        /* Right now that case falls through into the next else and fails in
          * myst_mman_map */
 
         ECHECK((
@@ -731,11 +731,11 @@ long myst_mmap(
     }
     // Cases:
     //    Anonymous mapping(MAP_ANON) && addr hint: only page protection
-    //    updation in myst_mman_mmap epilogue.
+    //    update in myst_mman_mmap epilogue.
     //
-    //    No addr hint: allocation, VADS list and page prot vector updation.
+    //    No addr hint: allocation, VADS list and page prot vector update.
     //        Anonymous mapping.
-    //        File mapping: map file onto memory, fdmapping vector updation.
+    //        File mapping: map file onto memory, fdmapping vector update.
     //
     //        For the non addr hint case, if MAP_SHARED is passed: add to shared
     //        memory list.
@@ -792,8 +792,7 @@ long myst_mmap(
 done:
 
     _runlock(&locked);
-    if (fd >= 0)
-        _fsunlock(&fs_locked);
+    _fsunlock(&fs_locked);
     return ret;
 }
 
@@ -806,7 +805,7 @@ void* myst_mremap(
 {
     long ret = 0;
     void* p;
-    shared_mapping_t* shm_mapping;
+    shared_mapping_t* shm_mapping = NULL;
     bool locked = false, fs_locked = false;
 
     if (new_address)
@@ -814,28 +813,30 @@ void* myst_mremap(
 
     if (new_size < old_size)
         _fslock(&fs_locked);
+
     _rlock(&locked);
+    /* If we are here, ownership check in the syscall handler has passed. We
+     * still need to call the shared memory ownership check routine to get
+     * the shared mapping object. */
+    int lookup_ret = myst_addr_within_process_owned_shmem(
+        old_address, old_size, 0, &shm_mapping);
+
+    if (lookup_ret == 1)
     {
-        /* If we are here, ownership check in the syscall handler has passed. We
-         * still need to call the shared memory ownership check routine to get
-         * the shared mapping object. */
-        int lookup_ret = myst_addr_within_process_owned_shmem(
-            old_address, old_size, 0, &shm_mapping);
-        if (lookup_ret == 1)
+        if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
         {
-            if (!myst_shmem_can_mremap(shm_mapping, old_address, old_size))
-            {
-                MYST_WLOG(
-                    "Unsupported mremap operation detected. For shared "
-                    "mappings, mremap is only allowed if there is a single "
-                    "user of the mapping.\n");
-                ERAISE(-EINVAL);
-            }
+            MYST_WLOG("Unsupported mremap operation detected. For shared "
+                      "mappings, mremap is only allowed if there is a single "
+                      "user of the mapping.\n");
+            ERAISE(-EINVAL);
         }
-        // bubble-up errors.
-        else if (lookup_ret < 0)
-            ERAISE(lookup_ret);
     }
+    // bubble-up errors.
+    else if (lookup_ret < 0)
+        ERAISE(lookup_ret);
+    // ATTN:
+    // For in-kernel users of mremap like dlmalloc, lookup_ret will be 0.
+    // TODO: check lookup_ret should not be 0 for calls from _SYS_mremap.
 
     ECHECK(
         myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p));
@@ -852,8 +853,7 @@ void* myst_mremap(
 
 done:
     _runlock(&locked);
-    if (new_size < old_size)
-        _fsunlock(&fs_locked);
+    _fsunlock(&fs_locked);
 
     return (void*)ret;
 }
@@ -919,7 +919,6 @@ done:
 int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
 {
     int ret = 0;
-    bool locked = false;
 
     /* address cannot be null and must be aligned on a page boundary */
     if (!addr || ((uint64_t)addr % PAGE_SIZE) || !length)
@@ -928,12 +927,10 @@ int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
     /* align length to a page boundary */
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
-    _rlock(&locked);
     ECHECK(myst_mman_munmap(&_mman, addr, length));
     ECHECK(_remove_file_mappings(addr, length, head_out));
 
 done:
-    _runlock(&locked);
     return ret;
 }
 
@@ -944,14 +941,11 @@ int myst_munmap(void* addr, size_t length)
     bool locked = false;
 
     /* File system lock is acquired in the syscall handler. dlmalloc calls to
-     * myst_mmap/munmap already acquire the lock. Acquiring the file system lock
-     * here can lead to deadlock. The assumption is that in-kernel usages never
-     * do file mappings. */
+     * myst_mmap/munmap already acquire the mman lock. Acquiring the file system
+     * lock here can lead to deadlock. The assumption is that in-kernel usages
+     * never do file mappings. */
     _rlock(&locked);
     ECHECK(__myst_munmap(addr, length, &head));
-    _runlock(&locked);
-
-    // close file handles outside of mman lock
     _close_file_handles(head);
 
 done:
@@ -968,9 +962,6 @@ int myst_munmap_and_pids_clear_atomic(void* addr, size_t length)
     _rlock(&locked);
     ECHECK(__myst_munmap(addr, length, &head));
     myst_mman_pids_set(addr, length, 0);
-    _runlock(&locked);
-
-    // close file handles outside of mman lock
     _close_file_handles(head);
 
 done:
