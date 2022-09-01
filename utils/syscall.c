@@ -430,8 +430,8 @@ const myst_syscall_group_t _groups[] = {
       SYS_epoll_wait,
       SYS_epoll_ctl,
       SYS_mq_open,
-      //   SYS_q_timedsend,
-      //   SYS_q_timedreceive,
+      /*   SYS_q_timedsend, */
+      /*   SYS_q_timedreceive, */
       SYS_mq_notify,
       SYS_mq_getsetattr,
       SYS_inotify_init,
@@ -597,7 +597,7 @@ const myst_syscall_group_t _groups[] = {
       SYS_pause,
       SYS_kill,
       SYS_rt_sigpending,
-      //   SYS_t_sigtimedwait,
+      /*   SYS_t_sigtimedwait, */
       SYS_rt_sigqueueinfo,
       SYS_rt_sigsuspend,
       SYS_sigaltstack,
@@ -713,7 +713,7 @@ const myst_syscall_group_t _groups[] = {
       SYS_time,
       SYS_clock_settime,
       SYS_clock_gettime,
-      //   SYS_lock_getres,
+      /*   SYS_lock_getres, */
       SYS_clock_adjtime}},
     {"comm_change", 3, {SYS_execve, SYS_prctl, SYS_execveat}},
     {NULL, 0, {}},

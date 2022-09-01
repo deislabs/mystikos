@@ -415,6 +415,16 @@ Options:\n\
                             E.g: To exclude open and mprotect syscalls and the group of \n\
                             file syscalls, specify\n\
                             --strace-exclude-filter='SYS_open:SYS_mprotect:file'\n\
+    --strace-filter-tid 'tid1:tid2...'\n\
+                         -- Specify a set of thread ID's to be traced, all others are excluded \n\
+                            from the output. Can be used in conjunction with any of the above filters \n\
+                            E.g: To filter by tid=101, specify - \n\
+                            --strace-filter-tid '101'\n\
+    --strace-filter-pid 'pid1:pid2...'\n\
+                         -- Specify a set of process IDs to be traced, all others are excluded \n\
+                            from the output. Can be used in conjunction with any of the above filters \n\
+                            E.g: To filter by pid=101, specify - \n\
+                            --strace-filter-pid=101\n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])

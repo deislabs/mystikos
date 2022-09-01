@@ -109,6 +109,16 @@ Options:
                             E.g: To exclude open and mprotect syscalls and the group of 
                             file syscalls, specify
                             --strace-exclude-filter='SYS_open:SYS_mprotect:file'
+    --strace-filter-tid 'tid1:tid2...'
+                         -- Specify a set of thread IDs to be traced, all others are excluded 
+                            from the output. Can be used in conjunction with any of the above filters 
+                            E.g: To filter by tid=101, specify - 
+                            --strace-filter-tid '101'
+    --strace-filter-pid 'pid1:pid2...'
+                         -- Specify a set of process IDs to be traced, all others are excluded 
+                            from the output. Can be used in conjunction with any of the above filters 
+                            E.g: To filter by pid=101, specify - 
+                            --strace-filter-pid=101
 ```
 
 You can also specify many other parameters in a configuration file, conventionally called `config.json`, you will also use this configuration file to package your application.

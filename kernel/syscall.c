@@ -193,20 +193,51 @@ static const char* _format_timespec(
 
 static bool _trace_syscall(long n)
 {
-    // Check if syscall tracing is enabled.
+    /* Check if syscall tracing is enabled. */
     if (__myst_kernel_args.strace_config.trace_syscalls)
     {
         if (__myst_kernel_args.strace_config.filter)
         {
-            // If filtering is enabled, trace only this syscall has been
-            // specified in the filter.
-            return __myst_kernel_args.strace_config.trace[n];
+            /* If filtering is enabled, trace only this syscall if it has been
+               specified in the filter. */
+            if (__myst_kernel_args.strace_config.trace[n] == 0)
+                return false;
         }
-        else
+        if (__myst_kernel_args.strace_config.tid_filter_num > 0)
         {
-            // Trace all syscalls.
-            return true;
+            /* Check if thread filtering is enabled & follow filter */
+            pid_t current_tid = myst_thread_self()->tid;
+
+            for (int i = 0; i < __myst_kernel_args.strace_config.tid_filter_num;
+                 i++)
+            {
+                if (current_tid ==
+                    __myst_kernel_args.strace_config.tid_trace[i])
+                    return true;
+            }
+
+            /* tid filter is specified, but no match in filter */
+            return false;
         }
+        if (__myst_kernel_args.strace_config.pid_filter_num > 0)
+        {
+            /* Check if thread filtering is enabled & follow filter */
+            pid_t current_pid = myst_process_self()->pid;
+
+            for (int i = 0; i < __myst_kernel_args.strace_config.pid_filter_num;
+                 i++)
+            {
+                if (current_pid ==
+                    __myst_kernel_args.strace_config.pid_trace[i])
+                    return true;
+            }
+
+            /* pid filter is specified, but no match in filter */
+            return false;
+        }
+
+        /* syscall filtering is enabled & syscall is to be traversed */
+        return true;
     }
     return false;
 }

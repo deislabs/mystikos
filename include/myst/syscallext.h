@@ -34,6 +34,7 @@ typedef enum
 } myst_syscall_t;
 
 #define MYST_MAX_SYSCALLS 3000
+#define MYST_MAX_IDS 10
 
 /* Used for SYS_myst_get_fork_info parameter */
 typedef enum

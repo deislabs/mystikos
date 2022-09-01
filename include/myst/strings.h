@@ -63,6 +63,9 @@ MYST_INLINE int myst_isprint(int c)
 /* convert a whole string to an integer */
 int myst_str2int(const char* s, int* x);
 
+/* convert a whole string to a long */
+int myst_str2long(const char* s, long* x);
+
 // BSD memcchr() function: return a pointer to the first byte that is not
 // equal to c or null if not found.
 void* myst_memcchr(const void* b, int c, size_t len);

@@ -37,16 +37,28 @@ int myst_printf(const char* format, ...)
 int myst_str2int(const char* s, int* x)
 {
     int ret = 0;
+    long tmp;
+    ECHECK(myst_str2long(s, &tmp));
+
+    if (tmp < INT_MIN || tmp > INT_MAX)
+        ERAISE(-ERANGE);
+
+    *x = (int)tmp;
+
+done:
+    return ret;
+}
+
+int myst_str2long(const char* s, long* x)
+{
+    int ret = 0;
     char* end;
     long tmp = strtol(s, &end, 10);
 
     if (!end || *end)
         ERAISE(-EINVAL);
 
-    if (tmp < INT_MIN || tmp > INT_MAX)
-        ERAISE(-ERANGE);
-
-    *x = (int)tmp;
+    *x = tmp;
 
 done:
     return ret;
