@@ -81,6 +81,25 @@ typedef struct _myst_strace_config
               MYST_MAX_SYSCALLS value is much higher (3000).
     */
     bool trace[MYST_MAX_SYSCALLS];
+
+    /* If the tid filter is enabled, this will store the number of tids to
+     * filter by */
+    int tid_filter_num;
+
+    /*
+        If tid filter is enabled, stores the list of tids to include.
+    */
+    pid_t tid_trace[MYST_MAX_IDS];
+
+    /* If the pid filter is enabled, this will store the number of pids to
+     * filter by */
+    int pid_filter_num;
+
+    /*
+        If pid filter is enabled, stores the list of pids to include.
+    */
+    pid_t pid_trace[MYST_MAX_IDS];
+
 } myst_strace_config_t;
 
 typedef struct myst_kernel_args

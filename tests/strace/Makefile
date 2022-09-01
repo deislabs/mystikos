@@ -22,7 +22,7 @@ endif
 
 OPTS += --thread-stack-size=1048576
 
-__TESTS=1 2 3 4 5 6 7 8 9
+__TESTS=1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
 .PHONY: $(__TESTS)
 
 tests: $(__TESTS)
@@ -46,8 +46,7 @@ test3:
 
 test4:
 	$(MYST_EXEC) rootfs /bin/strace --strace-exclude-filter 'SYS_open:SYS_close' $(OPTS) 2> test4.txt
-	cat test4.txt | grep -v "SYS_open" > 3 && $(RUNTEST) diff 3 test4.txt
-	cat test4.txt | grep -v "SYS_close" > 3 && $(RUNTEST) diff 3 test4.txt
+	cat test4.txt | grep -vE '(SYS_open|SYS_close)' > 3 && $(RUNTEST) diff 3 test4.txt
 	echo "=== test4 passed"
 
 test5:
@@ -72,6 +71,44 @@ test8:
 test9:
 	$(MYST_EXEC) rootfs /bin/strace --strace-filter=file --strace-exclude-filter=SYS_mmap $(OPTS) 2> test9.txt || $(RUNTEST) diff test9.txt 2test.expected.txt
 	echo "=== test9 passed"
+
+test10:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter-tid=file $(OPTS) 2> test10.txt || $(RUNTEST) diff test10.txt 10test.expected.txt
+	echo "=== test10 passed"
+
+test11:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter-tid=101 $(OPTS) 2> test11.txt
+	test ! -s test11.txt || cat test11.txt | grep "tid=" > 10 && cat test11.txt | grep 'tid=101' > 11 && $(RUNTEST) diff 10 11
+	echo "=== test11 passed"
+
+test12:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter=SYS_mmap --strace-filter-tid 101 $(OPTS) 2> test12.txt
+	test ! -s test12.txt || cat test12.txt | grep -E '(tid=|SYS_)' > 13 && cat test12.txt | grep -E '(tid=101|SYS_mmap)' > 14 && $(RUNTEST) diff 13 14
+	echo  "=== test12 passed"
+
+test13:
+	$(MYST_EXEC) rootfs /bin/strace --strace-exclude-filter=SYS_mmap --strace-filter-tid 101 $(OPTS) 2> test13.txt
+	test ! -s test13.txt || cat test13.txt | grep -E '(tid=|SYS_)' > 15 && cat test13.txt | grep 'tid=101' | grep -v 'SYS_mmap' > 16 && $(RUNTEST) diff 15 16
+	echo  "=== test13 passed"
+
+test14:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter-pid=file $(OPTS) 2> test14.txt || $(RUNTEST) diff test14.txt 10test.expected.txt
+	echo "=== test14 passed"
+
+test15:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter-pid=101 $(OPTS) 2> test15.txt
+	test ! -s test15.txt || cat test15.txt | grep "pid=" > 17 && cat test15.txt | grep 'pid=101' > 18 && $(RUNTEST) diff 17 18
+	echo "=== test15 passed"
+
+test16:
+	$(MYST_EXEC) rootfs /bin/strace --strace-filter=SYS_mmap --strace-filter-pid 101 $(OPTS) 2> test16.txt
+	test ! -s test16.txt || cat test16.txt | grep -E '(pid=|SYS_)' > 19 && cat test16.txt | grep -E '(pid=101|SYS_mmap)' > 20 && $(RUNTEST) diff 19 20
+	echo  "=== test16 passed"
+
+test17:
+	$(MYST_EXEC) rootfs /bin/strace --strace-exclude-filter=SYS_mmap --strace-filter-pid 101 $(OPTS) 2> test17.txt
+	test ! -s test17.txt || cat test17.txt | grep -E '(pid=|SYS_)' > 21 && cat test17.txt | grep 'pid=101' | grep -v 'SYS_mmap' > 22 && $(RUNTEST) diff 21 22
+	echo  "=== test17 passed"
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
