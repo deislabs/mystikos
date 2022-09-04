@@ -65,15 +65,15 @@ consists of the following artifacts:
     * openenclave, including the outputs from building OE SDK.
 1. Run a simple application built with gcc
     ```bash
-    cd tests/hello
+    cd tests/hello_world/c
     make
     make tests
     ```
-    In the 2nd step `make`, we create a temporary folder `appdir`, compile
+    During the 2nd step `make`, it creates a temporary folder `appdir`, compile
     `hello.c` with `gcc`, and place the output executable under
     `appdir/bin/hello`, finally we create a CPIO archive out of `appdir`.
 
-    In the 3rd step `make tests`, we launch `myst`, giving it the CPIO
+    During the 3rd step `make tests`, it launchs `myst`, giving it the CPIO
     archive, the command to run (`/bin/hello` in this case), and
     the command line arguments, e.g., "red", "green", and "blue".
     With this step, we should see the following outputs:
@@ -125,7 +125,7 @@ O Call -> Calls into the host (untrusted environment)
 1. For most applications under `tests`, we can launch the debugger with
 command `make tests GDB=1`. For example:
     ```
-    cd Mystikos/tests/hello
+    cd tests/hello_world/c
     make && make tests GDB=1
     ```
     For applications that are run in [package mode](../solutions/dotnet/Makefile#23), ensure that the field `"Debug":1` is set in the `config.json` file, and the debugger can be launched using the run command:

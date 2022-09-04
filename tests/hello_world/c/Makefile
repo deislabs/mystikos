@@ -22,3 +22,6 @@ myst:
 
 clean:
 	rm -rf $(APPDIR) rootfs export ramfs
+
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) rootfs /bin/hello red green blue $(OPTS)

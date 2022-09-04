@@ -23,3 +23,5 @@ tests:
 clean:
 	rm -rf ext2rootfs appdir
 
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) ext2rootfs /opt/openjdk-13/bin/java -ea Helloworld red green blue
