@@ -53,7 +53,7 @@ rootfsr: $(RAPPDIR)
 appdirr:
 	$(MYST-RETRY) $(APPBUILDER) -m -o $(RAPPDIR) Dockerfile.musl.runner 
 
-TESTCASE=testcases/pass.txt
+TESTCASE=testcases/pass.1
 
 run-runner:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.1 /dotnet-lib-release/

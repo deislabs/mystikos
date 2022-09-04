@@ -41,7 +41,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-//#define TRACE
+// #define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -886,6 +886,17 @@ done:
 **==============================================================================
 */
 
+// This function is used by debugger/gdb-sgx-plugin/thread.py
+// Adding "-O2" so this hook function is not optimized out
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
+void myst_debug_hook_thread_exit(const myst_thread_t* thread)
+{
+    // This function should do nothing
+    assert(thread != NULL);
+}
+#pragma GCC pop_options
+
 bool myst_valid_td(const void* td)
 {
     return td && ((const myst_td_t*)td)->self == td;
@@ -982,6 +993,8 @@ static long _run_thread(void* arg_)
     if (myst_setjmp(&thread->jmpbuf) != 0)
     {
         /* ---------- running C-runtime thread descriptor ---------- */
+
+        myst_debug_hook_thread_exit(thread);
 
         assert(myst_gettid() != -1);
 
