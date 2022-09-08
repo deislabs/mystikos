@@ -76,11 +76,10 @@ int myst_set_strace_filter(
         {
             /* Check if filter is for a group of syscalls. Eg: file, memory, etc
              */
-            const int* syscalls = myst_syscall_group(name);
-            const size_t group_size = myst_syscall_group_size(name);
+            const myst_syscall_group_t* group = myst_syscall_group(name);
 
             /* token specified is not a syscall name or group name */
-            if (syscalls == NULL)
+            if (!group)
             {
                 fprintf(
                     stderr,
@@ -90,11 +89,11 @@ int myst_set_strace_filter(
                 abort();
             }
 
-            for (int j = 0; j < group_size; j++)
+            for (int j = 0; j < group->size; j++)
             {
-                const char* name = myst_syscall_name((long)syscalls[j]);
+                const char* name = myst_syscall_name((long)group->syscalls[j]);
                 myst_strace_add_syscall_to_filter(
-                    (long)syscalls[j], name, strace_config, include);
+                    (long)group->syscalls[j], name, strace_config, include);
             }
         }
     }
