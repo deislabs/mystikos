@@ -2293,26 +2293,31 @@ long myst_syscall_execveat(
         &abspath,
         FB_THROW_ERROR_NOFOLLOW | FB_TYPE_FILE));
 
+    if (__myst_kernel_args.strace_config.trace_syscalls)
+        myst_eprintf("%s", abspath);
+
     /* Make a copy of argv_in[] and inject pathname into argv[0] */
     {
         size_t argc = _count_args((const char* const*)argv_in);
 
-        if (!(argv = calloc(argc + 1, sizeof(char*))))
+        // allocate an array with (argc + 2) slots
+        // argv[0] and argv[-1] reserved for abspath and NULL respectively
+        if (!(argv = calloc(argc + 2, sizeof(char*))))
             ERAISE(-ENOMEM);
 
         for (size_t i = 0; i < argc; i++)
         {
-            argv[i] = argv_in[i];
+            argv[i + 1] = argv_in[i];
             if (__myst_kernel_args.strace_config.trace_syscalls)
             {
-                myst_eprintf(" %s ", argv[i]);
+                myst_eprintf(" %s ", argv[i + 1]);
                 if (i == argc - 1)
                     myst_eprintf("\n");
             }
         }
 
         argv[0] = abspath;
-        argv[argc] = NULL;
+        argv[argc + 1] = NULL;
     }
 
     /* only returns on failure */
