@@ -54,12 +54,15 @@ run-passed: rootfs-passed
 run-individual: rootfs
 	$(foreach i, $(TEST_RUN_INDIVIDUAL), echo $i; $(MAKE) run-one TEST=$(i) $(NL) )
 
-_run: rootfs
+run-partial: rootfs
 	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
 	tail -n 26 result > test_summary
 	diff -B -w test_summary expected-test-summary
+
+_run: rootfs
+	$(MAKE) run-partial
 	$(MAKE) run-individual
 	$(MAKE) clean_intermediate
 	$(MAKE) run-passed
