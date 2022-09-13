@@ -15,6 +15,7 @@ pipeline {
         // Add to the below to if you are adding a new test that needs to be toggled. 
         booleanParam(name: "RUN_DOTNETP1", defaultValue: false, description: "Run .NET P1 tests?")
         booleanParam(name: "RUN_OPENMP_TESTSUITE", defaultValue: false, description: "Run OpenMP Test Suite?")
+        // Parameters for OS/VM combinations
         booleanParam(name: "ICELAKE_VM", defaultValue: true, description: "Run tests on Ice Lake VMs?")
         booleanParam(name: "COFFEELAKE_VM", defaultValue: false, description: "Run tests on Coffee Lake VMs?")
     }
@@ -90,6 +91,30 @@ pipeline {
                     axis {
                         name 'VM_GENERATION'
                         values 'v3', 'v2'
+                    }
+                }
+                excludes {
+                    // Skip builds with Ubuntu 18.04 and v3
+                    exclude {
+                        axis {
+                            name 'OS_VERSION'
+                            values '18.04'
+                        }
+                        axis {
+                            name 'VM_GENERATION'
+                            values 'v3'
+                        }
+                    }
+                    // Skip builds with Ubuntu 20.04 and v2
+                    exclude {
+                        axis {
+                            name 'OS_VERSION'
+                            values '20.04'
+                        }
+                        axis {
+                            name 'VM_GENERATION'
+                            values 'v2'
+                        }
                     }
                 }
                 stages {
