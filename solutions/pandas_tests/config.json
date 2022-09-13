@@ -10,7 +10,6 @@
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
     "MemorySize": "3g",
-    "ThreadStackSize": "1m",
     "NoBrk": true,
     "HostApplicationParameters": true,
     "ForkMode":"pseudo_wait_for_exit_exec",
