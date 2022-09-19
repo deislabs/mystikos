@@ -213,6 +213,34 @@ static void _wait_on_child_threads(void)
     }
 }
 
+#define EXTENDED_FEATURE_FLAGS_FUNCTION 0x7
+void _print_platform_details()
+{
+    uint32_t rax = 0;
+    uint32_t rbx = 0;
+    uint32_t rcx = 0;
+    uint32_t rdx = 0;
+
+    myst_cpuid_ocall(
+        EXTENDED_FEATURE_FLAGS_FUNCTION, 0x0, &rax, &rbx, &rcx, &rdx);
+
+    if (!((rbx >> 2) & 1))
+    {
+        printf("CPU does not support SGX.\n");
+        return;
+    }
+
+    printf("SGX Flexible Launch Control: ");
+    if (((rcx >> 30) & 1))
+    {
+        printf("supported.\n");
+    }
+    else
+    {
+        printf("unsupported.\n");
+    }
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -269,7 +297,10 @@ int exec_launch_enclave(
 #endif
 
     if (r != OE_OK)
-        _err("failed to load enclave: result=%s", oe_result_str(r));
+    {
+        _print_platform_details();
+        _err("failed to load enclave: result=%s.\n ", oe_result_str(r));
+    }
 
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
