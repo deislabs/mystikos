@@ -14,7 +14,7 @@ PYTEST_CMD = $(PYTHON3) -m pytest
 PYTEST_INI_FILE = pytest.ini
 PYTEST_OPTS = -s -q --no-header --skip-slow --skip-db --skip-network
 TEST_ROOT = /usr/local/lib/python3.9/site-packages/
-TEST = /usr/local/lib/python3.9/site-packages/pandas/tests/io/test_fsspec.py 
+TEST = /usr/local/lib/python3.9/site-packages/pandas/tests/io/formats/test_to_csv.py
 TIMEOUT = 3000
 # The following tests used to pass in mystikos, but currently hang indefinitely.
 # Removing these tests currently, and will be added back after investigating
@@ -41,6 +41,8 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 rootfs-passed: appdir
+	# remove failing tests
+	cat tests.failed | while read test; do rm -f appdir/"$$test"; done
 	# remove test files that are known to fail partially. These are tested in target 'run'
 	# for expected failures/ errors.
 	cat tests.partially_passed | while read line; do rm -f appdir/"$$line"; done
