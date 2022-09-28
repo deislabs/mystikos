@@ -72,6 +72,7 @@ long determine_final_options(
         final_opts->base.unhandled_syscall_enosys =
             parsed_config->unhandled_syscall_enosys;
         final_opts->base.host_uds = parsed_config->host_uds;
+        final_opts->base.syslog_level = parsed_config->syslog_level;
 
         // Some options should not be enabled unless running in debug mode
         if (tee_debug_mode)

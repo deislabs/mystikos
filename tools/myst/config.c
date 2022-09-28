@@ -6,6 +6,7 @@
 #include <myst/kernel.h>
 #include <myst/round.h>
 #include <stdlib.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include "config.h"
@@ -432,6 +433,18 @@ static json_result_t _json_read_callback(
                 else
                     CONFIG_RAISE(JSON_TYPE_MISMATCH);
             }
+            else if (json_match(parser, "SyslogLevel") == JSON_OK)
+            {
+                if (type == JSON_TYPE_STRING)
+                {
+                    parsed_data->syslog_level =
+                        myst_syslog_level_str_to_int(un->string);
+                    if (parsed_data->syslog_level == -1)
+                        CONFIG_RAISE(JSON_UNKNOWN_VALUE);
+                }
+                else
+                    CONFIG_RAISE(JSON_TYPE_MISMATCH);
+            }
             else
             {
                 // Ignore everything we dont understand
@@ -513,6 +526,7 @@ int parse_config(config_parsed_data_t* parsed_data)
         parsed_data->oe_num_stack_pages = ENCLAVE_STACK_SIZE / PAGE_SIZE;
         parsed_data->oe_create_zero_base = ENCLAVE_CREATE_ZERO_BASE_ENCLAVE;
         parsed_data->oe_start_address = ENCLAVE_START_ADDRESS;
+        parsed_data->syslog_level = -1;
     }
 
     if ((ret = json_parser_init(
@@ -641,4 +655,26 @@ done:
         fclose(out_file);
 
     return ret;
+}
+
+int myst_syslog_level_str_to_int(const char* syslog_level_str)
+{
+    if (strcmp(syslog_level_str, "emerg") == 0)
+        return LOG_EMERG;
+    else if (strcmp(syslog_level_str, "alert") == 0)
+        return LOG_ALERT;
+    else if (strcmp(syslog_level_str, "crit") == 0)
+        return LOG_CRIT;
+    else if (strcmp(syslog_level_str, "err") == 0)
+        return LOG_ERR;
+    else if (strcmp(syslog_level_str, "warn") == 0)
+        return LOG_WARNING;
+    else if (strcmp(syslog_level_str, "notice") == 0)
+        return LOG_NOTICE;
+    else if (strcmp(syslog_level_str, "info") == 0)
+        return LOG_INFO;
+    else if (strcmp(syslog_level_str, "debug") == 0)
+        return LOG_DEBUG;
+    else // invalid syslog level
+        return -1;
 }

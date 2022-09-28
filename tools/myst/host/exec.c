@@ -456,6 +456,8 @@ Options:\n\
                             from the output. Can be used in conjunction with any of the above filters \n\
                             E.g: To filter by pid=101, specify - \n\
                             --strace-filter-pid=101\n\
+    --syslog-level=<emerg|alert|crit|err|warn|notice|info|debug>\n\
+                         -- Configure kernel's system logger level \n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -574,6 +576,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
                 argv[0]);
             return 1;
         }
+
+        if (get_syslog_level_opts(&argc, argv, &options.syslog_level) != 0)
+            _err(
+                "%s: invalid --syslog-level option. Should be one of - "
+                "\"emerg\", "
+                "\"alert\", \"crit\", \"err\", \"warn\", \"notice\", "
+                "\"info\", \"debug\".",
+                argv[0]);
 
         /* Get MYST_MEMCHECK environment variable */
         {

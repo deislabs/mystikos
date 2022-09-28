@@ -180,8 +180,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         // convention as myst_handle_host_signal is expected to be called
         oe_context->rsp = (rsp & -16) - 8;
         oe_context->rbp = rbp;
-        oe_context->rdi = (__typeof(oe_context->rdi))&siginfo;
-        oe_context->rsi = (__typeof(oe_context->rsi))&mcontext;
+        oe_context->rdi = (__typeof(oe_context->rdi)) & siginfo;
+        oe_context->rsi = (__typeof(oe_context->rsi)) & mcontext;
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -694,6 +694,7 @@ static long _enter(void* arg_)
                                      : MYST_PROCESS_INIT_STACK_SIZE;
         _kargs.thread_stack_size = final_options.base.thread_stack_size;
         _kargs.host_uds = final_options.base.host_uds;
+        _kargs.syslog_level = final_options.base.syslog_level;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions =
