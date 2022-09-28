@@ -757,11 +757,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __myst_kernel_args = *args;
     args = &__myst_kernel_args;
 
-    /* set the syslog level, depending on whether in TEE debug mode */
-    if (args->tee_debug_mode)
-        args->syslog_level = LOG_DEBUG;
-    else
-        args->syslog_level = LOG_NOTICE;
+    /* If no syslog level config was specified set defaults depending on whether
+     * in TEE debug mode */
+    if (args->syslog_level == -1)
+    {
+        if (args->tee_debug_mode)
+            args->syslog_level = LOG_DEBUG;
+        else
+            args->syslog_level = LOG_NOTICE;
+    }
 
     /* turn off or reduce various options when TEE is not in debug mode */
     if (!args->tee_debug_mode)
@@ -797,6 +801,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
      * be used prior to this point */
     if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
         ERAISE(-EINVAL);
+
+    MYST_ILOG("Entered Mystikos kernel.");
 
     /* call global constructors within the kernel */
     myst_call_init_functions();

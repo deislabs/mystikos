@@ -27,4 +27,6 @@ long determine_final_options(
     const char* target_env_var,
     myst_args_t* mount_mappings);
 
+int myst_syslog_level_str_to_int(const char* syslog_level_str);
+
 #endif /* _MYST_MYST_SHARED_H */

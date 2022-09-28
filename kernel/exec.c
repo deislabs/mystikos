@@ -1238,6 +1238,7 @@ int myst_exec(
     if (callback)
         (*callback)(callback_arg);
 
+    MYST_ILOG("Entering CRT.");
     /* enter the C-runtime on the target thread descriptor */
     (*enter)(sp, dynv, myst_syscall, crt_args);
 

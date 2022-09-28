@@ -59,6 +59,8 @@ int get_fork_mode_opts(
     const char* argv[],
     myst_fork_mode_t* fork_mode);
 
+int get_syslog_level_opts(int* argc, const char* argv[], int* syslog_level);
+
 long myst_add_symbol_file_by_path(
     const char* path,
     const void* text_data,

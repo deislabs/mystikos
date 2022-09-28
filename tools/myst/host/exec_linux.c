@@ -122,6 +122,8 @@ Options:\n\
                             from the output. Can be used in conjunction with any of the above filters \n\
                             E.g: To filter by pid=101, specify - \n\
                             --strace-filter-pid=101\n\
+    --syslog-level=<emerg|alert|crit|err|warn|notice|info|debug>\n\
+                         -- Configure kernel's system logger level \n\
 \n\
 "
 
@@ -202,6 +204,13 @@ static void _get_options(
             "%s: invalid --fork-mode option. Only \"none\", "
             "\"pseudo\" and \"pseudo_wait_for_exit_exec\" are currently "
             "supported\n",
+            argv[0]);
+
+    if (get_syslog_level_opts(argc, argv, &opts->syslog_level) != 0)
+        _err(
+            "%s: invalid --syslog-level option. Should be one of - \"emerg\", "
+            "\"alert\", \"crit\", \"err\", \"warn\", \"notice\", \"info\", "
+            "\"debug\".",
             argv[0]);
 
     /* Get --max-affinity-cpus */
@@ -542,6 +551,7 @@ static int _enter_kernel(
     kernel_args.exec_stack = final_options.base.exec_stack;
     kernel_args.perf = final_options.base.perf;
     kernel_args.host_uds = final_options.base.host_uds;
+    kernel_args.syslog_level = final_options.base.syslog_level;
 
     /* check whether FSGSBASE instructions are supported */
     if (test_user_space_fsgsbase() == 0)

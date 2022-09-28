@@ -32,6 +32,7 @@ typedef struct myst_options
     myst_fork_mode_t fork_mode;
     myst_host_enc_uid_gid_mappings host_enc_uid_gid_mappings;
     myst_strace_config_t strace_config;
+    int syslog_level;
 } myst_options_t;
 
 typedef struct myst_final_options
