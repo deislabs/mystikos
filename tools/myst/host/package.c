@@ -52,7 +52,8 @@ Where:\n\
                    system files, signing and measuring all enclave resident\n\
                    pieces during in the process\n\
     <app_dir>   -- application directory with files for root filesystem\n\
-    <pem_file>  -- private key to sign and measure SGX enclave files\n\
+    <pem_file>  -- private key to sign and measure SGX enclave files.\n\
+                   can specify 'NULL' if using signing engine\n\
     <config>    -- configuration for signing and application runtime\n\
 \n\
 and <options> are one of:\n\

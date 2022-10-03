@@ -1,0 +1,15 @@
+{
+    // Mystikos configuration version number
+    "version": "0.1",
+
+    // OpenEnclave specific values
+    "Debug": 1,
+    "ProductID": 1,
+    "SecurityVersion": 1,
+
+    // Mystikos specific values
+    "MemorySize": "40m",
+    "ApplicationPath": "/bin/hello",
+    "HostApplicationParameters": true,
+    "HostEnvironmentVariables": ["TESTNAME"]
+}
