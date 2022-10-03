@@ -19,4 +19,6 @@ DIRS += hostname-config
 DIRS += auto-mount
 DIRS += package
 
+DIRS += signing-engine-test
+
 include $(TOP)/rules.mak
