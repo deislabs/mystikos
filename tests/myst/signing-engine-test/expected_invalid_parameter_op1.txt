@@ -1,0 +1,2 @@
+*** ERROR: oe_sgx_sign_enclave_from_engine() failed: result=OE_INVALID_PARAMETER (0x3)
+mystikos/build/bin/myst: error: Failed to sign "hello.signed/lib/openenclave/mystenc.so"
