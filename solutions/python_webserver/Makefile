@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS += --memory-size=256m --max-affinity-cpus=4
+OPTS += --memory-size=1g --thread-stack-size=1m
 
 ifdef PERF
 OPTS += --perf
@@ -45,6 +45,9 @@ _run:
 	
 run:
 	$(RUNTEST) make -C $(CURDIR) _run
+
+server:
+	$(MYST_EXEC) $(OPTS) rootfs /miniconda/bin/python3 /app/hello_server.py
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true
