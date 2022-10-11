@@ -1002,6 +1002,7 @@ static int _udsdev_accept4(
 {
     int ret = 0;
     bool locked = false;
+    acceptor_t* acceptor = NULL;
     myst_sock_t* sv[2] = {NULL, NULL};
 
     if (!dev || !_valid_sock(sock) || !new_sock_out)
@@ -1011,7 +1012,7 @@ static int _udsdev_accept4(
     if (!_obj(sock)->acceptor)
         ERAISE(-EINVAL);
 
-    acceptor_t* acceptor = _obj(sock)->acceptor;
+    acceptor = _obj(sock)->acceptor;
 
     /* wait here to accept a connection */
     _lock(&acceptor->mutex, &locked);
