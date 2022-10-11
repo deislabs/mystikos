@@ -710,6 +710,8 @@ int myst_signal_has_active_signals(myst_thread_t* thread)
     return active_signals != 0;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
 long myst_signal_process(myst_thread_t* thread)
 {
     /* If we are waiting due to sigstop then block now */
@@ -761,6 +763,7 @@ long myst_signal_process(myst_thread_t* thread)
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
+#pragma GCC pop_options
 
 long myst_signal_deliver(
     myst_thread_t* thread,
