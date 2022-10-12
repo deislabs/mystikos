@@ -3,7 +3,7 @@
 #include <myst/ssr.h>
 #include <stdio.h>
 
-#define MHSM_SERVER "https://cvmmhsm.managedhsm.azure.net"
+#define MHSM_SERVER "https://accmhsm.managedhsm.azure.net"
 #define MHSM_API_VERSION "7.3-preview"
 
 int main(int argc, char** argv)
