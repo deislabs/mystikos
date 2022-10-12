@@ -61,14 +61,14 @@ Users can configure where to retrieve the two symmetric keys with
     "Secret": [
         {
             "ID": "PytorchModelKey",
-            "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
+            "SrsAddress": "https://accmhsm.managedhsm.azure.net",
             "SrsApiVersion": "7.3-preview",
             "LocalPath": "/model.key",
             "ClientLib": "libmhsm_ssr.so"
         },
         {
             "ID": "PytorchDataKey",
-            "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
+            "SrsAddress": "https://accmhsm.managedhsm.azure.net",
             "SrsApiVersion": "7.3-preview",
             "LocalPath": "/image.key",
             "ClientLib": "libmhsm_ssr.so"
