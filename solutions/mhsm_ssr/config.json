@@ -12,7 +12,7 @@
 	"Secret": [
 	    {
             "ID": "MyCustomKeyGA",
-            "SrsAddress": "https://cvmmhsm.managedhsm.azure.net",
+            "SrsAddress": "https://accmhsm.managedhsm.azure.net",
             "SrsApiVersion": "7.3-preview",
             "LocalPath": "/mykey",
             "ClientLib": "libmhsm_ssr.so"
