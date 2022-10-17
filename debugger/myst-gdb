@@ -31,6 +31,7 @@ LD_PRELOAD=$OE_GDB_PTRACE_PATH gdb \
 	  -iex "source $MYST_GDB_PLUGIN_DIR/print.py" \
 	  -iex "source $MYST_GDB_PLUGIN_DIR/mprotect.py" \
 	  -iex "source $MYST_GDB_PLUGIN_DIR/symbol_analyzer.py" \
+	  -iex "source $MYST_GDB_PLUGIN_DIR/mman.py" \
 	  -iex "set environment LD_PRELOAD" \
 	  -iex "add-auto-load-safe-path /usr/lib" \
 	  "$@"

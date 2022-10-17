@@ -73,6 +73,11 @@ static myst_fs_t* _posix_shmfs;
 
 static int _add_proc_to_sharers(shared_mapping_t* sm, pid_t pid);
 
+void myst_shmfs_setup_hook(myst_list_t* shmem_list)
+{
+    assert(shmem_list != NULL);
+}
+
 int shmfs_setup()
 {
     int ret = 0;
@@ -96,6 +101,8 @@ int shmfs_setup()
         myst_eprintf("cannot mount shm file system\n");
         ERAISE(-EINVAL);
     }
+
+    myst_shmfs_setup_hook(&_shared_mappings);
 
 done:
     return ret;

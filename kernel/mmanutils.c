@@ -97,6 +97,11 @@ static vectors_t _get_vectors(void)
     return v;
 }
 
+void myst_mman_init_debug_hook(myst_mman_t* mman)
+{
+    assert(mman);
+}
+
 int myst_setup_mman(void* data, size_t size)
 {
     int ret = -1;
@@ -112,6 +117,8 @@ int myst_setup_mman(void* data, size_t size)
 
     if (myst_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
         goto done;
+
+    myst_mman_init_debug_hook(&_mman);
 
 #ifdef SCRUB
     /* Scrubbing unmapped memory causes memory reads due to musl libc */
