@@ -401,6 +401,7 @@ long myst_posix_shm_handle_mmap(
     void* buf_data_addr;
     mman_file_handle_t* file_handle = NULL;
     size_t backing_file_size;
+    shared_mapping_t* new_sm = NULL;
 
 #ifdef TRACE
     _dump_shared_mappings("mmap entry");
@@ -470,7 +471,6 @@ long myst_posix_shm_handle_mmap(
     }
 
     // Create a new shared mapping
-    shared_mapping_t* new_sm;
     {
         if (!(new_sm = calloc(1, sizeof(shared_mapping_t))))
         {
