@@ -611,7 +611,7 @@ static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
         gid_t host_egid;
 
         ECHECK(myst_enc_uid_to_host(myst_syscall_geteuid(), &host_euid));
-        ECHECK(myst_enc_uid_to_host(myst_syscall_getegid(), &host_egid));
+        ECHECK(myst_enc_gid_to_host(myst_syscall_getegid(), &host_egid));
 
         long params[6] = {
             (long)args->rootfs, (long)&buf, (long)host_euid, (long)host_egid};
@@ -728,6 +728,8 @@ static void _print_boottime(void)
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -1106,3 +1108,4 @@ done:
 
     return ret;
 }
+#pragma GCC pop_options
