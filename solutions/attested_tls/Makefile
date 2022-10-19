@@ -39,7 +39,7 @@ app:	app/peer_tee_identity.h
 	rm -rf app/client app/tee.h
 	docker build -t alpine.build -f app-dockerfile .
 	cp $(TOP)/include/myst/tee.h app
-	docker run --rm -v $(CURDIR)/app:/app alpine.build bash -c \
+	$(MYST_RETRY) docker run --rm -v $(CURDIR)/app:/app alpine.build bash -c \
     "gcc -g -o /app/client /app/client.c /app/tlscli.c -lmbedtls -lmbedx509 -lmbedcrypto $(MYST_DEFINES)"
 	sudo chown $(USER):$(GROUP) app/client
 	$(TOP)/scripts/appbuilder Dockerfile
