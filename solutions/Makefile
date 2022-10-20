@@ -13,7 +13,7 @@ endif
 endif
 endif
 
-#DIRS += mhsm_ssr
+DIRS += mhsm_ssr
 DIRS += msgpack_c
 
 DIRS += dotnet
