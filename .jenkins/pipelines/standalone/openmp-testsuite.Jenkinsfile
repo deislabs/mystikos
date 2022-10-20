@@ -18,6 +18,7 @@ pipeline {
     environment {
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
         JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"
+        MYST_RELEASE =      "1"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'

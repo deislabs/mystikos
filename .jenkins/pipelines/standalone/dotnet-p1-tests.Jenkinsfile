@@ -25,6 +25,7 @@ pipeline {
         TEST_TYPE =         "dotnet"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
         PACKAGE_INSTALL =   "${UBUNTU_VERSION == '20.04' ? 'Ubuntu-2004' : 'Ubuntu-1804'}_${PACKAGE_NAME}.${PACKAGE_EXTENSION}"
+        MYST_RELEASE =      "1"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
