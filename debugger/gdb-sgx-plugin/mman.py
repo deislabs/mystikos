@@ -36,7 +36,7 @@ class myst_list_node_t:
         self.size = read_int_from_memory(addr + self.OFFSETOF_SIZE, self.SIZEOF_SIZE)
 
 class myst_vad_t:
-    OFFSET_NEXT = 0
+    OFFSETOF_NEXT = 0
     SIZEOF_NEXT = 8
 
     OFFSETOF_PREV = 8
@@ -54,14 +54,39 @@ class myst_vad_t:
     OFFSETOF_FLAGS = 32
     SIZEOF_FLAGS = 2
 
-    def __init__(self):
+    def __init__(self, addr):
         self.next = read_int_from_memory(addr + self.OFFSETOF_NEXT, self.SIZEOF_NEXT)
         self.prev = read_int_from_memory(addr + self.OFFSETOF_PREV, self.SIZEOF_PREV)
         self.addr = read_int_from_memory(addr + self.OFFSETOF_ADDR, self.SIZEOF_ADDR)
         self.size = read_int_from_memory(addr + self.OFFSETOF_SIZE, self.SIZEOF_SIZE)
         self.flags = read_int_from_memory(addr + self.OFFSETOF_FLAGS, self.SIZEOF_FLAGS)
 
+class mman_file_handle_t:
+    SIZEOF_FS = 8
+
+    OFFSETOF_INODE = 8
+    SIZEOF_INODE = 8
+
+    def __init__(self, addr):
+        if not addr:
+            self.fs = None
+            self.inode = None
+            return
+        self.fs = read_int_from_memory(addr, self.SIZEOF_FS)
+        self.inode = read_int_from_memory(addr + self.OFFSETOF_INODE, self.SIZEOF_INODE)
+    @staticmethod
+    def equal(f1, f2):
+        if not f1 and not f2:
+            return True
+        elif not f1 or not f2:
+            return False
+        elif f1.fs == f2.fs and f1.inode == f2.inode:
+            return True
+        return False
+
 # Definition must align with myst_fdmapping_t structure defined in include/myst/mmanutils.h
+FDMAPPING_SIZE = 32
+FDMAPPING_USED_MAGIC = 0x1ca0597f
 class myst_fdmapping_t:
     OFFSETOF_USED = 0
     SIZEOF_USED = 4
@@ -82,7 +107,7 @@ class myst_fdmapping_t:
             return
 
         self.offset = read_int_from_memory(addr + self.OFFSETOF_OFFSET, self.SIZEOF_OFFSET)
-        self.filesz = read_int_from_memory(addr + self.OFFSETOF_NEXT, self.SIZEOF_NEXT)
+        self.filesz = read_int_from_memory(addr + self.OFFSETOF_FILESZ, self.SIZEOF_FILESZ)
         self.mman_file_handle = read_int_from_memory(addr + self.OFFSETOF_MMAN_FILE_HANDLE, self.SIZEOF_MMAN_FILE_HANDLE)
 
 class shared_mapping_t:
@@ -138,6 +163,8 @@ class MystMmanInitBreakpoint(gdb.Breakpoint):
     def stop(self):
         mman_tracker.mman_base = int(gdb.parse_and_eval('(uint64_t)_mman->base'))
         mman_tracker.mman_start = int(gdb.parse_and_eval('(uint64_t)_mman->start'))
+        mman_tracker.mman_brk = int(gdb.parse_and_eval('(uint64_t)_mman->brk'))
+        mman_tracker.mman_map = int(gdb.parse_and_eval('(uint64_t)_mman->map'))
         mman_tracker.mman_end = int(gdb.parse_and_eval('(uint64_t)_mman->end'))
         mman_tracker.mman_size = int(gdb.parse_and_eval('(uint64_t)_mman->size'))
         mman_tracker.file_mappings_vec = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.fdmappings_data'))
@@ -145,8 +172,11 @@ class MystMmanInitBreakpoint(gdb.Breakpoint):
         mman_tracker.process_ownership_vec = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.mman_pids_data'))
         mman_tracker.process_ownership_vec_size = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.mman_pids_size'))
         mman_tracker.prot_vector = int(gdb.parse_and_eval('(uint64_t)_mman->prot_vector'))
+        mman_tracker.vad_list_ptr = int(gdb.parse_and_eval('(uint64_t)&_mman->vad_list'))
         
-        print("mman base= %x start=%x end=%x size=%d" % (mmam_tracker.mman_base, mman_tracker.mman_start, mman_tracker.mman_end, mman_tracker.mman_size))
+        print("mman base= %x start=%x end=%x size=%d vad_list_ptr=%x" % (mman_tracker.mman_base, mman_tracker.mman_start, mman_tracker.mman_end, mman_tracker.mman_size, mman_tracker.vad_list_ptr))
+
+        print("file_map_vec= 0x%x ownership_vec= 0x%x prot_vector=0x%x" % (mman_tracker.file_mappings_vec, mman_tracker.process_ownership_vec, mman_tracker.prot_vector))
 
         # Continue execution.
         return False
@@ -196,8 +226,71 @@ class MystMmanTracker:
                 return True
         return False
 
-    def _get_page_index(addr, length):
-        pass
+    def _lookup_vad_list(self, addr):
+        if not addr:
+            return
+        vad_list = read_int_from_memory(mman_tracker.vad_list_ptr, 8)
+        if not vad_list:
+            print("No allocations yet.")
+            return
+        vad = myst_vad_t(vad_list)
+        if addr >= vad.addr and addr < vad.addr + vad.size:
+            return vad            
+        while vad.next:
+            vad = myst_vad_t(vad.next)
+            if addr >= vad.addr and addr < vad.addr + vad.size:
+                return vad
+
+    def _print_vad(self, vad):
+        print("start_addr=0x%x end_addr=0x%x size=%d" % (vad.addr, vad.addr + vad.size, vad.size))
+ 
+    '''
+    pids and fd mapping vectors track pages starting mman_base.
+    prot vector tracks pages starting mman_start
+    |guard page|mman_base|....|mman_start|...|mman_end|guard page|
+    '''
+
+    def _get_pids_or_fd_index(self, addr):
+        return (addr - mman_tracker.mman_base) // 4096
+    
+    def _get_prot_vec_index(self, addr):
+        return (addr - mman_tracker.mman_start) // 4096
+    
+    def _pids_index_to_addr(self, index):
+        return mman_tracker.mman_base + index * 4096
+
+    def _prot_index_to_addr(self, index):
+        return mman_tracker.mman_start + index * 4096
+
+    def _get_pids_by_index(self, index):
+        return read_int_from_memory(mman_tracker.process_ownership_vec + (index * 4), 4)
+
+    def _get_fdmapping_by_index(self, index):
+        return myst_fdmapping_t(mman_tracker.file_mappings_vec + (index * FDMAPPING_SIZE))
+    
+    def _get_prot_by_index(self, index):
+        return read_int_from_memory(mman_tracker.prot_vector + index, 1)
+
+    def _get_prot_by_addr(self, addr):
+        return self._get_prot_by_index(self._get_prot_vec_index(addr))
+
+    def _prot_to_string(self, prot):
+        if  prot == 0:
+            return "PROT_NONE";
+        elif prot == 1:
+            return "PROT_READ";
+        elif prot == 2:
+            return "PROT_WRITE";
+        elif prot == 3:
+            return "PROT_READ|PROT_WRITE";
+        elif prot == 4:
+            return "PROT_EXEC";
+        elif prot == 5:
+            return "PROT_READ|PROT_EXEC";
+        elif prot == 7:
+            return "PROT_READ|PROT_WRITE|PROT_EXEC";
+        else:
+            return "unknown";
 
     def _get_map_by_addr(self, addr_str, get_all=None):
         # Evaluate the address expression.
@@ -207,7 +300,74 @@ class MystMmanTracker:
         if not self._is_valid_heap_addr_range(addr, 0):
             print('invalid address!! Not in mman controlled region.')
             return
-        # TODO
+
+        index = self._get_pids_or_fd_index(addr)
+        addr_pids_entry = self._get_pids_by_index(index)
+        addr_fd_entry = self._get_fdmapping_by_index(index)
+        addr_prot_entry = self._get_prot_by_index(self._get_prot_vec_index(addr))
+        
+        if not addr_pids_entry:
+            ''' 
+            addr lies either in shared memory, kernel owned or unallocated region.
+            For shared memory, parse shared memory list.
+            For kernel owned, there should be a corresponding VAD node.
+            '''
+            print("no pids entry")
+            return
+        
+        # if we are here, this is a MAP_PRIVATE mapping
+        '''
+        scan left on both fd, prot and pids vec
+        '''
+        lowest_idx = self._get_pids_or_fd_index(mman_tracker.mman_start)
+        tmp_index = index
+        while tmp_index >= lowest_idx:
+              if self._get_pids_by_index(tmp_index) == addr_pids_entry:
+                fd_entry = self._get_fdmapping_by_index(index)
+                if not addr_fd_entry.used == fd_entry.used:
+                    break
+                if not mman_file_handle_t.equal(mman_file_handle_t(addr_fd_entry.mman_file_handle), mman_file_handle_t(fd_entry.mman_file_handle)):
+                    break
+                if not addr_prot_entry == self._get_prot_by_addr(self._pids_index_to_addr(tmp_index)):
+                    break
+                tmp_index -= 1
+        # while loop stops when either file, prot, pids property has changed.
+        # So the start index is the page right of tmp_index.
+        map_start_pids_idx = tmp_index + 1
+        map_start_addr = self._pids_index_to_addr(map_start_pids_idx)
+
+        '''
+        scan right on both fd, prot and pids vec
+        '''
+        highest_idx_plus_one = self._get_pids_or_fd_index(mman_tracker.mman_end)
+        tmp_index = index
+        while tmp_index < highest_idx_plus_one:
+              if self._get_pids_by_index(tmp_index) == addr_pids_entry:
+                fd_entry = self._get_fdmapping_by_index(index)
+                if not addr_fd_entry.used == fd_entry.used:
+                    break
+                if not mman_file_handle_t.equal(mman_file_handle_t(addr_fd_entry.mman_file_handle), mman_file_handle_t(fd_entry.mman_file_handle)):
+                    break
+                if not addr_prot_entry == self._get_prot_by_addr(self._pids_index_to_addr(tmp_index)):
+                    break
+                tmp_index += 1
+        # while loop stops when either file, prot, pids property has changed.
+        # So tmp_index is pointing to the page beyond the end of the mapping.
+        # End address of mapping is not inclusive, so we can directly use tmp_index here.
+        map_end_pids_idx = tmp_index
+        map_end_addr = self._pids_index_to_addr(map_end_pids_idx)
+        map_size = map_end_addr - map_start_addr
+
+        print("map_start_addr=0x%x map_end_addr=0x%x size=%d(0x%x)" % (map_start_addr, map_end_addr, map_size, map_size))
+        print("Owning process: %d" % (addr_pids_entry))
+        if addr_fd_entry.used == FDMAPPING_USED_MAGIC:
+            print("File mapping info: offset=%d filesz=%d" % (addr_fd_entry.offset - (index - map_start_pids_idx)*4096, addr_fd_entry.filesz))
+        print("Page protection = %s" % (self._prot_to_string(addr_prot_entry)))
+
+        vad = self._lookup_vad_list(addr)
+        if vad:
+            print("VAD info for addr=0x%x:" % (addr))
+            self._print_vad(vad)
 
 mman_tracker = None
 
