@@ -60,7 +60,8 @@ run-partial: rootfs
 	-(cat tests.partially_passed | xargs -P 8 $(MYST_EXEC) rootfs $(OPTS) \
 		$(PYTEST_CMD) $(PYTEST_OPTS) 2>&1 > result; true)
 	sed -i '$$d' result
-	tail -n 26 result > test_summary
+	# extract just test names
+	tail -n 26 result | sed -rn 's/.*pandas\/tests\/(.*)/\1/p' > test_summary
 	diff -B -w test_summary expected-test-summary
 
 _run: rootfs

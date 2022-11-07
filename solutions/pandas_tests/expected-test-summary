@@ -1,26 +1,26 @@
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[\U0001f44d...]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[\u03a9\u0153\u2211\xb4...]
-FAILED ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_clipboard.py::TestClipboard::test_raw_roundtrip[abcd...]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip_explicit_fs
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetPyArrow::test_s3_roundtrip
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/test_parquet.py::TestParquetFastParquet::test_s3_roundtrip
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[None]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[gzip]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[bz2]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[zip]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[xz]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_compression.py::test_with_s3_url[tar]
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_pandas.py::TestPandasContainer::test_read_s3_jsonl
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/json/test_pandas.py::TestPandasContainer::test_to_s3
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3n_bucket
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3a_bucket
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3_bucket_nrows
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3_bucket_chunked
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3_bucket_chunked_python
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3_bucket_python
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_infer_s3_compression
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_parse_public_s3_bucket_nrows_python
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_read_s3_fails
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_read_csv_handles_boto_s3_object
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_read_csv_chunked_download
-ERROR ../usr/local/lib/python3.9/site-packages/pandas/tests/io/parser/test_network.py::TestS3::test_read_s3_with_hash_in_key
+io/test_clipboard.py::[1mTestClipboard::test_raw_roundtrip[\U0001f44d...][0m - pandas.errors.PyperclipException: 
+io/test_clipboard.py::[1mTestClipboard::test_raw_roundtrip[\u03a9\u0153\u2211\xb4...][0m - pandas.errors.PyperclipException: 
+io/test_clipboard.py::[1mTestClipboard::test_raw_roundtrip[abcd...][0m - pandas.errors.PyperclipException: 
+io/test_parquet.py::[1mTestParquetPyArrow::test_s3_roundtrip_explicit_fs[0m
+io/test_parquet.py::[1mTestParquetPyArrow::test_s3_roundtrip[0m
+io/test_parquet.py::[1mTestParquetFastParquet::test_s3_roundtrip[0m
+io/json/test_compression.py::[1mtest_with_s3_url[None][0m
+io/json/test_compression.py::[1mtest_with_s3_url[gzip][0m
+io/json/test_compression.py::[1mtest_with_s3_url[bz2][0m
+io/json/test_compression.py::[1mtest_with_s3_url[zip][0m
+io/json/test_compression.py::[1mtest_with_s3_url[xz][0m
+io/json/test_compression.py::[1mtest_with_s3_url[tar][0m
+io/json/test_pandas.py::[1mTestPandasContainer::test_read_s3_jsonl[0m
+io/json/test_pandas.py::[1mTestPandasContainer::test_to_s3[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3n_bucket[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3a_bucket[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3_bucket_nrows[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3_bucket_chunked[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3_bucket_chunked_python[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3_bucket_python[0m
+io/parser/test_network.py::[1mTestS3::test_infer_s3_compression[0m
+io/parser/test_network.py::[1mTestS3::test_parse_public_s3_bucket_nrows_python[0m
+io/parser/test_network.py::[1mTestS3::test_read_s3_fails[0m
+io/parser/test_network.py::[1mTestS3::test_read_csv_handles_boto_s3_object[0m
+io/parser/test_network.py::[1mTestS3::test_read_csv_chunked_download[0m
+io/parser/test_network.py::[1mTestS3::test_read_s3_with_hash_in_key[0m
