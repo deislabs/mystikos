@@ -857,7 +857,6 @@ static int _udsdev_bind(
 {
     int ret = 0;
     const struct sockaddr_un* sun = (const struct sockaddr_un*)addr;
-    int fd = -1;
 
     if (!dev || !_valid_sock(sock) || !addr || !addrlen)
         ERAISE(-EINVAL);
@@ -903,9 +902,6 @@ static int _udsdev_bind(
     memcpy(&_obj(sock)->bind_addr, sun, sizeof(_obj(sock)->bind_addr));
 
 done:
-
-    if (fd >= 0)
-        close(fd);
 
     return ret;
 }

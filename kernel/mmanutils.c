@@ -314,7 +314,7 @@ static int _add_file_mapping(int fd, off_t offset, void* addr, size_t length)
     bool locked = false;
     size_t index, file_size;
     vectors_t v = _get_vectors();
-    mman_file_handle_t* file_handle;
+    mman_file_handle_t* file_handle = NULL;
 
     if (fd < 0 || offset < 0 || !addr || !length)
         ERAISE(-EINVAL);
@@ -997,8 +997,6 @@ int myst_release_process_mappings(pid_t pid)
     fdlist_t* catchall = NULL;
 
     assert(pid > 0);
-    if (pid <= 0)
-        return -EINVAL;
 
     /* Acquire filesystem lock, as writeback may happen for process owned
      * MAP_SHARED mappings. */

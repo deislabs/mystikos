@@ -631,7 +631,7 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
         goto done;
     }
 
-    if (!addr || !addrlen || *addrlen < 0)
+    if (!addr || !addrlen)
     {
         ret = -EINVAL;
         goto done;
