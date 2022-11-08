@@ -5092,8 +5092,7 @@ static long _SYS_prctl(long n, long params[6])
             return (_return(n, -EINVAL));
 
         // ATTN: Linux requires a 16-byte buffer:
-        const size_t n = 16;
-        myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
+        myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), 16);
         ret = 0;
     }
     else if (option == PR_SET_NAME)

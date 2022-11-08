@@ -118,7 +118,7 @@ int myst_maps_load(myst_maps_t** maps_out)
             &inode,
             &path_offset);
 
-        if (n < 9)
+        if (n < 10)
         {
             ret = -ENOSYS;
             goto done;
