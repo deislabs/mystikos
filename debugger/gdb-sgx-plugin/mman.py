@@ -5,6 +5,9 @@ import gdb
 import math
 import tempfile
 
+def round_up_page_size(x):
+    return ((x + 4095) // 4096) * 4096
+
 class myst_list_t:
     OFFSETOF_HEAD=0
     SIZEOF_HEAD=8
@@ -15,22 +18,7 @@ class myst_list_t:
     OFFSETOF_SIZE=16
     SIZEOF_SIZE=8
 
-    def __init__(self):
-        self.head = read_int_from_memory(addr + self.OFFSETOF_HEAD, self.SIZEOF_HEAD)
-        self.tail = read_int_from_memory(addr + self.OFFSETOF_TAIL, self.SIZEOF_TAIL)
-        self.size = read_int_from_memory(addr + self.OFFSETOF_SIZE, self.SIZEOF_SIZE)
-
-class myst_list_node_t:
-    OFFSETOF_HEAD=0
-    SIZEOF_HEAD=8
-
-    OFFSETOF_TAIL=8
-    SIZEOF_TAIL=8
-
-    OFFSETOF_SIZE=16
-    SIZEOF_SIZE=8
-
-    def __init__(self):
+    def __init__(self, addr):
         self.head = read_int_from_memory(addr + self.OFFSETOF_HEAD, self.SIZEOF_HEAD)
         self.tail = read_int_from_memory(addr + self.OFFSETOF_TAIL, self.SIZEOF_TAIL)
         self.size = read_int_from_memory(addr + self.OFFSETOF_SIZE, self.SIZEOF_SIZE)
@@ -74,6 +62,7 @@ class mman_file_handle_t:
             return
         self.fs = read_int_from_memory(addr, self.SIZEOF_FS)
         self.inode = read_int_from_memory(addr + self.OFFSETOF_INODE, self.SIZEOF_INODE)
+
     @staticmethod
     def equal(f1, f2):
         if not f1 and not f2:
@@ -84,7 +73,6 @@ class mman_file_handle_t:
             return True
         return False
 
-# Definition must align with myst_fdmapping_t structure defined in include/myst/mmanutils.h
 FDMAPPING_SIZE = 32
 FDMAPPING_USED_MAGIC = 0x1ca0597f
 class myst_fdmapping_t:
@@ -110,38 +98,75 @@ class myst_fdmapping_t:
         self.filesz = read_int_from_memory(addr + self.OFFSETOF_FILESZ, self.SIZEOF_FILESZ)
         self.mman_file_handle = read_int_from_memory(addr + self.OFFSETOF_MMAN_FILE_HANDLE, self.SIZEOF_MMAN_FILE_HANDLE)
 
+class proc_w_count_t:
+    SIZEOF_PREV=8
+
+    OFFSETOF_NEXT=8
+    SIZEOF_NEXT=8
+
+    OFFSETOF_PID=16
+    SIZEOF_PID=4
+
+    OFFSETOF_NMAPS=20
+    SIZEOF_NMAPS=24
+
+    def __init__(self, addr):
+        if addr:
+            self.prev = read_int_from_memory(addr, self.SIZEOF_PREV)
+        else:
+            return
+
+        self.next = read_int_from_memory(addr + self.OFFSETOF_NEXT, self.SIZEOF_NEXT)
+        self.pid = read_int_from_memory(addr + self.OFFSETOF_PID, self.SIZEOF_PID)
+        self.nmaps = read_int_from_memory(addr + self.OFFSETOF_NMAPS, self.SIZEOF_NMAPS)
+
+SHMEM_TYPE_ANON = 1
+SHMEM_TYPE_REG_FILE = 2
+SHMEM_TYPE_POSIX_SHM = 3
 class shared_mapping_t:
-    OFFSETOF_BASE=0
-    SIZEOF_BASE=16
+    OFFSETOF_PREV=0
+    SIZEOF_PREV=8
 
-    OFFSETOF_SHARERS=16
-    SIZEOF_SHARERS=24
+    OFFSETOF_NEXT=8
+    SIZEOF_NEXT=8
 
-    OFFSETOF_START_ADDR=48
+    OFFSETOF_SHARERS_HEAD=16
+    SIZEOF_SHARERS_HEAD=8
+
+    OFFSETOF_SHARERS_TAIL=24
+    SIZEOF_SHARERS_TAIL=8
+
+    OFFSETOF_SHARERS_SIZE=32
+    SIZEOF_SHARERS_SIZE=8
+
+    OFFSETOF_START_ADDR=40
     SIZEOF_START_ADDR=8
 
-    OFFSETOF_LENGTH=56
+    OFFSETOF_LENGTH=48
     SIZEOF_LENGTH=8
 
-    OFFSETOF_FILE_SIZE=64
+    OFFSETOF_FILE_SIZE=56
     SIZEOF_FILE_SIZE=8
 
-    OFFSETOF_FILE_HANDLE=72
+    OFFSETOF_FILE_HANDLE=64
     SIZEOF_FILE_HANDLE=8
 
-    OFFSETOF_OFFSET=80
+    OFFSETOF_OFFSET=72
     SIZEOF_OFFSET=8
 
-    OFFSETOF_TYPE=88
+    OFFSETOF_TYPE=80
     SIZEOF_TYPE=4
 
     def __init__(self, addr):
         if addr:
-            self.base = read_int_from_memory(addr + self.OFFSETOF_BASE, self.SIZEOF_BASE)
+            self.prev = read_int_from_memory(addr + self.OFFSETOF_PREV, self.SIZEOF_PREV)
         else:
             return
 
-        self.sharers = read_int_from_memory(addr + self.OFFSETOF_SHARERS, self.SIZEOF_SHARERS)
+        self.next = read_int_from_memory(addr + self.OFFSETOF_NEXT, self.SIZEOF_NEXT)
+        self.sharers_head = read_int_from_memory(addr + self.OFFSETOF_SHARERS_HEAD, self.SIZEOF_SHARERS_HEAD)
+        self.sharers_tail = read_int_from_memory(addr + self.OFFSETOF_SHARERS_TAIL, self.SIZEOF_SHARERS_TAIL)
+        self.sharers_size = read_int_from_memory(addr + self.OFFSETOF_SHARERS_SIZE, self.SIZEOF_SHARERS_SIZE)
         self.start_addr = read_int_from_memory(addr + self.OFFSETOF_START_ADDR, self.SIZEOF_START_ADDR)
         self.length = read_int_from_memory(addr + self.OFFSETOF_LENGTH, self.SIZEOF_LENGTH)
         self.file_size = read_int_from_memory(addr + self.OFFSETOF_FILE_SIZE, self.SIZEOF_FILE_SIZE)
@@ -154,7 +179,7 @@ class MystShmfsInitBreakpoint(gdb.Breakpoint):
         super(MystShmfsInitBreakpoint, self).__init__('myst_shmfs_setup_hook', internal=False)
 
     def stop(self):
-        mman_tracker.shared_mappings = int(gdb.parse_and_eval('(uint64_t)shmem_list'))    
+        mman_tracker.shared_mappings = int(gdb.parse_and_eval('(uint64_t)&_shared_mappings'))
 
 class MystMmanInitBreakpoint(gdb.Breakpoint):
     def __init__(self):
@@ -174,9 +199,8 @@ class MystMmanInitBreakpoint(gdb.Breakpoint):
         mman_tracker.prot_vector = int(gdb.parse_and_eval('(uint64_t)_mman->prot_vector'))
         mman_tracker.vad_list_ptr = int(gdb.parse_and_eval('(uint64_t)&_mman->vad_list'))
         
-        print("mman base= %x start=%x end=%x size=%d vad_list_ptr=%x" % (mman_tracker.mman_base, mman_tracker.mman_start, mman_tracker.mman_end, mman_tracker.mman_size, mman_tracker.vad_list_ptr))
-
-        print("file_map_vec= 0x%x ownership_vec= 0x%x prot_vector=0x%x" % (mman_tracker.file_mappings_vec, mman_tracker.process_ownership_vec, mman_tracker.prot_vector))
+        # print("mman base= %x start=%x end=%x size=%d vad_list_ptr=%x" % (mman_tracker.mman_base, mman_tracker.mman_start, mman_tracker.mman_end, mman_tracker.mman_size, mman_tracker.vad_list_ptr))
+        # print("file_map_vec= 0x%x ownership_vec= 0x%x prot_vector=0x%x" % (mman_tracker.file_mappings_vec, mman_tracker.process_ownership_vec, mman_tracker.prot_vector))
 
         # Continue execution.
         return False
@@ -188,10 +212,10 @@ class MystMmanTracker:
 
     # Dispatch the command
     def dispatch(self, arg0, *args):
-        if arg0 == "-p":
-            self._dump_maps_by_pids(*args)
-        elif arg0 == "-h":
+        if arg0 == "-h":
             self._help()
+        # elif arg0 == "-p":
+        #     self._dump_maps_by_pids(*args)
         else:
             self._get_map_by_addr(arg0, *args)
     
@@ -213,10 +237,10 @@ class MystMmanTracker:
             '    Examples:\n' \
             '      gdb) myst-prot $rip \n' \
             '  \033[0;32mmyst-mman [-h]\033[0m\n' \
-            '    Print help\n' \
-            '  \033[0;32mmyst-mman [-p] <pid>\033[0m\n' \
-            '  \033[0;32mmyst-mman [-d]\033[0m\n' \
-            '    Dump memory data structures\n'
+            '    Print help\n'
+            # TODO: print mappings by process
+            # '  \033[0;32mmyst-mman [-p] <pid>\033[0m\n' \
+
         print(msg)
 
     def _is_valid_heap_addr_range(self, addr, length):
@@ -242,12 +266,16 @@ class MystMmanTracker:
                 return vad
 
     def _print_vad(self, vad):
-        print("start_addr=0x%x end_addr=0x%x size=%d" % (vad.addr, vad.addr + vad.size, vad.size))
+        print("VAD start addr=0x%x VAD end addr=0x%x size=%d prot=%s" % (vad.addr, vad.addr + vad.size, vad.size, vad.prot))
  
     '''
+    Mman region layout:
+    <guard-page><-VADs/Vector-><PROT-VECTOR><--BREAK--><--UNASSIGNED--><---MAPPED----><guard-page>
+    [............................................................................................]
+                ^                           ^          ^               ^             ^
+            mman_base                   mman_start  mman_brk        mman_map      mman_end
     pids and fd mapping vectors track pages starting mman_base.
-    prot vector tracks pages starting mman_start
-    |guard page|mman_base|....|mman_start|...|mman_end|guard page|
+    prot vector tracks pages starting mman_start.
     '''
 
     def _get_pids_or_fd_index(self, addr):
@@ -292,32 +320,14 @@ class MystMmanTracker:
         else:
             return "unknown";
 
-    def _get_map_by_addr(self, addr_str, get_all=None):
-        # Evaluate the address expression.
-        addr = int(gdb.parse_and_eval(addr_str))
-        print('address: %s = 0x%x' % (addr_str, addr))
-
-        if not self._is_valid_heap_addr_range(addr, 0):
-            print('invalid address!! Not in mman controlled region.')
-            return
-
+    def _handle_private_mapping(self, addr):
         index = self._get_pids_or_fd_index(addr)
         addr_pids_entry = self._get_pids_by_index(index)
         addr_fd_entry = self._get_fdmapping_by_index(index)
         addr_prot_entry = self._get_prot_by_index(self._get_prot_vec_index(addr))
-        
-        if not addr_pids_entry:
-            ''' 
-            addr lies either in shared memory, kernel owned or unallocated region.
-            For shared memory, parse shared memory list.
-            For kernel owned, there should be a corresponding VAD node.
-            '''
-            print("no pids entry")
-            return
-        
-        # if we are here, this is a MAP_PRIVATE mapping
+
         '''
-        scan left on both fd, prot and pids vec
+        scan left on fd, prot and pids vec
         '''
         lowest_idx = self._get_pids_or_fd_index(mman_tracker.mman_start)
         tmp_index = index
@@ -337,7 +347,7 @@ class MystMmanTracker:
         map_start_addr = self._pids_index_to_addr(map_start_pids_idx)
 
         '''
-        scan right on both fd, prot and pids vec
+        scan right on fd, prot and pids vec
         '''
         highest_idx_plus_one = self._get_pids_or_fd_index(mman_tracker.mman_end)
         tmp_index = index
@@ -358,16 +368,103 @@ class MystMmanTracker:
         map_end_addr = self._pids_index_to_addr(map_end_pids_idx)
         map_size = map_end_addr - map_start_addr
 
-        print("map_start_addr=0x%x map_end_addr=0x%x size=%d(0x%x)" % (map_start_addr, map_end_addr, map_size, map_size))
-        print("Owning process: %d" % (addr_pids_entry))
+        print("start_addr=0x%x end_addr=0x%x size=%d(0x%x)" % (map_start_addr, map_end_addr, map_size, map_size))
+        print("Page protection = %s" % (self._prot_to_string(addr_prot_entry)))
+        print("MAP_PRIVATE mapping, owning process: %d" % (addr_pids_entry))
         if addr_fd_entry.used == FDMAPPING_USED_MAGIC:
             print("File mapping info: offset=%d filesz=%d" % (addr_fd_entry.offset - (index - map_start_pids_idx)*4096, addr_fd_entry.filesz))
-        print("Page protection = %s" % (self._prot_to_string(addr_prot_entry)))
 
-        vad = self._lookup_vad_list(addr)
-        if vad:
-            print("VAD info for addr=0x%x:" % (addr))
-            self._print_vad(vad)
+    def _shmem_type_to_string(self, type):
+        if type == SHMEM_TYPE_ANON:
+            return "Anonymous"
+        elif type == SHMEM_TYPE_REG_FILE:
+            return "Regular file"
+        elif type == SHMEM_TYPE_POSIX_SHM:
+            return "POSIX Shared Memory file"
+        else:
+            return "Unknown"
+
+    def _print_sharers_list(self, sharers):
+        proc = proc_w_count_t(sharers)
+        print("Owning processes: ")
+        while True:
+            print("%d" % (proc.pid))
+            if proc.next:
+                proc = proc_w_count_t(proc.next)
+            else:
+                break
+
+    def _lookup_shared_mappings(self, addr):
+        assert(mman_tracker.shared_mappings)
+        shmem_list = myst_list_t(mman_tracker.shared_mappings)
+        if not shmem_list.head:
+            print("No shared mappings yet.")
+            return -1
+
+        sm = shared_mapping_t(shmem_list.head)
+        while True:
+            if addr >= sm.start_addr:
+                if sm.type == SHMEM_TYPE_POSIX_SHM:
+                    size = sm.file_size
+                else:
+                    size = sm.length
+                size = round_up_page_size(size)
+                map_end_addr = sm.start_addr + size
+                if addr <= map_end_addr:
+                    addr_prot_entry = self._get_prot_by_index(self._get_prot_vec_index(addr))
+                    print("start_addr: 0x%x end_addr: 0x%x size=%d(0x%x)" % (sm.start_addr, map_end_addr, size, size))
+                    print("Page protection = %s" % (self._prot_to_string(addr_prot_entry)))
+                    print("MAP_SHARED mapping, type: %s" % (self._shmem_type_to_string(sm.type)))
+                    if sm.type >= SHMEM_TYPE_REG_FILE:
+                        addr_fd_entry = self._get_fdmapping_by_index(self._get_pids_or_fd_index(addr))
+                        print("File mapping info: offset=%d filesz=%d" % (sm.offset, addr_fd_entry.filesz))
+                    self._print_sharers_list(sm.sharers_head)
+                    return 0
+            if not shmem_list.next:
+                break
+            else:
+                sm = shared_mapping_t(shmem_list.next)
+        return -1
+
+    def _get_map_by_addr(self, addr_str):
+        # Evaluate the address expression.
+        addr = int(gdb.parse_and_eval(addr_str))
+        print('address: %s = 0x%x' % (addr_str, addr))
+
+        if not self._is_valid_heap_addr_range(addr, 0):
+            print('invalid address!! Not in mman controlled region.')
+            return
+
+        index = self._get_pids_or_fd_index(addr)
+        addr_pids_entry = self._get_pids_by_index(index)
+
+        if not addr_pids_entry:
+            '''
+            addr lies either in shared memory, kernel owned or unallocated region.
+            For shared memory, parse shared memory list.
+            For kernel owned, there should be a corresponding VAD node.
+            '''
+            ret = self._lookup_shared_mappings(addr)
+            if ret == -1: # shared memory not found
+                vad = self._lookup_vad_list(addr)
+                if vad:
+                    print("Kernel owned memory region")
+                    print("VAD info for addr=0x%x:" % (addr))
+                    self._print_vad(vad)
+                else:
+                    print("Unallocated memory region")
+            return
+
+        # if we are here, this is a MAP_PRIVATE mapping
+        self._handle_private_mapping(addr)
+
+        # vad = self._lookup_vad_list(addr)
+        # if vad:
+        #     print("VAD info for addr=0x%x:" % (addr))
+        #     self._print_vad(vad)
+
+    def _dump_maps_by_pids(self):
+        pass
 
 mman_tracker = None
 

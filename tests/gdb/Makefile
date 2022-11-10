@@ -14,7 +14,7 @@ GDB_CMDS=--batch \
 	-ex "backtrace" \
 	--args
 
-GDB_MATCH=Breakpoint 2, .................. in print_hello ()
+GDB_MATCH=Breakpoint 4, .................. in print_hello ()
 
 # runtest timeouts cause gdb to hang
 export NOTIMEOUT=1
