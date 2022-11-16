@@ -36,10 +36,10 @@ class myst_vad_t:
     OFFSETOF_SIZE = 24
     SIZEOF_SIZE = 8
 
-    OFFSETOF_PROT = 30
+    OFFSETOF_PROT = 32
     SIZEOF_PROT = 2
 
-    OFFSETOF_FLAGS = 32
+    OFFSETOF_FLAGS = 34
     SIZEOF_FLAGS = 2
 
     def __init__(self, addr):
@@ -50,9 +50,10 @@ class myst_vad_t:
         self.flags = read_int_from_memory(addr + self.OFFSETOF_FLAGS, self.SIZEOF_FLAGS)
 
 class mman_file_handle_t:
+    OFFSETOF_FS = 16
     SIZEOF_FS = 8
 
-    OFFSETOF_INODE = 8
+    OFFSETOF_INODE = 32
     SIZEOF_INODE = 8
 
     def __init__(self, addr):
@@ -60,7 +61,7 @@ class mman_file_handle_t:
             self.fs = None
             self.inode = None
             return
-        self.fs = read_int_from_memory(addr, self.SIZEOF_FS)
+        self.fs = read_int_from_memory(addr + self.OFFSETOF_FS, self.SIZEOF_FS)
         self.inode = read_int_from_memory(addr + self.OFFSETOF_INODE, self.SIZEOF_INODE)
 
     @staticmethod
@@ -179,26 +180,46 @@ class MystShmfsInitBreakpoint(gdb.Breakpoint):
         super(MystShmfsInitBreakpoint, self).__init__('myst_shmfs_setup_hook', internal=False)
 
     def stop(self):
-        mman_tracker.shared_mappings = int(gdb.parse_and_eval('(uint64_t)&_shared_mappings'))
+        mman_tracker.shared_mappings = int(gdb.parse_and_eval("$rdi"))
+        #print("mman shared_mappings = %x" % (mman_tracker.shared_mappings))
+
+OFFSETOF_KARGS_MMAN_PIDS_DATA = 0
+OFFSETOF_KARGS_MMAN_PIDS_SIZE = 8
+OFFSETOF_KARGS_FDMAPPINGS_DATA = 16
+OFFSETOF_KARGS_FDMAPPINGS_SIZE = 24
+
+OFFSETOF_MMAN_BASE = 16
+OFFSETOF_MMAN_SIZE = 24
+OFFSETOF_MMAN_PROT_VECTOR = 32
+OFFSETOF_MMAN_START = 40
+OFFSETOF_MMAN_END = 48
+OFFSETOF_MMAN_BRK = 56
+OFFSETOF_MMAN_VAD_LIST = 96
+
+PTR_SIZE = 8
+SIZET_SIZE = 8
 
 class MystMmanInitBreakpoint(gdb.Breakpoint):
     def __init__(self):
         super(MystMmanInitBreakpoint, self).__init__('myst_mman_init_debug_hook', internal=False)
 
     def stop(self):
-        mman_tracker.mman_base = int(gdb.parse_and_eval('(uint64_t)_mman->base'))
-        mman_tracker.mman_start = int(gdb.parse_and_eval('(uint64_t)_mman->start'))
-        mman_tracker.mman_brk = int(gdb.parse_and_eval('(uint64_t)_mman->brk'))
-        mman_tracker.mman_map = int(gdb.parse_and_eval('(uint64_t)_mman->map'))
-        mman_tracker.mman_end = int(gdb.parse_and_eval('(uint64_t)_mman->end'))
-        mman_tracker.mman_size = int(gdb.parse_and_eval('(uint64_t)_mman->size'))
-        mman_tracker.file_mappings_vec = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.fdmappings_data'))
-        mman_tracker.file_mappings_vec_size = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.fdmappings_size'))
-        mman_tracker.process_ownership_vec = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.mman_pids_data'))
-        mman_tracker.process_ownership_vec_size = int(gdb.parse_and_eval('(uint64_t)__myst_kernel_args.mman_pids_size'))
-        mman_tracker.prot_vector = int(gdb.parse_and_eval('(uint64_t)_mman->prot_vector'))
-        mman_tracker.vad_list_ptr = int(gdb.parse_and_eval('(uint64_t)&_mman->vad_list'))
+        mman_ptr = int(gdb.parse_and_eval("$rdi"))
+        kargs_ptr = int(gdb.parse_and_eval("$rsi"))
         
+        mman_tracker.mman_base = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_BASE, PTR_SIZE)
+        mman_tracker.mman_start = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_START, PTR_SIZE)
+        mman_tracker.mman_brk = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_BRK, PTR_SIZE)
+        mman_tracker.mman_end = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_END, PTR_SIZE)
+        mman_tracker.mman_size = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_SIZE, SIZET_SIZE)
+        mman_tracker.prot_vector = read_int_from_memory(mman_ptr + OFFSETOF_MMAN_PROT_VECTOR, PTR_SIZE)
+        mman_tracker.vad_list_ptr = mman_ptr + OFFSETOF_MMAN_VAD_LIST
+
+        mman_tracker.process_ownership_vec = read_int_from_memory(kargs_ptr + OFFSETOF_KARGS_MMAN_PIDS_DATA, PTR_SIZE)
+        mman_tracker.process_ownership_vec_size = read_int_from_memory(kargs_ptr + OFFSETOF_KARGS_MMAN_PIDS_SIZE, SIZET_SIZE)
+        mman_tracker.file_mappings_vec = read_int_from_memory(kargs_ptr + OFFSETOF_KARGS_FDMAPPINGS_DATA, PTR_SIZE)
+        mman_tracker.file_mappings_vec_size = read_int_from_memory(kargs_ptr + OFFSETOF_KARGS_FDMAPPINGS_SIZE, SIZET_SIZE)
+
         # print("mman base= %x start=%x end=%x size=%d vad_list_ptr=%x" % (mman_tracker.mman_base, mman_tracker.mman_start, mman_tracker.mman_end, mman_tracker.mman_size, mman_tracker.vad_list_ptr))
         # print("file_map_vec= 0x%x ownership_vec= 0x%x prot_vector=0x%x" % (mman_tracker.file_mappings_vec, mman_tracker.process_ownership_vec, mman_tracker.prot_vector))
 
@@ -336,9 +357,12 @@ class MystMmanTracker:
                 fd_entry = self._get_fdmapping_by_index(index)
                 if not addr_fd_entry.used == fd_entry.used:
                     break
-                if not mman_file_handle_t.equal(mman_file_handle_t(addr_fd_entry.mman_file_handle), mman_file_handle_t(fd_entry.mman_file_handle)):
+                if not mman_file_handle_t.equal( \
+                            mman_file_handle_t(addr_fd_entry.mman_file_handle), \
+                            mman_file_handle_t(fd_entry.mman_file_handle)):
                     break
-                if not addr_prot_entry == self._get_prot_by_addr(self._pids_index_to_addr(tmp_index)):
+                if not addr_prot_entry == self._get_prot_by_addr( \
+                                            self._pids_index_to_addr(tmp_index)):
                     break
                 tmp_index -= 1
         # while loop stops when either file, prot, pids property has changed.

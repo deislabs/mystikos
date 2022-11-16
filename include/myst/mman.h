@@ -4,6 +4,7 @@
 #ifndef _MYST_INTERNAL_MMAN_H
 #define _MYST_INTERNAL_MMAN_H
 
+#include <myst/defs.h>
 #include <myst/rspinlock.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -51,8 +52,6 @@ typedef struct myst_vad
     /* Mapping flags for this region: MYST_MAP_???? */
     uint16_t flags;
 } myst_vad_t;
-
-_Static_assert(sizeof(myst_vad_t) == 40, "");
 
 #define MYST_MMAN_MAGIC 0xcc8e1732ebd80b0b
 
@@ -113,6 +112,23 @@ typedef struct myst_mman
     char err[MYST_MMAN_ERROR_SIZE];
 
 } myst_mman_t;
+
+// If offsets change, update references in debugger/gdb-sgx-plugin/mman.py
+MYST_STATIC_ASSERT(sizeof(myst_vad_t) == 40);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, next) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, prev) == 8);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, addr) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, size) == 24);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, prot) == 32);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_vad_t, flags) == 34);
+
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, base) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, size) == 24);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, prot_vector) == 32);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, start) == 40);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, end) == 48);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, brk) == 56);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_mman_t, vad_list) == 96);
 
 int myst_mman_init(myst_mman_t* heap, uintptr_t base, size_t size);
 

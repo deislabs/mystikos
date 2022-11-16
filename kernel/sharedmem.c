@@ -68,6 +68,21 @@ typedef struct shared_mapping
     shmem_type_t type;
 } shared_mapping_t;
 
+// If offsets change, update references in debugger/gdb-sgx-plugin/mman.py
+MYST_STATIC_ASSERT(sizeof(proc_w_count_t) == 24);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(proc_w_count_t, base) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(proc_w_count_t, pid) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(proc_w_count_t, nmaps) == 20);
+MYST_STATIC_ASSERT(sizeof(shared_mapping_t) == 88);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, base) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, sharers) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, start_addr) == 40);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, length) == 48);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, file_size) == 56);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, file_handle) == 64);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, offset) == 72);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(shared_mapping_t, type) == 80);
+
 static myst_list_t _shared_mappings;
 static myst_fs_t* _posix_shmfs;
 

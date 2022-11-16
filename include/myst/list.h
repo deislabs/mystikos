@@ -25,6 +25,15 @@ struct myst_list_node
     myst_list_node_t* next;
 };
 
+// If offsets change, update references in debugger/gdb-sgx-plugin/mman.py
+MYST_STATIC_ASSERT(sizeof(myst_list_t) == 24);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_list_t, head) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_list_t, tail) == 8);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_list_t, size) == 16);
+MYST_STATIC_ASSERT(sizeof(myst_list_node_t) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_list_node_t, prev) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_list_node_t, next) == 8);
+
 MYST_INLINE void myst_list_remove(myst_list_t* list, myst_list_node_t* node)
 {
     if (node->prev)

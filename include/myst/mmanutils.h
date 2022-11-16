@@ -36,6 +36,19 @@ typedef struct myst_fdmapping
     mman_file_handle_t* mman_file_handle;
 } myst_fdmapping_t;
 
+// If offsets change, update references in debugger/gdb-sgx-plugin/mman.py
+MYST_STATIC_ASSERT(sizeof(mman_file_handle_t) == 48);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(mman_file_handle_t, base) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(mman_file_handle_t, fs) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(mman_file_handle_t, file) == 24);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(mman_file_handle_t, inode) == 32);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(mman_file_handle_t, npages) == 40);
+MYST_STATIC_ASSERT(sizeof(myst_fdmapping_t) == 32);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_fdmapping_t, used) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_fdmapping_t, offset) == 8);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_fdmapping_t, filesz) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_fdmapping_t, mman_file_handle) == 24);
+
 int myst_setup_mman(void* data, size_t size);
 
 int myst_teardown_mman(void);

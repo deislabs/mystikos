@@ -5,6 +5,7 @@
 #define _MYST_KERNEL_H
 
 #include <limits.h>
+#include <myst/defs.h>
 #include <myst/kstack.h>
 #include <myst/syscallext.h>
 #include <myst/tcall.h>
@@ -104,6 +105,14 @@ typedef struct _myst_strace_config
 
 typedef struct myst_kernel_args
 {
+    /* The pids[] vector for the memory management pages */
+    void* mman_pids_data;
+    size_t mman_pids_size;
+
+    /* The fdmappings[] vector for fd-mman mappings */
+    void* fdmappings_data;
+    size_t fdmappings_size;
+
     /* The image that contains the kernel and crt etc. */
     const void* image_data;
     size_t image_size;
@@ -167,14 +176,6 @@ typedef struct myst_kernel_args
     /* The read-write-execute memory management pages */
     void* mman_data;
     size_t mman_size;
-
-    /* The pids[] vector for the memory management pages */
-    void* mman_pids_data;
-    size_t mman_pids_size;
-
-    /* The fdmappings[] vector for fd-mman mappings */
-    void* fdmappings_data;
-    size_t fdmappings_size;
 
     /* The CPIO root file system image */
     char rootfs[PATH_MAX];
@@ -284,6 +285,12 @@ typedef struct myst_kernel_args
     myst_wanted_secrets_t* wanted_secrets;
 
 } myst_kernel_args_t;
+
+// If offsets change, update references in debugger/gdb-sgx-plugin/mman.py
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_kernel_args_t, mman_pids_data) == 0);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_kernel_args_t, mman_pids_size) == 8);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_kernel_args_t, fdmappings_data) == 16);
+MYST_STATIC_ASSERT(MYST_OFFSETOF(myst_kernel_args_t, fdmappings_size) == 24);
 
 typedef int (*myst_kernel_entry_t)(myst_kernel_args_t* args);
 

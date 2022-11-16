@@ -97,9 +97,10 @@ static vectors_t _get_vectors(void)
     return v;
 }
 
-void myst_mman_init_debug_hook(myst_mman_t* mman)
+void myst_mman_init_debug_hook(myst_mman_t* mman, myst_kernel_args_t* kargs)
 {
     assert(mman);
+    assert(kargs);
 }
 
 int myst_setup_mman(void* data, size_t size)
@@ -118,7 +119,7 @@ int myst_setup_mman(void* data, size_t size)
     if (myst_mman_init(&_mman, (uintptr_t)_mman_start, _mman_size) != 0)
         goto done;
 
-    myst_mman_init_debug_hook(&_mman);
+    myst_mman_init_debug_hook(&_mman, &__myst_kernel_args);
 
 #ifdef SCRUB
     /* Scrubbing unmapped memory causes memory reads due to musl libc */
