@@ -34,7 +34,7 @@
 
 /* the default size of the signal delivery altstack per thread, which is
  * dynamically allocated if myst_signal_altstack is called */
-#define MYST_THREAD_SIGNAL_DELIVERY_ALTSTACK_SIZE (4 * 4096)
+#define MYST_THREAD_SIGNAL_DELIVERY_ALTSTACK_SIZE (8 * 4096)
 
 typedef struct myst_thread myst_thread_t;
 typedef struct myst_process myst_process_t;
