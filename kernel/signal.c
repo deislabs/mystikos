@@ -441,7 +441,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic error "-Wstack-usage=1184"
+#pragma GCC diagnostic error "-Wstack-usage=1200"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
@@ -571,6 +571,35 @@ static long _handle_one_signal(
                 myst_signum_to_string(signum),
                 myst_getpid(),
                 myst_gettid());
+
+            if (signum == SIGSEGV)
+            {
+                myst_eprintf(
+                    "*** Signal SIGSEGV: si_code: %d si_addr: %p pid=%d "
+                    "tid=%d\n",
+                    siginfo->si_code,
+                    siginfo->si_addr,
+                    myst_getpid(),
+                    myst_gettid());
+            }
+        }
+
+        // Print out backtrace for segfault exception
+        // Current myst_backtrace implementation only supports printing
+        // stacktrace for kernel stacks, so we check for that upfront.
+        if (signum == SIGSEGV &&
+            myst_within_stack((void**)mcontext->gregs[REG_RBP]))
+        {
+            void* buf = calloc(1, 1024);
+            size_t ret = 0;
+
+            myst_eprintf("*** Kernel segmentation fault \n");
+            if ((ret = myst_backtrace3(
+                     (void**)mcontext->gregs[REG_RBP], buf, sizeof(buf))) > 0)
+            {
+                myst_dump_backtrace(buf, ret);
+            }
+            free(buf);
         }
 
         // add mask specified in action->sa_mask
