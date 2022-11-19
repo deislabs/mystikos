@@ -295,4 +295,15 @@ MYST_INLINE bool myst_is_addr_within_kernel(const void* ptr)
     return true;
 }
 
+MYST_INLINE bool myst_is_addr_within_mman_region(const void* ptr)
+{
+    const uint64_t base = (uint64_t)__myst_kernel_args.mman_data;
+    const uint64_t end = base + __myst_kernel_args.mman_size;
+
+    if ((uint64_t)ptr < base || (uint64_t)ptr >= end)
+        return false;
+
+    return true;
+}
+
 #endif /* _MYST_KERNEL_H */

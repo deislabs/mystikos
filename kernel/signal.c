@@ -9,6 +9,7 @@
 #include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
+#include <myst/kernel.h>
 #include <myst/panic.h>
 #include <myst/printf.h>
 #include <myst/process.h>
@@ -441,7 +442,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic error "-Wstack-usage=1200"
+#pragma GCC diagnostic error "-Wstack-usage=1216"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
@@ -574,6 +575,34 @@ static long _handle_one_signal(
 
             if (signum == SIGSEGV)
             {
+                myst_eprintf(
+                    "Exception register mcontext state: rbp=%llx rsp=%llx "
+                    "rip=%llx\n",
+                    mcontext->gregs[REG_RBP],
+                    mcontext->gregs[REG_RSP],
+                    mcontext->gregs[REG_RIP]);
+
+                if (siginfo->si_addr &&
+                    myst_is_addr_within_mman_region((void*)siginfo->si_addr))
+                {
+                    size_t* rip = (size_t*)siginfo->si_addr;
+                    myst_eprintf(
+                        "16 bytes from siginfo->si_addr : %lx || %lx \n",
+                        rip[0],
+                        rip[1]);
+                }
+
+                if (mcontext->gregs[REG_RIP] &&
+                    myst_is_addr_within_mman_region(
+                        (void*)mcontext->gregs[REG_RIP]))
+                {
+                    size_t* rip = (size_t*)mcontext->gregs[REG_RIP];
+                    myst_eprintf(
+                        "16 bytes from mcontext.gregs[rip]: %lx || %lx \n",
+                        rip[0],
+                        rip[1]);
+                }
+
                 myst_eprintf(
                     "*** Signal SIGSEGV: si_code: %d si_addr: %p pid=%d "
                     "tid=%d\n",
