@@ -441,6 +441,34 @@ static long _default_signal_handler(unsigned signum)
     return 0;
 }
 
+static void _print_bytes(unsigned char* addr)
+{
+    unsigned char* end = addr + 16;
+    if (myst_is_addr_within_mman_region(end))
+    {
+        myst_eprintf("16 bytes from %p: \n", addr);
+        myst_eprintf(
+            "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+            "%02x %02x %02x\n",
+            addr[0],
+            addr[1],
+            addr[2],
+            addr[3],
+            addr[4],
+            addr[5],
+            addr[6],
+            addr[7],
+            addr[8],
+            addr[9],
+            addr[10],
+            addr[11],
+            addr[12],
+            addr[13],
+            addr[14],
+            addr[15]);
+    }
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic error "-Wstack-usage=1216"
 /* ATTN: fix this to not use so much stack space */
@@ -584,24 +612,12 @@ static long _handle_one_signal(
 
                 if (siginfo->si_addr &&
                     myst_is_addr_within_mman_region((void*)siginfo->si_addr))
-                {
-                    size_t* rip = (size_t*)siginfo->si_addr;
-                    myst_eprintf(
-                        "16 bytes from siginfo->si_addr : %lx || %lx \n",
-                        rip[0],
-                        rip[1]);
-                }
+                    _print_bytes((unsigned char*)siginfo->si_addr);
 
                 if (mcontext->gregs[REG_RIP] &&
                     myst_is_addr_within_mman_region(
                         (void*)mcontext->gregs[REG_RIP]))
-                {
-                    size_t* rip = (size_t*)mcontext->gregs[REG_RIP];
-                    myst_eprintf(
-                        "16 bytes from mcontext.gregs[rip]: %lx || %lx \n",
-                        rip[0],
-                        rip[1]);
-                }
+                    _print_bytes((unsigned char*)mcontext->gregs[REG_RIP]);
 
                 myst_eprintf(
                     "*** Signal SIGSEGV: si_code: %d si_addr: %p pid=%d "
