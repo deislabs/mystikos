@@ -610,6 +610,13 @@ static long _handle_one_signal(
                     mcontext->gregs[REG_RSP],
                     mcontext->gregs[REG_RIP]);
 
+                myst_eprintf(
+                    "Exception register mcontext state: rax=%llx rbx=%llx "
+                    "rcx=%llx\n",
+                    mcontext->gregs[REG_RAX],
+                    mcontext->gregs[REG_RBX],
+                    mcontext->gregs[REG_RCX]);
+
                 if (siginfo->si_addr &&
                     myst_is_addr_within_mman_region((void*)siginfo->si_addr))
                     _print_bytes((unsigned char*)siginfo->si_addr);
@@ -632,19 +639,40 @@ static long _handle_one_signal(
         // Print out backtrace for segfault exception
         // Current myst_backtrace implementation only supports printing
         // stacktrace for kernel stacks, so we check for that upfront.
-        if (signum == SIGSEGV &&
-            myst_within_stack((void**)mcontext->gregs[REG_RBP]))
+        if (signum == SIGSEGV)
         {
-            void* buf = calloc(1, 1024);
-            size_t ret = 0;
-
-            myst_eprintf("*** Kernel segmentation fault \n");
-            if ((ret = myst_backtrace3(
-                     (void**)mcontext->gregs[REG_RBP], buf, sizeof(buf))) > 0)
+            if (myst_within_stack((void**)mcontext->gregs[REG_RBP]))
             {
-                myst_dump_backtrace(buf, ret);
+                void* buf = calloc(1, 1024);
+                size_t ret = 0;
+
+                myst_eprintf("*** Kernel segmentation fault \n");
+                if ((ret = myst_backtrace3(
+                         (void**)mcontext->gregs[REG_RBP],
+                         buf,
+                         MYST_COUNTOF((uintptr_t**)buf))) > 0)
+                {
+                    myst_dump_backtrace(buf, ret);
+                }
+                free(buf);
             }
-            free(buf);
+            else if (myst_is_addr_within_mman_region(
+                         (void**)mcontext->gregs[REG_RBP])) // fall back to best
+                                                            // effort unwinding
+            {
+                // keep unwinding until rbp and return pc are valid heap
+                // addresses
+                myst_eprintf(
+                    "Best effort unwinding rbp: %llx\n",
+                    mcontext->gregs[REG_RBP]);
+                void** frame = (void**)mcontext->gregs[REG_RBP];
+                while (myst_is_addr_within_mman_region(frame) &&
+                       myst_is_addr_within_mman_region(frame[1]))
+                {
+                    myst_eprintf("%p\n", frame[1]);
+                    frame = (void**)*frame;
+                }
+            }
         }
 
         // add mask specified in action->sa_mask
