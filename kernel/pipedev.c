@@ -706,7 +706,7 @@ static int _pd_fcntl(
         }
         default:
         {
-            assert(0);
+            // assert(0);
             ret = -ENOTSUP;
             break;
         }
