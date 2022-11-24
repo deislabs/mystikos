@@ -16,6 +16,8 @@
 #include <myst/tcall.h>
 #include <myst/ttydev.h>
 
+#include <myst/process.h>
+
 #define MAGIC 0xc436d7e6
 
 struct myst_tty
@@ -243,6 +245,34 @@ static int _td_ioctl(
         ret = 0;
         goto done;
     }
+    else if(request == TIOCGPGRP)//0x0000540F  TIOCGPGRP              pid_t *
+    {
+        myst_process_t* self = myst_process_self();
+
+        pid_t *argp;
+        if (!(argp = (pid_t *)arg))
+            ERAISE(-EINVAL);
+
+        argp = &self->pgid;
+
+        ret = 0;
+        goto done;
+    }
+    else if(request == TIOCSPGRP)//0x00005410  TIOCSPGRP              const pid_t *
+    {
+        myst_process_t* self = myst_process_self();
+        pid_t *argp = (pid_t *)arg;
+
+        self->pgid = *argp;
+
+        ret = 0;
+        goto done;
+    }
+    /** These are additional ioctl system calls made by bash
+     * 0x00005401  TCGETS
+     * 0x00005414  TIOCSWINSZ
+     * 0x00005403  TCSETSW
+     * */
     else
     {
         ERAISE(-ENOTSUP);
