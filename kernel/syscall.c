@@ -3756,6 +3756,36 @@ done:
     return (_return(n, ret));
 }
 
+static long _SYS_maccess(long n, long params[6])
+{
+    long ret = 0;
+    const void* addr = (void*)params[0];
+    const size_t length = (size_t)params[1];
+    const int prot = (int)params[2];
+
+    _strace(
+        n,
+        "addr=%lx length=%zu(%lx) prot=%d(%s)",
+        (long)addr,
+        length,
+        length,
+        prot,
+        myst_mman_prot_to_string(prot));
+
+    myst_mman_lock();
+
+    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_maccess(addr, length, prot);
+
+done:
+
+    myst_mman_unlock();
+    return (_return(n, ret));
+}
+
 static long _SYS_munmap(
     long n,
     long params[6],
@@ -6733,6 +6763,10 @@ static long _syscall(void* args_)
         case SYS_mprotect:
         {
             BREAK(_SYS_mprotect(n, params));
+        }
+        case SYS_myst_maccess:
+        {
+            BREAK(_SYS_maccess(n, params));
         }
         case SYS_munmap:
         {

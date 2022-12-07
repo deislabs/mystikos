@@ -1696,3 +1696,8 @@ const char* myst_mman_flags_to_string(int flags)
             return "unknown";
     }
 }
+
+int myst_maccess(const void* addr, size_t length, int prot)
+{
+    return myst_mman_maccess(&_mman, addr, length, prot);
+}

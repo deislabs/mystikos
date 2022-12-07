@@ -772,6 +772,8 @@ __attribute__((__unused__)) static void _check_myst_syscalls(void)
         case SYS_myst_get_exec_stack_option:
         case SYS_myst_interrupt_thread:
         case SYS_myst_pre_launch_hook:
+        case SYS_myst_debug_malloc_check:
+        case SYS_myst_maccess:
             break;
     }
 }

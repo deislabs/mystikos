@@ -85,6 +85,7 @@ long determine_final_options(
             final_opts->base.perf = cmdline_opts->perf;
             final_opts->base.report_native_tids =
                 cmdline_opts->report_native_tids;
+            final_opts->base.crt_memcheck = cmdline_opts->crt_memcheck;
         }
         else
         {
@@ -98,6 +99,7 @@ long determine_final_options(
             final_opts->base.memcheck = false;
             final_opts->base.perf = false;
             final_opts->base.report_native_tids = false;
+            final_opts->base.crt_memcheck = false;
         }
     }
     else

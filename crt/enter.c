@@ -35,6 +35,8 @@ void __tl_unlock(void);
 
 static myst_wanted_secrets_t* _wanted_secrets;
 
+extern bool __crt_crt_memcheck;
+
 void _dlstart_c(size_t* sp, size_t* dynv);
 
 typedef long (*syscall_callback_t)(long n, long params[6]);
@@ -96,6 +98,12 @@ long myst_syscall(long n, long params[6])
         return ret;
     }
 
+    if (n == SYS_myst_debug_malloc_check)
+    {
+        extern size_t debug_malloc_check(bool print_allocations);
+        return debug_malloc_check((bool)params[0]);
+    }
+
     if (n == SYS_execve || n == SYS_execveat)
     {
         /* These system calls launch a new process with its own CRT and the
@@ -120,6 +128,12 @@ long myst_syscall(long n, long params[6])
     }
 
     return ret;
+}
+
+int myst_maccess(const void* addr, size_t length, int prot)
+{
+    long params[6] = {(long)addr, (long)length, (long)prot};
+    return myst_syscall(SYS_myst_maccess, params);
 }
 
 #ifdef MYST_ENABLE_GCOV
@@ -218,6 +232,7 @@ void myst_enter_crt(
     if (args)
     {
         _wanted_secrets = args->wanted_secrets;
+        __crt_crt_memcheck = args->crt_memcheck;
     }
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }

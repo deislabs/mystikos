@@ -631,7 +631,6 @@ index 01e19c59..11084aee 100644
 +
 +	return values[name];
  }
-
 diff --git a/src/errno/__strerror.h b/src/errno/__strerror.h
 index 2f04d400..7905ce1b 100644
 --- a/src/errno/__strerror.h
@@ -639,10 +638,9 @@ index 2f04d400..7905ce1b 100644
 @@ -102,4 +102,4 @@ E(ENOMEDIUM,    "No medium found")
  E(EMEDIUMTYPE,  "Wrong medium type")
  E(EMULTIHOP,    "Multihop attempted")
-
+ 
 -E(0,            "No error information")
 +E(0,            "Unknown error")
-
 diff --git a/src/exit/_Exit.c b/src/exit/_Exit.c
 index 7a6115c7..9f715d51 100644
 --- a/src/exit/_Exit.c
@@ -882,6 +880,143 @@ index d20a8489..51b85f20 100644
  }
 -
 -weak_alias(__newlocale, newlocale);
+diff --git a/src/malloc/malloc.c b/src/malloc/malloc.c
+index 96982596..e488c8eb 100644
+--- a/src/malloc/malloc.c
++++ b/src/malloc/malloc.c
+@@ -281,7 +281,7 @@ static void trim(struct chunk *self, size_t n)
+ 	__bin_chunk(split);
+ }
+ 
+-void *malloc(size_t n)
++void *libc_malloc(size_t n)
+ {
+ 	struct chunk *c;
+ 	int i, j;
+@@ -348,7 +348,8 @@ static size_t mal0_clear(char *p, size_t pagesz, size_t n)
+ 	}
+ }
+ 
+-void *calloc(size_t m, size_t n)
++__attribute__((__weak__))
++void *libc_calloc(size_t m, size_t n)
+ {
+ 	if (n && m > (size_t)-1/n) {
+ 		errno = ENOMEM;
+@@ -366,7 +367,7 @@ void *calloc(size_t m, size_t n)
+ 	return memset(p, 0, n);
+ }
+ 
+-void *realloc(void *p, size_t n)
++void *libc_realloc(void *p, size_t n)
+ {
+ 	struct chunk *self, *next;
+ 	size_t n0, n1;
+@@ -516,7 +517,7 @@ static void unmap_chunk(struct chunk *self)
+ 	__munmap(base, len);
+ }
+ 
+-void free(void *p)
++void libc_free(void *p)
+ {
+ 	if (!p) return;
+ 
+@@ -546,3 +547,21 @@ void __malloc_donate(char *start, char *end)
+ 	c->csize = n->psize = C_INUSE | (end-start);
+ 	__bin_chunk(c);
+ }
++
++__attribute__((__weak__))
++void free(void *p)
++{
++    return libc_free(p);
++}
++
++__attribute__((__weak__))
++void *malloc(size_t n)
++{
++    return libc_malloc(n);
++}
++
++__attribute__((__weak__))
++void *realloc(void *p, size_t n)
++{
++    return libc_realloc(p, n);
++}
+diff --git a/src/malloc/malloc_usable_size.c b/src/malloc/malloc_usable_size.c
+index 672b518a..0f9a8057 100644
+--- a/src/malloc/malloc_usable_size.c
++++ b/src/malloc/malloc_usable_size.c
+@@ -3,7 +3,13 @@
+  
+ hidden void *(*const __realloc_dep)(void *, size_t) = realloc;
+ 
+-size_t malloc_usable_size(void *p)
++size_t libc_malloc_usable_size(void *p)
+ {
+ 	return p ? CHUNK_SIZE(MEM_TO_CHUNK(p)) - OVERHEAD : 0;
+ }
++
++__attribute__((__weak__))
++size_t malloc_usable_size(void *p)
++{
++    return libc_malloc_usable_size(p);
++}
+diff --git a/src/malloc/memalign.c b/src/malloc/memalign.c
+index cf9dfbda..1aba670c 100644
+--- a/src/malloc/memalign.c
++++ b/src/malloc/memalign.c
+@@ -3,7 +3,7 @@
+ #include <errno.h>
+ #include "malloc_impl.h"
+ 
+-void *__memalign(size_t align, size_t len)
++void *libc_memalign(size_t align, size_t len)
+ {
+ 	unsigned char *mem, *new;
+ 
+@@ -51,4 +51,14 @@ void *__memalign(size_t align, size_t len)
+ 	return new;
+ }
+ 
+-weak_alias(__memalign, memalign);
++__attribute__((__weak__))
++void *__memalign(size_t align, size_t len)
++{
++    return libc_memalign(align, len);
++}
++
++__attribute__((__weak__))
++void *memalign(size_t align, size_t len)
++{
++    return libc_memalign(align, len);
++}
+diff --git a/src/malloc/posix_memalign.c b/src/malloc/posix_memalign.c
+index 2ea8bd8a..dd3d3d97 100644
+--- a/src/malloc/posix_memalign.c
++++ b/src/malloc/posix_memalign.c
+@@ -2,11 +2,19 @@
+ #include <errno.h>
+ #include "malloc_impl.h"
+ 
+-int posix_memalign(void **res, size_t align, size_t len)
++void *libc_memalign(size_t alignment, size_t size);
++
++int libc_posix_memalign(void **res, size_t align, size_t len)
+ {
+ 	if (align < sizeof(void *)) return EINVAL;
+-	void *mem = __memalign(align, len);
++	void *mem = libc_memalign(align, len);
+ 	if (!mem) return errno;
+ 	*res = mem;
+ 	return 0;
+ }
++
++__attribute__((__weak__))
++int posix_memalign(void **res, size_t align, size_t len)
++{
++    return libc_posix_memalign(res, align, len);
++}
 diff --git a/src/math/frexp.c b/src/math/frexp.c
 index 27b6266e..fb5d51be 100644
 --- a/src/math/frexp.c

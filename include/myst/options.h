@@ -19,6 +19,7 @@ typedef struct myst_options
     bool trace_times;
     bool debug_symbols;
     bool memcheck;
+    bool crt_memcheck;
     bool nobrk;
     bool exec_stack;
     bool perf;

@@ -159,4 +159,11 @@ int myst_mman_get_prot(
     int* prot,
     bool* consistent);
 
+/* return 0 if all memory in this range has the given protection */
+int myst_mman_maccess(
+    myst_mman_t* mman,
+    const void* addr,
+    size_t length,
+    int prot);
+
 #endif /* _MYST_INTERNAL_MMAN_H */

@@ -2161,3 +2161,74 @@ done:
     myst_rspin_unlock(&mman->lock);
     return ret;
 }
+
+int myst_mman_maccess(
+    myst_mman_t* mman,
+    const void* addr,
+    size_t length,
+    int prot)
+{
+    int ret = 0;
+    const int mask = MYST_PROT_READ | MYST_PROT_WRITE | MYST_PROT_EXEC;
+    size_t i;
+    size_t start_page_index;
+    size_t npages;
+
+    myst_rspin_lock(&mman->lock);
+
+    /* round address down to page size */
+    addr = (void*)myst_round_down_to_page_size((ptrdiff_t)addr);
+
+    /* round length up to page size */
+    if (myst_round_up(length, PAGE_SIZE, &length) != 0)
+    {
+        _mman_set_err(mman, "bad length parameter: rounding error");
+        ret = -ERANGE;
+        goto done;
+    }
+
+    /* check mman parameter */
+    if (!mman)
+    {
+        _mman_set_err(mman, "bad mman parameter");
+        ret = -EINVAL;
+        goto done;
+    }
+
+    /* check addr-length parameters */
+    {
+        const uintptr_t start = (uintptr_t)addr;
+        const uintptr_t end = start + length;
+
+        if (!(start >= mman->start && end <= mman->end))
+        {
+            _mman_set_err(mman, "bad addr/length range");
+            ret = -EINVAL;
+            goto done;
+        }
+    }
+
+    /* discard unused bits */
+    prot &= mask;
+
+    /* calculate the starting index */
+    start_page_index = ((uintptr_t)addr - mman->start) / PAGE_SIZE;
+
+    /* calculate the number of pages */
+    npages = length / PAGE_SIZE;
+
+    /* verify that each page has the given protection */
+    for (i = 0; i < npages; i++)
+    {
+        if (!((mman->prot_vector[start_page_index + i] & mask) & prot))
+        {
+            _mman_set_err(mman, "protection mismatch");
+            ret = -EFAULT;
+            goto done;
+        }
+    }
+
+done:
+    myst_rspin_unlock(&mman->lock);
+    return ret;
+}

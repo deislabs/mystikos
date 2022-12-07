@@ -65,7 +65,8 @@ int init_kernel_args(
     const char* rootfs,
     char* err,
     bool unhandled_syscall_enosys,
-    size_t err_size)
+    size_t err_size,
+    bool crt_memcheck)
 {
     int ret = 0;
     myst_args_t env;
@@ -301,6 +302,7 @@ int init_kernel_args(
     args->mounts = mounts;
     args->wanted_secrets = wanted_secrets;
     args->unhandled_syscall_enosys = unhandled_syscall_enosys;
+    args->crt_memcheck = crt_memcheck;
 
     if (rootfs)
         MYST_STRLCPY(args->rootfs, rootfs);

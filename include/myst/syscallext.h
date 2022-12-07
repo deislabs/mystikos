@@ -30,6 +30,8 @@ typedef enum
     SYS_myst_get_exec_stack_option = 2018,
     SYS_myst_interrupt_thread = 2019,
     SYS_myst_pre_launch_hook = 2020,
+    SYS_myst_debug_malloc_check = 2021,
+    SYS_myst_maccess = 2022,
     /* ATTN: when removing any of these, scan for any hardcoded number usage */
 } myst_syscall_t;
 
