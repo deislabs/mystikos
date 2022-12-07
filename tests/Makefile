@@ -139,6 +139,7 @@ DIRS += go
 DIRS += strace
 DIRS += map_shared
 DIRS += posix-shm
+DIRS += debugmalloc
 
 .PHONY: $(DIRS)
 

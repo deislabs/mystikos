@@ -673,7 +673,8 @@ static long _enter(void* arg_)
                 final_options.base.rootfs,
                 err,
                 final_options.base.unhandled_syscall_enosys,
-                sizeof(err)) != 0)
+                sizeof(err),
+                final_options.base.crt_memcheck) != 0)
         {
             fprintf(stderr, "init_kernel_args() failed\n");
             assert(0);

@@ -61,6 +61,7 @@ typedef struct _myst_wanted_secrets_config
 typedef struct myst_crt_args
 {
     myst_wanted_secrets_t* wanted_secrets;
+    bool crt_memcheck;
 } myst_crt_args_t;
 
 typedef struct _myst_strace_config
@@ -232,6 +233,9 @@ typedef struct myst_kernel_args
 
     /* true if --memcheck option present */
     bool memcheck;
+
+    /* true if --crt-memcheck option present */
+    bool crt_memcheck;
 
     /* true if --nobrk option is present (if so brk syscall returns -ENOTSUP */
     bool nobrk;

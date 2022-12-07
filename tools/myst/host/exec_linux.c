@@ -168,6 +168,12 @@ static void _get_options(
         opts->trace_errors = true;
     }
 
+    /* Get --crt-memcheck option */
+    if (cli_getopt(argc, argv, "--crt-memcheck", NULL) == 0)
+    {
+        opts->crt_memcheck = true;
+    }
+
     /* Get --trace-times option */
     if (cli_getopt(argc, argv, "--trace-times", NULL) == 0 ||
         cli_getopt(argc, argv, "--ttrace", NULL) == 0)
@@ -537,7 +543,8 @@ static int _enter_kernel(
                 final_options.base.rootfs,
                 terr,
                 final_options.base.unhandled_syscall_enosys,
-                sizeof(terr)) != 0)
+                sizeof(terr),
+                final_options.base.crt_memcheck) != 0)
         {
             snprintf(err, err_size, "init_kernel_args failed: %s", terr);
             ERAISE(-EINVAL);
