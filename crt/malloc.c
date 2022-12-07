@@ -23,7 +23,7 @@ size_t libc_malloc_usable_size(void* ptr);
 #define myst_posix_memalign libc_posix_memalign
 #include "../kernel/debugmalloc.c"
 
-bool __crt_crt_memcheck;
+bool __crt_memcheck;
 
 /*
 **==============================================================================
@@ -36,7 +36,7 @@ bool __crt_crt_memcheck;
 
 void* malloc(size_t size)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_malloc(size);
     }
@@ -48,7 +48,7 @@ void* malloc(size_t size)
 
 void free(void* ptr)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_free(ptr);
     }
@@ -60,7 +60,7 @@ void free(void* ptr)
 
 void* calloc(size_t nmemb, size_t size)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_calloc(nmemb, size);
     }
@@ -72,7 +72,7 @@ void* calloc(size_t nmemb, size_t size)
 
 void* realloc(void* ptr, size_t size)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_realloc(ptr, size);
     }
@@ -84,7 +84,7 @@ void* realloc(void* ptr, size_t size)
 
 void* memalign(size_t alignment, size_t size)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_memalign(alignment, size);
     }
@@ -96,7 +96,7 @@ void* memalign(size_t alignment, size_t size)
 
 int posix_memalign(void **memptr, size_t alignment, size_t size)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_posix_memalign(memptr, alignment, size);
     }
@@ -108,7 +108,7 @@ int posix_memalign(void **memptr, size_t alignment, size_t size)
 
 size_t malloc_usable_size(void* ptr)
 {
-    if (__crt_crt_memcheck)
+    if (__crt_memcheck)
     {
         return myst_debug_malloc_usable_size(ptr);
     }

@@ -35,7 +35,7 @@ void __tl_unlock(void);
 
 static myst_wanted_secrets_t* _wanted_secrets;
 
-extern bool __crt_crt_memcheck;
+extern bool __crt_memcheck;
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -232,7 +232,7 @@ void myst_enter_crt(
     if (args)
     {
         _wanted_secrets = args->wanted_secrets;
-        __crt_crt_memcheck = args->crt_memcheck;
+        __crt_memcheck = args->crt_memcheck;
     }
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
