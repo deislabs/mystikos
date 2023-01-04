@@ -1,7 +1,7 @@
 enclave
 {
     from "openenclave/edl/sgx/platform.edl" import *;
-    from "openenclave/edl/logging.edl" import oe_write_ocall;
+    from "openenclave/edl/logging.edl" import *;
     from "openenclave/edl/fcntl.edl" import oe_syscall_writev_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_dup_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_readv_ocall;
