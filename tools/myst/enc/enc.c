@@ -180,8 +180,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         // convention as myst_handle_host_signal is expected to be called
         oe_context->rsp = (rsp & -16) - 8;
         oe_context->rbp = rbp;
-        oe_context->rdi = (__typeof(oe_context->rdi))&siginfo;
-        oe_context->rsi = (__typeof(oe_context->rsi))&mcontext;
+        oe_context->rdi = (__typeof(oe_context->rdi)) & siginfo;
+        oe_context->rsi = (__typeof(oe_context->rsi)) & mcontext;
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -485,6 +485,8 @@ done:
 
     if (buf)
         oe_free_report(buf);
+
+    fprintf(stderr, "_test_oe_debug_mode: %d\n", ret);
 
     return ret;
 }

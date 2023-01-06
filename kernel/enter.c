@@ -739,6 +739,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     myst_fstype_t fstype;
     int tmp_ret;
     int create_appenv_ret;
+    bool tee_debug_mode_copy = args->tee_debug_mode;
 
     if (!args)
         myst_crash();
@@ -765,6 +766,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         args->syslog_level = LOG_NOTICE;
 
     /* turn off or reduce various options when TEE is not in debug mode */
+    args->tee_debug_mode = true;
     if (!args->tee_debug_mode)
     {
         args->trace_errors = false;
@@ -801,6 +803,12 @@ int myst_enter_kernel(myst_kernel_args_t* args)
 
     /* call global constructors within the kernel */
     myst_call_init_functions();
+
+    myst_eprintf(
+        "orig tee_debug_mode: %d overwritten: %c trace_syscalls: %d\n",
+        tee_debug_mode_copy,
+        tee_debug_mode_copy != args->tee_debug_mode ? 'y' : 'n',
+        __options.strace_config.trace_syscalls);
 
     /* Check arguments */
     {

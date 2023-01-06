@@ -597,6 +597,7 @@ int _exec_package(
         if (cli_getopt(&argc, argv, "--trace-syscalls", NULL) == 0 ||
             cli_getopt(&argc, argv, "--strace", NULL) == 0)
         {
+            fprintf(stderr, "Setting strace config on host\n");
             options.strace_config.trace_syscalls = true;
         }
 
