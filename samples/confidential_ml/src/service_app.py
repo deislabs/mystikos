@@ -70,7 +70,7 @@ if __name__ == "__main__":
         #print("Model key: ", key.hex())
 
         # Download the encrypted model and decrypt it with the AES key stored in model.key.
-        url = 'https://oejenkins.blob.core.windows.net/oejenkins/alexnet-pretrained.pt.encrypted'
+        url = 'https://oejenkinspublicstorage.blob.core.windows.net/samples/alexnet-pretrained.pt.encrypted'
         download_and_decrypt(url, "/app/alexnet-pretrained.pt", key)
 
         print("Created AlexNet instance")

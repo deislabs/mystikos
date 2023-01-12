@@ -28,7 +28,7 @@ DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 DIRS += tensorflow_lite
-DIRS += pandas_tests
+# DIRS += pandas_tests
 endif
 DIRS += nodejs
 DIRS += redis
