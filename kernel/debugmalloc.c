@@ -5,9 +5,11 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <assert.h>
 #include <string.h>
 
 #include <myst/backtrace.h>
+#include <myst/printf.h>
 #include <myst/debugmalloc.h>
 #include <myst/defs.h>
 #include <myst/malloc.h>
@@ -19,6 +21,8 @@
 
 #define ENABLE_MALLOC_MEMSET
 #define ENABLE_FREE_MEMSET
+
+// #define DEBUG_MEMALIGN
 
 /*
 **==============================================================================
@@ -171,6 +175,12 @@ MYST_INLINE void* _get_block_address(void* ptr)
     header_t* header = _get_header(ptr);
     const size_t padding_size = _get_padding_size(header->alignment);
     return (uint8_t*)ptr - sizeof(header_t) - padding_size;
+}
+
+MYST_INLINE void* _get_block_address_v2(void* ptr)
+{
+    header_t* header = _get_header(ptr);
+    return (uint8_t*)header - header->padding;
 }
 
 MYST_INLINE size_t _calculate_block_size(size_t alignment, size_t size)
@@ -330,6 +340,17 @@ void myst_debug_free(void* ptr)
 
         void* block = _get_block_address(ptr);
 
+        /* sanity cross check for block address */
+        if (block != _get_block_address_v2(ptr))
+        {
+            assert("_get_block_address_v2() failed");
+        }
+
+#ifdef DEBUG_MEMALIGN
+        printf("free: block=%p header=%p delta=%zu\n",
+            block, header, (const uint8_t*)header - (const uint8_t*)block);
+#endif
+
         /* fill block with 0xdd (deallocated) bytes */
 #ifdef ENABLE_FREE_MEMSET
         memset(block, 0xDD, _get_block_size(ptr));
@@ -393,8 +414,37 @@ int myst_debug_posix_memalign(void** memptr, size_t alignment, size_t size)
     const size_t block_size = _calculate_block_size(alignment, size);
     void* block = NULL;
     header_t* header = NULL;
+    size_t rsize = _round_up_to_multiple(size, sizeof(uint64_t));
+
+    if (memptr)
+        *memptr = NULL;
 
     if (!memptr)
+        return EINVAL;
+
+    /*
+    ** [padding][header][block][footer]
+    ** ^                ^
+    ** |                |
+    ** X                Y
+    **
+    ** Note: both X and Y are on the alignment boundary
+    */
+
+#ifdef DEBUG_MEMALIGN
+    printf("memalign: padding=%zu header=%zu block=%zu footer=%zu\n",
+        padding_size, sizeof(header_t), size, sizeof(footer_t));
+#endif
+
+    /* the sum of the parts should add up to total block size */
+    if (padding_size + sizeof(header_t) + rsize + sizeof(footer_t)
+        != block_size)
+    {
+        return EINVAL;
+    }
+
+    /* the data should be aligned on the given boundary */
+    if ((padding_size + sizeof(header_t)) % alignment)
         return EINVAL;
 
     if (!_is_ptrsize_multiple(alignment) || !_is_pow2(alignment))
@@ -421,6 +471,7 @@ void* myst_debug_memalign(size_t alignment, size_t size)
     alignment = _round_up_to_multiple(alignment, sizeof(void*));
 
     myst_debug_posix_memalign(&ptr, alignment, size);
+
     return ptr;
 }
 
