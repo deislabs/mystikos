@@ -23,7 +23,7 @@ $(ROOTFS):
 	$(MYST) mkcpio $(APPDIR) $(ROOTFS)
 
 $(APPDIR):
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 TESTS=$(shell cat $(TEST_FILE))
 

@@ -10,7 +10,7 @@ endif
 all: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

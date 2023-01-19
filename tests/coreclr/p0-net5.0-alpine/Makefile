@@ -21,12 +21,12 @@ all: rootfs ext2fs build-package
 # docker build time ~1hr. Using prebuilt image.
 # Other docker images:
 # pr1(~10k tests) tests in debug
-#$(APPBUILDER) vtikoo/coreclr-tests:release
+#$(APPBUILDER) -m vtikoo/coreclr-tests:release
 # runtime with debug symbols -
-#$(APPBUILDER) vtikoo/coreclr-tests:debug3
+#$(APPBUILDER) -m vtikoo/coreclr-tests:debug3
 appdir:
 	# pr0(~2.7k tests) tests in release
-	$(APPBUILDER) -i vtikoo/coreclr-tests:pr0-release
+	$(APPBUILDER) -m -i vtikoo/coreclr-tests:pr0-release
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs
@@ -39,7 +39,7 @@ build-package: package.pem
 	$(MYST) package-sgx --roothash=roothash package.pem config_256m.json
 
 run:
-	$(TEST_RUNNER) $(PACKAGE_PATH) null null 30 package pr0-256m
+	$(TEST_RUNNER) $(PACKAGE_PATH) null null 30 package pr0-256m 2
 	$(TEST_RUNNER) $(MYST_EXEC) config_1g.json 30 ext2 pr0-1g
 	$(TEST_RUNNER) $(MYST_EXEC) config_2g.json 45 ext2 pr0-2g
 	$(TEST_RUNNER) $(MYST_EXEC) config_3g.json 90 ext2 pr0-3g

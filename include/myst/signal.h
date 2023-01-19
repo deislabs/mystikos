@@ -46,4 +46,6 @@ const char* myst_signum_to_string(unsigned signum);
 
 void myst_signal_restore_mask(void);
 
+int myst_sigfillset(sigset_t* set);
+
 #endif /* _MYST_SIGNAL_H */

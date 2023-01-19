@@ -9,20 +9,18 @@ import tty
 from logzero import logger
 from Crypto.Cipher import AES
 
-def test_pyodbc(server: str, database: str, uid: str, driver: str, query: str):
+def test_pyodbc(server: str, database: str, uid: str, password: str, driver: str, query: str):
     connstr = "Driver=" + driver
     connstr += ";Server=" + server
     connstr += ";Database=" + database
-    connstr += ";Authentication=ActiveDirectoryMsi"
-    if uid:
-        connstr += ";UID=" + uid
-    print(connstr)
+    connstr += ";UID=" + uid
+    connstr += ";PWD=" + password
 
     try:
         conn = pyodbc.connect(connstr)
+        logger.info("Successful connected to database")
     except pyodbc.Error as ex:
         print(ex)
-    logger.info("Successful connected to database")
 
     cursor = conn.cursor()
     cursor.execute(query)
@@ -98,6 +96,7 @@ if __name__ == "__main__":
         server=os.getenv("DB_SERVER_NAME"),
         database=os.getenv("DB_NAME"),
         uid = os.getenv("DB_USERID"),
+        password = os.getenv("DB_PASSWORD"),
         driver="{ODBC Driver 17 for SQL Server}",
         query="SELECT USER_NAME()")
 

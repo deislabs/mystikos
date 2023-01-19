@@ -41,9 +41,9 @@ build: glibc
 PWD=$(shell pwd)
 
 $(APPDIR):
-	# $(APPBUILDER) -i mystikos/glibc-test:0.1
+	# $(APPBUILDER) -m -i mystikos/glibc-test:0.1
 	# todo: replace with pre-built image
-	$(APPBUILDER) -i hullcritical/glibc-test:0.1
+	$(APPBUILDER) -m -i hullcritical/glibc-test:0.1
 	cp $(CURDIR)/tests.passed $(APPDIR)
 
 $(APPDIR)/bin/run: run.c

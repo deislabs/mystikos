@@ -3,7 +3,7 @@ include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
 
-RETRY_W_BACKOFF=$(TOP)/scripts/retry_with_backoff
+MYST-RETRY=$(TOP)/scripts/myst-retry
 
 ifdef STRACE
 OPTS += --strace
@@ -30,8 +30,8 @@ OPTS += --app-config-path config.json
 all: ext2fs
 
 appdir:
-	$(RETRY_W_BACKOFF) docker pull mcr.microsoft.com/dotnet/sdk:5.0-focal
-	$(APPBUILDER) -d Dockerfile.runner
+	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/sdk:5.0-focal
+	$(APPBUILDER) -m -d Dockerfile.runner
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs

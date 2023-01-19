@@ -1,5 +1,33 @@
 #!/bin/bash
 
+# Usage of this script from Makefiles:
+# TESTNAME and TESTDIR is setup by defs.mak.
+#
+# TOP is the top-level directory of mystikos repository.
+#
+# TESTDIR is $(TOP)/build/tests by default. It should be specified explicity if running tests
+# from a different directory.
+#
+# TESTNAME is the relative directory path of the Makefile invoking runtest. Its relative to TOP.
+# TESTNAME may additionally have a suffix, which can be specified via TESTSUFFIX.
+# This is used by tests/Makefile to differentiate between sgx and linux target runs.
+#
+# If there are multiple subtests under directory pointed by TESTNAME,
+# SUBTEST can be used to differentiate between them. If not specified,
+# its computed by "cmd##*/". This treats the command passed to runtest as a path,
+# and computes the basepath, i.e the substring after the last "/" in cmd.
+#
+# For eg:
+#
+# If pwd is $(HOME)/mystikos/tests/ltp
+# And runtest is invoked with:
+# $(RUNTEST) $(MYST_EXEC) rootfs /ltp/testcases/kernel/syscalls/bind/bind01
+#
+# TOP = $(HOME)/mystikos
+# TESTDIR = $(HOME)/mystikos/build/tests
+# TESTNAME = tests/ltp (assuming no TESTSUFFIX)
+# SUBTEST = bind01
+
 if [ "$#" == "0" ]; then
     echo "Usage: $0 <test> <args...>"
     exit 1
@@ -85,18 +113,18 @@ run_test()
     else
         local subtest="${SUBTEST}"
     fi
+
     echo -e "${lightblue}=== start (${TESTNAME}/${subtest})${reset}"
 
-    local tempfile=$(/bin/mktemp)
-
-    # run the test
     if [ -z "${NOTIMEOUT}" ]; then
         timeout_command="/usr/bin/timeout ${timeout}"
     else
         timeout_command=
     fi
 
-    # save the test start time in a temporary file
+    # write resource statistics in a temporary file
+    # %e format specifies we are only interested in elapsed wall clock time(in seconds).
+    local tempfile=$(/bin/mktemp)
     time_command="/usr/bin/time -f "%e" --quiet -o ${tempfile}"
 
     # run the test
@@ -108,6 +136,7 @@ run_test()
     seconds=$(cat ${tempfile})
     rm -f ${tempfile}
 
+    # record test run status
     if [ "${ret}" == "0" ]; then
         test_passed $cmd
         echo -e "${lightblue}    ${seconds} seconds${reset}"

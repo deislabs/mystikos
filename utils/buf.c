@@ -1,15 +1,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <myst/buf.h>
+#include <myst/mmanutils.h>
+#include <myst/round.h>
+#include <myst/strings.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include <myst/buf.h>
-#include <stdlib.h>
-
-#include <myst/round.h>
-#include <myst/strings.h>
+#include <sys/mman.h>
 
 #define MYST_BUF_CHUNK_SIZE 1024
 
@@ -51,13 +50,28 @@ int myst_buf_reserve(myst_buf_t* buf, size_t cap)
         /* If capacity still insufficent, round to multiple of chunk size */
         if (cap > new_cap)
         {
-            const size_t N = MYST_BUF_CHUNK_SIZE;
+            const size_t N = (buf->flags & MYST_BUF_PAGE_ALIGNED)
+                                 ? PAGE_SIZE
+                                 : MYST_BUF_CHUNK_SIZE;
             new_cap = (cap + N - 1) / N * N;
         }
 
         /* Expand allocation */
-        if (!(new_data = realloc(buf->data, new_cap)))
-            return -1;
+        if (buf->flags & MYST_BUF_PAGE_ALIGNED)
+        {
+            if (!(new_data = memalign(PAGE_SIZE, new_cap)))
+                return -1;
+            if (buf->data)
+            {
+                memcpy(new_data, buf->data, buf->size);
+                free(buf->data);
+            }
+        }
+        else
+        {
+            if (!(new_data = realloc(buf->data, new_cap)))
+                return -1;
+        }
 
         buf->data = new_data;
         buf->cap = new_cap;
@@ -104,8 +118,7 @@ int myst_buf_append(myst_buf_t* buf, const void* data, size_t size)
     /* Compute the new size */
     new_size = buf->size + size;
 
-    /* If insufficient capacity to hold new data */
-    if (new_size > buf->cap)
+    /* Reserve memory if needed */
     {
         int err;
 
@@ -408,5 +421,28 @@ done:
     if (strings)
         free(strings);
 
+    return ret;
+}
+
+bool myst_buf_has_active_mmap(myst_buf_t* buf)
+{
+    assert(buf);
+    return buf->flags & MYST_BUF_ACTIVE_MAPPING;
+}
+
+int myst_buf_set_mmap_active(myst_buf_t* buf, bool active)
+{
+    int ret = -1;
+
+    if (!buf)
+        goto done;
+
+    buf->flags = buf->flags & ~MYST_BUF_ACTIVE_MAPPING;
+    if (active)
+        buf->flags = buf->flags | MYST_BUF_ACTIVE_MAPPING;
+
+    ret = 0;
+
+done:
     return ret;
 }

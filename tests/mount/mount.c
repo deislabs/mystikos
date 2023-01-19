@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -11,13 +12,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-int main(int argc, const char* argv[])
+// This checks if file contains text "myfile"
+int validate_file(const char filename[])
 {
-    const char filename[] = "/mnt/datafs/myfile";
     const size_t filesize = 7;
-
-    if (mount("/datafs", "/mnt/datafs", "ramfs", 0, NULL) != 0)
-        assert(false);
 
     if (access(filename, R_OK) != 0)
         assert(false);
@@ -36,10 +34,72 @@ int main(int argc, const char* argv[])
         assert(close(fd) == 0);
     }
 
+    return 0;
+}
+
+// test C mount API
+int test_mount_and_access()
+{
+    const char source[] = "/ramfs";
+    const char target[] = "/mnt/datafs";
+    const char filename[] = "/mnt/datafs/myfile";
+
+    // create /mnt/datafs
+    assert(mkdir(target, 0777) == 0);
+
+    if (mount(source, target, "ramfs", 0, NULL) != 0)
+    {
+        printf("errno: %d\n", errno);
+        assert(false);
+    }
+
+    validate_file(filename);
+
     if (umount("/mnt/datafs") != 0)
         assert(false);
 
-    printf("=== passed test (%s)\n", argv[0]);
-
     return 0;
+}
+
+int test_access_hostfs()
+{
+    return validate_file("/mnt/hostfs/myfile");
+}
+
+int test_access_ramfs()
+{
+    return validate_file("/mnt/ramfs/myfile");
+}
+
+int test_access_ext2fs()
+{
+    return validate_file("/mnt/ext2fs/myfile");
+}
+
+int main(int argc, const char* argv[])
+{
+    if (argc < 2)
+    {
+        printf("Usage: ./program [hostfs|ramfs|ext2fs]\n");
+        return 1;
+    }
+
+    // Test C mount API
+    test_mount_and_access();
+
+    // Test mount configuration in config.json
+    if (0 == strcmp(argv[1], "hostfs"))
+    {
+        test_access_hostfs();
+    }
+    else if (0 == strcmp(argv[1], "ramfs"))
+    {
+        test_access_ramfs();
+    }
+    else if (0 == strcmp(argv[1], "ext2fs"))
+    {
+        test_access_ext2fs();
+    }
+
+    printf("=== passed test (%s)\n", argv[0]);
 }

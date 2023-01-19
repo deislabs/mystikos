@@ -8,15 +8,18 @@ all: appdir
 
 appdir:
 	g++ -g -o $(APPNAME) test_ssr.c -ldl -I$(TOP)/include
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 $(PKEY_FILE):
 	./gen_pkey.sh $(PKEY_FILE)
 
-run: appdir $(PKEY_FILE)
+_run: appdir $(PKEY_FILE)
 	$(MYST) package appdir p.pem config.json
 	rm -rf $(PKEY_FILE)
 	./myst/bin/$(APPNAME)
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 gdb: appdir $(PKEY_FILE)
 	$(MYST) package appdir p.pem config.json

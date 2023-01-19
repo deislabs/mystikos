@@ -12,7 +12,7 @@ endif
 all: appdir rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m -p Dockerfile
 
 rootfs: appdir
 	$(MYST) mkext2 --force appdir ext2rootfs
@@ -23,3 +23,5 @@ tests:
 clean:
 	rm -rf ext2rootfs appdir
 
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) ext2rootfs /opt/openjdk-13/bin/java -ea Helloworld red green blue

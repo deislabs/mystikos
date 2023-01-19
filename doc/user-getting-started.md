@@ -65,20 +65,60 @@ Options:
                             multiplier suffix: k 1024, m 1024*1024, or
                             g 1024*1024*1024. Ignored if smaller than the
                             existing default thread stack size
-    --app-config-path <json> -- specifies the configuration json file for
-                                running an unsigned binary. The file can be
-                                the same one used for the signing process.
+    --app-config-path <json>
+                         -- specifies the configuration json file for
+                            running an unsigned binary. The file can be
+                            the same one used for the signing process.
     --host-to-enc-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>
                          -- comma separated list of uid mappings between
-                             the host and the enclave
+                            the host and the enclave
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>
                          -- comma separated list of gid mappings between
-                             the host and the enclave
+                            the host and the enclave
     --unhandled-syscall-enosys <true/false>
                          -- flag indicating if the app must exit when
                             it encounters an unimplemented syscall
                             'true' implies the syscall would not terminate
                             and instead return ENOSYS.
+    --strace            
+                         -- Use this option to display the system call traces of 
+                            the execution
+    --strace-failing
+                         -- When specified, all syscalls that fail will be logged.
+                            Other syscalls will not be logged, unless specified via 
+                            filter (see below). Set a breakpoint in _strace_failure_hook 
+                            to stop execution whenever a syscall fails. Use breakpoint 
+                            conditions to control the behavior of the breakpoint.
+                            E.g: Use syscall number as a condition in the breakpoint
+    --strace-filter 'SYS_name1:group1:SYS_name2:...'
+                         -- Specify the set of syscalls or groups to be traced. When filters 
+                            are specified, only those syscalls/groups specified in the filter 
+                            will be traced, in addition to failing syscalls if
+                            specified as described above. Any combination of syscalls and groups 
+                            can be used. For a list of all the groups and their consituents check
+                            out 'man strace' 
+                            E.g: To trace open and mprotect syscalls, and 'desc' group of 
+                            syscalls (file descriptor related group), specify 
+                            --strace-filter 'SYS_open:SYS_mprotect:desc'
+    --strace-exclude-filter 'SYS_name1:SYS_name2:group1...'
+                         -- Specify a set of syscalls or groups to exclude from the strace log. 
+                            All other syscalls will be logged in the strace. Failing syscalls, even 
+                            if excluded, will also be logged if --strace-failing is specified. Any 
+                            combination of syscalls and groups can be used.  For a list of all the 
+                            groups and their consituents check out 'man strace' 
+                            E.g: To exclude open and mprotect syscalls and the group of 
+                            file syscalls, specify
+                            --strace-exclude-filter='SYS_open:SYS_mprotect:file'
+    --strace-filter-tid 'tid1:tid2...'
+                         -- Specify a set of thread IDs to be traced, all others are excluded 
+                            from the output. Can be used in conjunction with any of the above filters 
+                            E.g: To filter by tid=101, specify - 
+                            --strace-filter-tid '101'
+    --strace-filter-pid 'pid1:pid2...'
+                         -- Specify a set of process IDs to be traced, all others are excluded 
+                            from the output. Can be used in conjunction with any of the above filters 
+                            E.g: To filter by pid=101, specify - 
+                            --strace-filter-pid=101
 ```
 
 You can also specify many other parameters in a configuration file, conventionally called `config.json`, you will also use this configuration file to package your application.

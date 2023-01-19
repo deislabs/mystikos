@@ -80,8 +80,8 @@ long myst_syscall_recvmmsg(
     myst_sock_t* sock;
     struct timespec start;
     struct timespec now;
-    long expire;
-    unsigned int cnt;
+    long expire = 0;
+    unsigned int cnt = 0;
 
     if (!msgvec && vlen)
         ERAISE(-EFAULT);

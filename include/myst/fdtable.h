@@ -15,6 +15,7 @@
 #include <myst/fs.h>
 #include <myst/inotifydev.h>
 #include <myst/pipedev.h>
+#include <myst/rspinlock.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
 #include <myst/ttydev.h>
@@ -43,7 +44,7 @@ typedef struct myst_fdtable_entry
 typedef struct myst_fdtable
 {
     myst_fdtable_entry_t entries[MYST_FDTABLE_SIZE];
-    myst_spinlock_t lock;
+    myst_rspinlock_t lock;
 } myst_fdtable_t;
 
 int myst_fdtable_create(myst_fdtable_t** fdtable_out);
@@ -178,5 +179,11 @@ int myst_fdtable_list(const myst_fdtable_t* fdtable);
 long myst_fdtable_sync(myst_fdtable_t* fdtable);
 
 ssize_t myst_fdtable_count(const myst_fdtable_t* fdtable);
+
+int myst_fdtable_update_sock_entry(
+    myst_fdtable_t* fdtable,
+    int fd,
+    myst_sockdev_t* device,
+    myst_sock_t* new_sock);
 
 #endif /* _MYST_FDTABLE_H */

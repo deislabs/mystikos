@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -79,6 +80,7 @@ void get_roothash_options(int* argc, const char* argv[], myst_buf_t* buf)
         {
             myst_sha256_t hash;
 
+            assert(myst_validate_file_path(arg));
             if (_load_hash_file(arg, &hash) != 0)
                 _err("failed to load hash file: --roothash=%s", arg);
 
@@ -155,7 +157,7 @@ int create_roothashes_file(myst_buf_t* buf, char filename[PATH_MAX])
 {
     int ret = 0;
     char template[] = "/tmp/mystXXXXXX";
-    int fd;
+    int fd = -1;
 
     if (!buf || !filename)
     {

@@ -1,4 +1,5 @@
 #define _GNU_SOURCE
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -78,17 +79,6 @@ static int _getopt(
         _err("%s", err);
 
     return ret;
-}
-
-static void _check_regular_file(const char* path)
-{
-    struct stat st;
-
-    if (stat(path, &st) != 0)
-        _err("file not found: %s", path);
-
-    if (!S_ISREG(st.st_mode))
-        _err("wrong file type: %s", path);
 }
 
 #define MIN_PASSPHRASE_LENGTH 14
@@ -181,22 +171,22 @@ __attribute__((format(printf, 1, 2))) static void _systemf(const char* fmt, ...)
 
 static void _create_zero_filled_image(const char* path, size_t size)
 {
-    FILE* is;
+    int fd = 0;
     static uint8_t _block[1024];
 
     if (size < sizeof(_block))
         _err("image size too small: %s: %zu", path, sizeof(_block));
 
-    if (!(is = fopen(path, "wb")))
+    if ((fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0640)) < 0)
         _err("failed to open file for write: %s", path);
 
-    if (fseek(is, size - sizeof(_block), SEEK_SET) != 0)
+    if (lseek(fd, size - sizeof(_block), SEEK_SET) < 0)
         _err("failed to seek file: %s: %zu", path, size);
 
-    if (fwrite(_block, 1, sizeof(_block), is) != sizeof(_block))
+    if (write(fd, _block, sizeof(_block)) != sizeof(_block))
         _err("failed to write file: %s", path);
 
-    fclose(is);
+    close(fd);
 
     /* set the owner of this file to the sudo user if defined */
     if (myst_chown_sudo_user(path) != 0)
@@ -461,18 +451,18 @@ static int _sign(
 
     /* append the FSSIG to the image */
     {
-        FILE* os;
+        int fd;
 
-        if (!(os = fopen(image, "ab")))
-            _err("cannot open file for write: %s", image);
+        if ((fd = open(image, O_WRONLY | O_CREAT, 0640)) < 0)
+            _err("failed to open file for write: %s", image);
 
-        if (fseek(os, 0, SEEK_END) != 0)
+        if (lseek(fd, 0, SEEK_END) < 0)
             _err("cannot seek end of file: %s", image);
 
-        if (fwrite(&fssig, 1, sizeof(fssig), os) != sizeof(fssig))
+        if (write(fd, &fssig, sizeof(fssig)) != sizeof(fssig))
             _err("cannot write signature: %s", image);
 
-        fclose(os);
+        close(fd);
     }
 
     free(privkey);
@@ -552,8 +542,8 @@ int mkext2_action(int argc, const char* argv[])
         pubkey = sign;
         privkey = colon + 1;
 
-        _check_regular_file(pubkey);
-        _check_regular_file(privkey);
+        assert(myst_validate_file_path(pubkey));
+        assert(myst_validate_file_path(privkey));
     }
 
     /* get the --size option */
@@ -605,7 +595,9 @@ int mkext2_action(int argc, const char* argv[])
         _create_ext2_image(dirname, image, size);
     }
 
+    assert(myst_validate_file_path(image));
     _append_hash_tree(image, size, &root_hash);
+
     _sign(image, pubkey, privkey, size, &root_hash);
 
     return 0;

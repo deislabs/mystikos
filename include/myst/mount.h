@@ -6,6 +6,7 @@
 
 #include <limits.h>
 #include <myst/fs.h>
+#include <stdbool.h>
 
 /* Mount a file system onto a target path */
 int myst_mount(

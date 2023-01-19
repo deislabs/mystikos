@@ -7,7 +7,7 @@ pipeline {
         timestamps ()
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
@@ -15,6 +15,7 @@ pipeline {
         // Add to the below to if you are adding a new test that needs to be toggled. 
         booleanParam(name: "RUN_DOTNETP1", defaultValue: false, description: "Run .NET P1 tests?")
         booleanParam(name: "RUN_OPENMP_TESTSUITE", defaultValue: false, description: "Run OpenMP Test Suite?")
+        // Parameters for OS/VM combinations
         booleanParam(name: "ICELAKE_VM", defaultValue: true, description: "Run tests on Ice Lake VMs?")
         booleanParam(name: "COFFEELAKE_VM", defaultValue: false, description: "Run tests on Coffee Lake VMs?")
     }
@@ -59,8 +60,11 @@ pipeline {
                         checkout([$class: 'GitSCM',
                             branches: [[name: params.BRANCH]],
                             extensions: [],
-                            userRemoteConfigs: [[url: "https://github.com/${REPOSITORY}/mystikos"]]]
-                        )
+                            userRemoteConfigs: [[
+                                url: "https://github.com/${REPOSITORY}",
+                                credentialsId: 'github-oeciteam-user-pat'
+                            ]]
+                        ])
                     }
                     GIT_COMMIT_ID = sh(
                         returnStdout: true,
@@ -87,6 +91,30 @@ pipeline {
                     axis {
                         name 'VM_GENERATION'
                         values 'v3', 'v2'
+                    }
+                }
+                excludes {
+                    // Skip builds with Ubuntu 18.04 and v3
+                    exclude {
+                        axis {
+                            name 'OS_VERSION'
+                            values '18.04'
+                        }
+                        axis {
+                            name 'VM_GENERATION'
+                            values 'v3'
+                        }
+                    }
+                    // Skip builds with Ubuntu 20.04 and v2
+                    exclude {
+                        axis {
+                            name 'OS_VERSION'
+                            values '20.04'
+                        }
+                        axis {
+                            name 'VM_GENERATION'
+                            values 'v2'
+                        }
                     }
                 }
                 stages {

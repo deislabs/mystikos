@@ -1,0 +1,8 @@
+test_asynchat
+test_exceptions
+test_interpreters
+test_itertools
+test_poplib
+test_repl
+test_weakref
+test_zipfile

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <syslog.h>
 #include <unistd.h>
 
 #include <myst/args.h>
@@ -20,6 +21,7 @@
 #include <myst/strings.h>
 #include <myst/which.h>
 
+#include "../shared.h"
 #include "utils.h"
 
 char _program[PATH_MAX];
@@ -103,6 +105,17 @@ __attribute__((format(printf, 1, 2))) void _err(const char* fmt, ...)
     fprintf(stderr, "\n");
 
     exit(1);
+}
+
+__attribute__((format(printf, 1, 2))) void _err_noexit(const char* fmt, ...)
+{
+    va_list ap;
+
+    fprintf(stderr, "%s: error: ", get_program_file());
+    va_start(ap, fmt);
+    vfprintf(stderr, fmt, ap);
+    va_end(ap);
+    fprintf(stderr, "\n");
 }
 
 int unlink_cb(
@@ -286,6 +299,34 @@ int get_fork_mode_opts(
             *fork_mode = myst_fork_pseudo_wait_for_exit_exec;
         }
         else
+            return -1;
+    }
+
+    return 0;
+}
+
+/* if --syslog-level=<arg> option present and arg is one of the valid values - 0
+ * through 7, returns 0 and sets the syslog_level pointer. For other values of
+ * arg, returns -1. If --syslog-level option not present, sets syslog_level to
+ * -1.
+ */
+int get_syslog_level_opts(int* argc, const char* argv[], int* syslog_level)
+{
+    const char* arg = NULL;
+
+    if (syslog_level == 0)
+        return -1;
+
+    *syslog_level = -1;
+
+    if (cli_getopt(argc, argv, "--syslog-level", &arg) == 0)
+    {
+        if (arg == NULL)
+            return -1;
+
+        *syslog_level = myst_syslog_level_str_to_int(arg);
+        if (*syslog_level == -1)
+            // unknown syslog level
             return -1;
     }
 

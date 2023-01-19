@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <myst/backtrace.h>
 #include <myst/config.h>
 #include <myst/eraise.h>
 #include <myst/fsgs.h>
@@ -440,7 +441,7 @@ static long _default_signal_handler(unsigned signum)
 }
 
 #pragma GCC diagnostic push
-#pragma GCC diagnostic error "-Wstack-usage=1152"
+#pragma GCC diagnostic error "-Wstack-usage=1184"
 /* ATTN: fix this to not use so much stack space */
 static long _handle_one_signal(
     unsigned signum,
@@ -449,6 +450,15 @@ static long _handle_one_signal(
 {
     long ret = 0;
     ucontext_t context;
+
+    /* save the original fsbase */
+    void* original_fsbase = myst_get_fsbase();
+    void* gsbase = myst_get_gsbase();
+
+    /* Switch to kernel fsbase if needed. printf statements in this function are
+     * downcalls to OE, which checks for FS == GS invariant in some places */
+    if (original_fsbase != gsbase)
+        myst_set_fsbase(gsbase);
 
 #ifdef TRACE
     printf(
@@ -506,6 +516,25 @@ static long _handle_one_signal(
                 thread_sig_handler = thread_sig_handler->previous;
             }
 
+            // Print out backtrace for segfault exception
+            // Current myst_backtrace implementation only supports printing
+            // stacktrace for kernel stacks, so we check for that upfront.
+            if (signum == SIGSEGV &&
+                myst_within_stack((void**)mcontext->gregs[REG_RBP]))
+            {
+                void* buf = calloc(1, 1024);
+                size_t ret = 0;
+
+                myst_eprintf("*** Kernel segmentation fault \n");
+                if ((ret = myst_backtrace3(
+                         (void**)mcontext->gregs[REG_RBP], buf, sizeof(buf))) >
+                    0)
+                {
+                    myst_dump_backtrace(buf, ret);
+                }
+                free(buf);
+            }
+
             // call the default terminating signal handler
             ret = _default_signal_handler(signum);
         }
@@ -523,6 +552,8 @@ static long _handle_one_signal(
                 myst_gettid());
         }
         ret = 0;
+        /* Restore fsbase to value at function entry */
+        myst_set_fsbase(original_fsbase);
     }
     else
     {
@@ -550,8 +581,6 @@ static long _handle_one_signal(
         // ATTN: handle other signal flags, e.g., SA_NOCLDSTOP, SA_NOCLDWAIT,
         // SA_RESETHAND, SA_RESTART, etc.
 
-        /* save the original fsbase */
-        void* original_fsbase = myst_get_fsbase();
         stack_t* altstack = &thread->signal.altstack;
         uint64_t rsp_before_signal = 0;
 
@@ -681,6 +710,8 @@ int myst_signal_has_active_signals(myst_thread_t* thread)
     return active_signals != 0;
 }
 
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
 long myst_signal_process(myst_thread_t* thread)
 {
     /* If we are waiting due to sigstop then block now */
@@ -732,6 +763,7 @@ long myst_signal_process(myst_thread_t* thread)
     myst_spin_unlock(&thread->signal.lock);
     return 0;
 }
+#pragma GCC pop_options
 
 long myst_signal_deliver(
     myst_thread_t* thread,
@@ -824,6 +856,10 @@ long myst_signal_deliver(
             // Wake up target if necessary
             if (thread->signal.waiting_on_event)
             {
+#ifdef TRACE
+                printf("thread sleeping on thread->event futex. Waking up "
+                       "thread..\n");
+#endif
                 myst_tcall_wake(thread->event);
             }
 

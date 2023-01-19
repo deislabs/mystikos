@@ -8,7 +8,7 @@ pipeline {
     }
     parameters {
         choice(name: "UBUNTU_VERSION", choices: ["18.04", "20.04"])
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solution tests")
@@ -27,6 +27,7 @@ pipeline {
         TEST_TYPE =         "solutions"
         LCOV_INFO =         "lcov-${GIT_COMMIT[0..7]}-${TEST_TYPE}.info"
         PACKAGE_INSTALL =   "${UBUNTU_VERSION == '20.04' ? 'Ubuntu-2004' : 'Ubuntu-1804'}_${PACKAGE_NAME}.${PACKAGE_EXTENSION}"
+        MYST_RELEASE =      "1"
         BUILD_USER = sh(
             returnStdout: true,
             script: 'echo \${USER}'
@@ -75,21 +76,23 @@ pipeline {
         }
         stage('Init Config') {
             steps {
-                sh """
-                   # Initialize dependencies repo
-                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                   ${JENKINS_SCRIPTS}/global/init-config.sh
+                retry(5) {
+                    sh """
+                        # Initialize dependencies repo
+                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
+                        ${JENKINS_SCRIPTS}/global/init-config.sh
 
-                   # Install global dependencies
-                   ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
-                   ${JENKINS_SCRIPTS}/global/init-install.sh
-                   """
+                        # Install global dependencies
+                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
+                        ${JENKINS_SCRIPTS}/global/init-install.sh
+                    """
+                }
             }
         }
         stage('Build repo source') {
             steps {
                 sh """
-                   ${JENKINS_SCRIPTS}/global/make-world.sh
+                   ${JENKINS_SCRIPTS}/solutions/make-build.sh
                    """
             }
         }
@@ -135,7 +138,8 @@ pipeline {
                     withCredentials([string(credentialsId: "mystikos-sql-db-name-${REGION}", variable: 'DB_NAME'),
                                      string(credentialsId: "mystikos-sql-db-server-name-${REGION}", variable: 'DB_SERVER_NAME'),
                                      string(credentialsId: "mystikos-maa-url-${REGION}", variable: 'MAA_URL'),
-                                     string(credentialsId: 'mystikos-managed-identity-objectid', variable: 'DB_USERID'),
+                                     string(credentialsId: 'mystikos-sql-db-userid', variable: 'DB_USERID'),
+                                     string(credentialsId: 'mystikos-sql-db-password', variable: 'DB_PASSWORD'),
                                      string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
                                      string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
                                      string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
@@ -146,7 +150,7 @@ pipeline {
                            echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
                            echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
                            echo "Running in ${REGION}"
-                           make tests -C ${WORKSPACE}/solutions
+                           make solutions_tests
                            echo "Running samples"
                            sudo make install
                            export PATH="/opt/mystikos/bin:$PATH"

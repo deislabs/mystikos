@@ -32,10 +32,21 @@ int oesign(
     const char* conffile,
     const char* keyfile,
     const char* digest_signature,
+    const char* output_file,
     const char* x509,
     const char* engine_id,
     const char* engine_load_path,
     const char* key_id);
+
+/* forward declarations of the OE data type and internal API */
+typedef oe_result_t (
+    *oe_load_extra_enclave_data_hook_t)(void* arg, uint64_t baseaddr);
+
+void oe_register_load_extra_enclave_data_hook(
+    oe_load_extra_enclave_data_hook_t hook);
+
+/* forward declaration of the hook implemented in regions_sgx.c */
+oe_result_t myst_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr);
 
 #define USAGE_SIGN \
     "\
@@ -133,6 +144,7 @@ int copy_files_to_signing_directory(
     {
         _err("File path to long: %s/bin/myst", sign_dir);
     }
+    assert(myst_validate_file_path(program_file));
     if (myst_copy_file(program_file, scratch_path) != 0)
     {
         _err("Failed to copy \"%s\" to \"%s\"", program_file, scratch_path);
@@ -147,6 +159,7 @@ int copy_files_to_signing_directory(
     {
         _err("File path to long: %s/rootfs", sign_dir);
     }
+    assert(myst_validate_file_path(rootfs_file));
     if (myst_copy_file(rootfs_file, scratch_path) != 0)
     {
         _err("Failed to copy \"%s\" to \"%s\"", rootfs_file, scratch_path);
@@ -157,16 +170,17 @@ int copy_files_to_signing_directory(
     {
         _err("File path to long: %s/pubkeys", sign_dir);
     }
+    assert(myst_validate_file_path(pubkeys_file));
     if (myst_copy_file(pubkeys_file, scratch_path) != 0)
     {
         _err("Failed to copy \"%s\" to \"%s\"", pubkeys_file, scratch_path);
     }
-
     // Copy roothashes into signing directory
     if (snprintf(scratch_path, PATH_MAX, "%s/roothashes", sign_dir) >= PATH_MAX)
     {
         _err("File path to long: %s/roothashes", sign_dir);
     }
+    assert(myst_validate_file_path(roothashes_file));
     if (myst_copy_file(roothashes_file, scratch_path) != 0)
     {
         _err("Failed to copy \"%s\" to \"%s\"", roothashes_file, scratch_path);
@@ -178,6 +192,7 @@ int copy_files_to_signing_directory(
     {
         _err("File path to long: %s/config.json", sign_dir);
     }
+    assert(myst_validate_file_path(config_file));
     if (myst_copy_file(config_file, scratch_path) != 0)
     {
         _err("Failed to copy \"%s\" to \"%s\"", config_file, scratch_path);
@@ -192,6 +207,8 @@ int copy_files_to_signing_directory(
     {
         _err("File path to long: %s/lib/openenclave/mystenc.so", sign_dir);
     }
+
+    assert(myst_validate_file_path(details->enc.path));
     if (myst_copy_file(details->enc.path, scratch_path) != 0)
     {
         _err(
@@ -230,6 +247,7 @@ int add_config_to_enclave(const char* sign_dir, const char* config_path)
     {
         _err("Failed to add configuration to enclave elf image");
     }
+    assert(myst_validate_file_path(scratch_path));
     if (myst_write_file(scratch_path, elf.data, elf.size) != 0)
     {
         _err("File to save final signed image: %s", scratch_path);
@@ -415,6 +433,13 @@ int _sign(int argc, const char* argv[])
 
     /* ATTN:MEB: handle roothashes file here */
 
+    assert(myst_validate_file_path(rootfs_file));
+    assert(myst_validate_file_path(pubkeys_opt));
+    assert(myst_validate_file_path(roothashes_opt));
+    assert(myst_validate_file_path(config_file));
+    assert(myst_validate_file_path(program_file));
+    assert(myst_validate_file_path(temp_oeconfig_file));
+
     // Setup all the regions
     if ((details = create_region_details_from_files(
              target,
@@ -464,10 +489,14 @@ int _sign(int argc, const char* argv[])
     // conveys nothing useful to the user.
     freopen("/dev/null", "a+", stdout);
 
+    /* Register the hook */
+    oe_register_load_extra_enclave_data_hook(myst_load_extra_enclave_data_hook);
+
     if (oesign(
             scratch_path,
             temp_oeconfig_file,
             pem_file,
+            NULL,
             NULL,
             NULL,
             signing_engine_name,

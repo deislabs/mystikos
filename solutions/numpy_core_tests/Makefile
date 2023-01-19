@@ -12,9 +12,7 @@ endif
 all: rootfs
 
 appdir:
-	$(APPBUILDER) Dockerfile
-	# Remove the test that depends on mmap(MAP_SHARED...).
-	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_memmap.py
+	$(APPBUILDER) -m Dockerfile
 	# Remove the test that fails due to rng
 	rm appdir/usr/local/lib/python3.9/site-packages/numpy/core/tests/test_multiarray.py
 	# Removing test failing due to no SYS_listxattr support
@@ -24,7 +22,7 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 run: rootfs
-	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 /app/app.py
+	TIMEOUT=150s $(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 /app/app.py
 
 one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 -m pytest /usr/local/lib/python3.9/site-packages/$(TEST)

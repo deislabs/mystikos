@@ -10,6 +10,18 @@ INCLUDES = -I$(INCDIR)
 
 CFLAGS = $(DEFAULT_CFLAGS)
 
+ifdef MYST_ENABLE_GCOV
+DEFINES += -DMYST_ENABLE_GCOV
+endif
+
+ifdef MYST_ENABLE_GCOV
+CFLAGS += $(GCOV_CFLAGS)
+endif
+
+ifdef MYST_ENABLE_GCOV
+LIBS += $(LIBDIR)/libmystgcovserver.a
+endif
+
 LIBS += $(LIBDIR)/libjson.a
 LIBS += $(LIBDIR)/libmystutils.a
 LIBS += $(LIBDIR)/libmysthost.a

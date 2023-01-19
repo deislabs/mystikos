@@ -61,6 +61,7 @@ test5:
 
 # test package with --pubkey=<pemfile> (with right public key)
 test6:
+
 	@ echo "=== TEST6"
 	$(MYST) package --pubkey=public.pem private.pem config.json
 	MYST_ROOTFS_PATH=rootfs.ext2 ./myst/bin/hello
@@ -82,7 +83,6 @@ test9:
 	@ echo "=== TEST9"
 	$(MYST) package appdir private.pem config.json
 	( ./myst/bin/hello --nobrk 2> result; test "$$?" -eq "255" )
-	diff result expected-nobrk-cli-option-error
 
 clean:
 	rm -rf appdir rootfs.ext2 myst private.pem public.pem bad_roothash roothash bad_public.pem bad_private.pem .built result

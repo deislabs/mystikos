@@ -24,7 +24,7 @@ all:
 	$(MAKE) $(ROOTFS)
 
 $(APPDIR):
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 $(ROOTFS):
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)

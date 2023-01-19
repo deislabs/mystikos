@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
-RETRY_W_BACKOFF=$(TOP)/scripts/retry_with_backoff
+MYST-RETRY=$(TOP)/scripts/myst-retry
 RUNNER=/runner/bin/Release/net6.0/runner
 ROOTFS=rootfs
 APPDIR=appdir
@@ -22,7 +22,7 @@ rootfs: $(APPDIR)
 	$(MYST) mkext2 $(APPDIR) $(ROOTFS)
 
 appdir:
-	$(RETRY_W_BACKOFF) $(APPBUILDER) -o $(APPDIR) Dockerfile.glibc.runner 
+	$(MYST-RETRY) $(APPBUILDER) -m -p -o $(APPDIR) Dockerfile.glibc.runner 
 
 tests:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(ROOTFS) --app-config-path config.json $(RUNNER) /testcases/pass.1 /dotnet-lib-release/

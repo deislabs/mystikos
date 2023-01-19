@@ -1,0 +1,286 @@
+diff --git a/Lib/test/test_cmd_line.py b/Lib/test/test_cmd_line.py
+index a3560b4..aa0692d 100644
+--- a/Lib/test/test_cmd_line.py
++++ b/Lib/test/test_cmd_line.py
+@@ -421,9 +421,10 @@ class CmdLineTest(unittest.TestCase):
+ 
+     # Issue #7111: Python should work without standard streams
+ 
+-    @unittest.skipIf(os.name != 'posix', "test needs POSIX semantics")
+-    @unittest.skipIf(sys.platform == "vxworks",
+-                         "test needs preexec support in subprocess.Popen")
++    # @unittest.skipIf(os.name != 'posix', "test needs POSIX semantics")
++    # @unittest.skipIf(sys.platform == "vxworks",
++                        #  "test needs preexec support in subprocess.Popen")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def _test_no_stdio(self, streams):
+         code = """if 1:
+             import os, sys
+diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
+index 8a3ffb5..4314f82 100644
+--- a/Lib/test/test_logging.py
++++ b/Lib/test/test_logging.py
+@@ -667,7 +667,8 @@ class HandlerTest(BaseTest):
+     # based on os.fork existing because that is what users and this test use.
+     # This helps ensure that when fork exists (the important concept) that the
+     # register_at_fork mechanism is also present and used.
+-    @unittest.skipIf(not hasattr(os, 'fork'), 'Test requires os.fork().')
++    # @unittest.skipIf(not hasattr(os, 'fork'), 'Test requires os.fork().')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_post_fork_child_no_deadlock(self):
+         """Ensure child logging locks are not held; bpo-6721 & bpo-36533."""
+         class _OurHandler(logging.Handler):
+@@ -1769,7 +1770,8 @@ def _get_temp_domain_socket():
+     os.remove(fn)
+     return fn
+ 
+-@unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++# @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skip("Temporarily disabled in Mystikos")
+ class UnixSocketHandlerTest(SocketHandlerTest):
+ 
+     """Test for SocketHandler with unix sockets."""
+@@ -1786,6 +1788,7 @@ class UnixSocketHandlerTest(SocketHandlerTest):
+         SocketHandlerTest.tearDown(self)
+         support.unlink(self.address)
+ 
++@unittest.skip("Temporarily disabled in Mystikos")
+ class DatagramHandlerTest(BaseTest):
+ 
+     """Test for DatagramHandler."""
+@@ -1934,7 +1937,8 @@ class SysLogHandlerTest(BaseTest):
+         self.handled.wait()
+         self.assertEqual(self.log_output, b'<11>h\xc3\xa4m-sp\xc3\xa4m')
+ 
+-@unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++# @unittest.skipUnless(hasattr(socket, "AF_UNIX"), "Unix sockets required")
++@unittest.skip("Temporarily disabled in Mystikos")
+ class UnixSysLogHandlerTest(SysLogHandlerTest):
+ 
+     """Test for SysLogHandler with Unix sockets."""
+diff --git a/Lib/test/test_mailbox.py b/Lib/test/test_mailbox.py
+index 6f891d4..3ab6374 100644
+--- a/Lib/test/test_mailbox.py
++++ b/Lib/test/test_mailbox.py
+@@ -1060,8 +1060,9 @@ class _TestMboxMMDF(_TestSingleFile):
+             self.assertEqual(contents, f.read())
+         self._box = self._factory(self._path)
+ 
+-    @unittest.skipUnless(hasattr(os, 'fork'), "Test needs fork().")
+-    @unittest.skipUnless(hasattr(socket, 'socketpair'), "Test needs socketpair().")
++    # @unittest.skipUnless(hasattr(os, 'fork'), "Test needs fork().")
++    # @unittest.skipUnless(hasattr(socket, 'socketpair'), "Test needs socketpair().")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_lock_conflict(self):
+         # Fork off a child process that will lock the mailbox temporarily,
+         # unlock it and exit.
+diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
+index f4edb8b..924582c 100644
+--- a/Lib/test/test_posix.py
++++ b/Lib/test/test_posix.py
+@@ -88,6 +88,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless(hasattr(posix, 'setresuid'),
+                          'test needs posix.setresuid()')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_setresuid(self):
+         current_user_ids = posix.getresuid()
+         self.assertIsNone(posix.setresuid(*current_user_ids))
+@@ -105,6 +106,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless(hasattr(posix, 'setresgid'),
+                          'test needs posix.setresgid()')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_setresgid(self):
+         current_group_ids = posix.getresgid()
+         self.assertIsNone(posix.setresgid(*current_group_ids))
+@@ -181,6 +183,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless(getattr(os, 'execve', None) in os.supports_fd, "test needs execve() to support the fd parameter")
+     @unittest.skipUnless(hasattr(os, 'fork'), "test needs os.fork()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_fexecve(self):
+         fp = os.open(sys.executable, os.O_RDONLY)
+         try:
+@@ -196,6 +199,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless(hasattr(posix, 'waitid'), "test needs posix.waitid()")
+     @unittest.skipUnless(hasattr(os, 'fork'), "test needs os.fork()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_waitid(self):
+         pid = os.fork()
+         if pid == 0:
+@@ -206,6 +210,7 @@ class PosixTester(unittest.TestCase):
+             self.assertEqual(pid, res.si_pid)
+ 
+     @unittest.skipUnless(hasattr(os, 'fork'), "test needs os.fork()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_register_at_fork(self):
+         with self.assertRaises(TypeError, msg="Positional args not allowed"):
+             os.register_at_fork(lambda: None)
+@@ -634,6 +639,7 @@ class PosixTester(unittest.TestCase):
+                 posix.stat, list(os.fsencode(support.TESTFN)))
+ 
+     @unittest.skipUnless(hasattr(posix, 'mkfifo'), "don't have mkfifo()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_mkfifo(self):
+         support.unlink(support.TESTFN)
+         try:
+@@ -644,6 +650,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless(hasattr(posix, 'mknod') and hasattr(stat, 'S_IFIFO'),
+                          "don't have mknod()/S_IFIFO")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_mknod(self):
+         # Test using mknod() to create a FIFO (the only use specified
+         # by POSIX).
+@@ -1168,6 +1175,7 @@ class PosixTester(unittest.TestCase):
+ 
+     @unittest.skipUnless((os.mknod in os.supports_dir_fd) and hasattr(stat, 'S_IFIFO'),
+                          "test requires both stat.S_IFIFO and dir_fd support for os.mknod()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_mknod_dir_fd(self):
+         # Test using mknodat() to create a FIFO (the only use specified
+         # by POSIX).
+@@ -1261,6 +1269,7 @@ class PosixTester(unittest.TestCase):
+             posix.close(f)
+ 
+     @unittest.skipUnless(os.mkfifo in os.supports_dir_fd, "test needs dir_fd support in os.mkfifo()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_mkfifo_dir_fd(self):
+         support.unlink(support.TESTFN)
+         f = posix.open(posix.getcwd(), posix.O_RDONLY)
+@@ -1287,6 +1296,7 @@ class PosixTester(unittest.TestCase):
+     @requires_sched_h
+     @unittest.skipUnless(hasattr(posix, 'sched_get_priority_max'),
+                          "requires sched_get_priority_max()")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_sched_priority(self):
+         # Round-robin usually has interesting priorities.
+         pol = posix.SCHED_RR
+@@ -1342,6 +1352,7 @@ class PosixTester(unittest.TestCase):
+         self.assertRaises(OverflowError, posix.sched_setparam, 0, param)
+ 
+     @unittest.skipUnless(hasattr(posix, "sched_rr_get_interval"), "no function")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_sched_rr_get_interval(self):
+         try:
+             interval = posix.sched_rr_get_interval(0)
+diff --git a/Lib/test/test_pty.py b/Lib/test/test_pty.py
+index 9c32467..9156d89 100644
+--- a/Lib/test/test_pty.py
++++ b/Lib/test/test_pty.py
+@@ -138,6 +138,7 @@ class PtyTest(unittest.TestCase):
+         # to ignore this signal.
+         os.close(master_fd)
+ 
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_fork(self):
+         debug("calling pty.fork()")
+         pid, master_fd = pty.fork()
+diff --git a/Lib/test/test_random.py b/Lib/test/test_random.py
+index 0fa3a09..d7a1941 100644
+--- a/Lib/test/test_random.py
++++ b/Lib/test/test_random.py
+@@ -1229,7 +1229,8 @@ class TestModule(unittest.TestCase):
+         # tests validity but not completeness of the __all__ list
+         self.assertTrue(set(random.__all__) <= set(dir(random)))
+ 
+-    @unittest.skipUnless(hasattr(os, "fork"), "fork() required")
++    # @unittest.skipUnless(hasattr(os, "fork"), "fork() required")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_after_fork(self):
+         # Test the global Random instance gets reseeded in child
+         r, w = os.pipe()
+diff --git a/Lib/test/test_support.py b/Lib/test/test_support.py
+index 60a7741..c2ec44f 100644
+--- a/Lib/test/test_support.py
++++ b/Lib/test/test_support.py
+@@ -41,6 +41,7 @@ class TestSupport(unittest.TestCase):
+         )
+         assert len(warnings.filters) == orig_filter_len - 2
+ 
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_ignored_deprecations_are_silent(self):
+         """Test support.ignore_deprecations_from() silences warnings"""
+         with warnings.catch_warnings(record=True) as warning_objs:
+@@ -194,7 +195,8 @@ class TestSupport(unittest.TestCase):
+                                         f'temporary directory {path!r}: '),
+                         warn)
+ 
+-    @unittest.skipUnless(hasattr(os, "fork"), "test requires os.fork")
++    # @unittest.skipUnless(hasattr(os, "fork"), "test requires os.fork")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_temp_dir__forked_child(self):
+         """Test that a forked child process does not remove the directory."""
+         # See bpo-30028 for details.
+@@ -435,8 +437,9 @@ class TestSupport(unittest.TestCase):
+ 
+         self.assertRaises(AssertionError, support.check__all__, self, unittest)
+ 
+-    @unittest.skipUnless(hasattr(os, 'waitpid') and hasattr(os, 'WNOHANG'),
+-                         'need os.waitpid() and os.WNOHANG')
++    # @unittest.skipUnless(hasattr(os, 'waitpid') and hasattr(os, 'WNOHANG'),
++                        #  'need os.waitpid() and os.WNOHANG')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_reap_children(self):
+         # Make sure that there is no other pending child process
+         support.reap_children()
+diff --git a/Lib/test/test_thread.py b/Lib/test/test_thread.py
+index 3f8a539..0730c32 100644
+--- a/Lib/test/test_thread.py
++++ b/Lib/test/test_thread.py
+@@ -223,7 +223,8 @@ class TestForkInThread(unittest.TestCase):
+     def setUp(self):
+         self.read_fd, self.write_fd = os.pipe()
+ 
+-    @unittest.skipUnless(hasattr(os, 'fork'), 'need os.fork')
++    # @unittest.skipUnless(hasattr(os, 'fork'), 'need os.fork')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     @support.reap_threads
+     def test_forkinthread(self):
+         pid = None
+diff --git a/Lib/test/test_tracemalloc.py b/Lib/test/test_tracemalloc.py
+index b10d179..4538c26 100644
+--- a/Lib/test/test_tracemalloc.py
++++ b/Lib/test/test_tracemalloc.py
+@@ -345,7 +345,8 @@ class TestTracemallocEnabled(unittest.TestCase):
+         # everything is fine
+         return 0
+ 
+-    @unittest.skipUnless(hasattr(os, 'fork'), 'need os.fork()')
++    # @unittest.skipUnless(hasattr(os, 'fork'), 'need os.fork()')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_fork(self):
+         # check that tracemalloc is still working after fork
+         pid = os.fork()
+@@ -932,6 +933,7 @@ class TestCommandLine(unittest.TestCase):
+         self.fail(f"unexpected output: {stderr!a}")
+ 
+ 
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_env_var_invalid(self):
+         for nframe in INVALID_NFRAME:
+             with self.subTest(nframe=nframe):
+@@ -960,6 +962,7 @@ class TestCommandLine(unittest.TestCase):
+             return
+         self.fail(f"unexpected output: {stderr!a}")
+ 
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_sys_xoptions_invalid(self):
+         for nframe in INVALID_NFRAME:
+             with self.subTest(nframe=nframe):
+diff --git a/Lib/test/test_uuid.py b/Lib/test/test_uuid.py
+index b1c9242..dc88846 100644
+--- a/Lib/test/test_uuid.py
++++ b/Lib/test/test_uuid.py
+@@ -638,7 +638,8 @@ class BaseTestUUID:
+             equal(u, self.uuid.UUID(v))
+             equal(str(u), v)
+ 
+-    @unittest.skipUnless(os.name == 'posix', 'requires Posix')
++    # @unittest.skipUnless(os.name == 'posix', 'requires Posix')
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def testIssue8621(self):
+         # On at least some versions of OSX self.uuid.uuid4 generates
+         # the same sequence of UUIDs in the parent and any

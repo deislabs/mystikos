@@ -25,6 +25,10 @@
 #include <myst/setjmp.h>
 #include <myst/syscallext.h>
 
+/* Locking functions used by MUSL to manage libc.threads_minus_1 */
+void __tl_lock(void);
+void __tl_unlock(void);
+
 static void _set_fsbase(void* p)
 {
     if (syscall(SYS_set_thread_area, p) < 0)
@@ -436,8 +440,22 @@ __attribute__((__returns_twice__)) pid_t myst_fork(void)
         args->unmap_on_exit.mmap_ptr_size = mmap_rounded_size;
         args->canary = args->child_pthread->canary;
 
+        // Increment thread count. For regular threads, this is done by MUSL's
+        // pthread_create. Since the child process's thread is created via clone
+        // instead of pthread_create, the thread count must be incremented
+        // manually here.
+        __tl_lock();
+        __libc.threads_minus_1++;
+        __tl_unlock();
+
         if ((tmp_ret = __clone(_child_func, sp, clone_flags, args)) < 0)
         {
+            // restore thread count
+            {
+                __tl_lock();
+                __libc.threads_minus_1--;
+                __tl_unlock();
+            }
             munmap(child_pthread->map_base, child_pthread->map_size);
             free(args);
             return tmp_ret;

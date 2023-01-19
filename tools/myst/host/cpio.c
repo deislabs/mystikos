@@ -4,6 +4,7 @@
 #include "cpio.h"
 #include <assert.h>
 #include <myst/cpio.h>
+#include <myst/file.h>
 #include <stdio.h>
 #include <string.h>
 #include "utils.h"
@@ -76,6 +77,7 @@ int _excpio(int argc, const char* argv[])
     const char* cpioarchive = argv[2];
     const char* directory = argv[3];
 
+    assert(myst_validate_file_path(cpioarchive));
     if (myst_cpio_unpack(cpioarchive, directory) != 0)
     {
         _err(

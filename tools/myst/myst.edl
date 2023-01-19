@@ -4,6 +4,8 @@ enclave
     from "openenclave/edl/logging.edl" import oe_write_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_writev_ocall;
     from "openenclave/edl/fcntl.edl" import oe_syscall_dup_ocall;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_readv_ocall;
+    from "openenclave/edl/fcntl.edl" import oe_syscall_close_ocall;
 
     include "time.h"
     include "sys/socket.h"
@@ -157,8 +159,7 @@ enclave
             int epfd,
             [out, count=maxevents] struct epoll_event* events,
             size_t maxevents,
-            int timeout)
-            transition_using_threads;
+            int timeout);
 
         long myst_epoll_ctl_ocall(
             int epfd,

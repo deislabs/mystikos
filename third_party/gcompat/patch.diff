@@ -387,6 +387,28 @@ index 836d5e2..0000000
 -	return real_rlimit(resource, &my_rlim);
 -}
 -#endif
+diff --git a/libgcompat/string.c b/libgcompat/string.c
+index 9852bea..0afca0f 100644
+--- a/libgcompat/string.c
++++ b/libgcompat/string.c
+@@ -6,7 +6,7 @@
+ #include <string.h> /* memcpy, strcpy, strncat, strndup */
+ #include <time.h>   /* time */
+ #include <unistd.h> /* getpid */
+-
++#include <limits.h> /* LONG_MAX */
+ #include "alias.h" /* weak_alias */
+ 
+ /**
+@@ -91,7 +91,7 @@ void *__memset_chk(void *s, int c, size_t n, size_t buflen)
+  */
+ void *__rawmemchr(const void *s, int c)
+ {
+-	return memchr(s, c, SIZE_MAX);
++	return memchr(s, c, LONG_MAX);
+ }
+ weak_alias(__rawmemchr, rawmemchr);
+ 
 diff --git a/libgcompat/time.c b/libgcompat/time.c
 deleted file mode 100644
 index a058edb..0000000

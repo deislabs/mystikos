@@ -16,7 +16,10 @@ SHUTDOWN_WAIT = 1  	# waiting time in seconds before service being terminated
 
 all: myst build-package
 
-run: run-package
+_run: run-package
+
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 run-package: 
 	# Kill the server from a previous run if it wasn't shut down properly.
@@ -62,7 +65,7 @@ myst:
 
 appdir: 
 	@echo "\n------Building appdir------\n"
-	$(APPBUILDER) Dockerfile.server
+	$(APPBUILDER) -m Dockerfile.server
 	@echo "\n------Building client client application container------\n"
 	docker build -t $(CLIENT_IMAGE) -f Dockerfile.client .
 

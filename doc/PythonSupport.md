@@ -36,7 +36,7 @@ Here are several noteworthy modules we haven't supported yet:
   - `os.exec*` - not supported
   - `os.openpty` - some cpython tests have not passed (yet)
   - `os.memfd_create`
-- `multiprocessing.shared_memory` - shared memory is not supported in Mytikos (yet)
+- `multiprocessing.shared_memory` - shared memory is not supported in Mystikos (yet)
 - `subprocess` - some parameters of `subprocess.run`/`subprocess.Popen` are not supported
   - `preexec_fn`
   - `shell=True` - as Ubuntu/Debian's default shell `dash` is not supported in Mystikos, setting parameter `shell=True` may require changing the default shell, such as by adding `RUN ln -sf /bin/bash /bin/sh` in the Dockerfile
@@ -51,6 +51,8 @@ Here are several noteworthy modules we haven't supported yet:
   * Other failed unit tests related to locale:
     * [`test_locale_caching`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1895), [`test_locale_compiled`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_re.py#L1931)
     * [`test_PYTHONCOERCECLOCALE_not_set, test_PYTHONCOERCECLOCALE_not_zero, test_PYTHONCOERCECLOCALE_set_to_warn, test_PYTHONCOERCECLOCALE_set_to_zero`](https://github.com/python/cpython/blob/f4c03484da59049eb62a9bf7777b963e2267d187/Lib/test/test_c_locale_coercion.py#L361-L389)
+- `resource`
+  - `getrusage`: only supports option `RUSAGE_SELF`
 
 **Caveat**: Any third-party Python library that calls into the unsupported
 standard Python APIs are not supported neither. Sometimes they can produce

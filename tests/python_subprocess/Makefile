@@ -10,7 +10,7 @@ endif
 all: ext2fs
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m -p Dockerfile
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs

@@ -21,6 +21,7 @@
 #include <myst/getopt.h>
 #include <myst/paths.h>
 #include <myst/round.h>
+#include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/tcall.h>
 #include <myst/trace.h>
@@ -38,6 +39,10 @@
 #include "sign.h"
 #include "utils.h"
 
+/* forward declarations of OE internal APIs */
+void oe_debug_module_loaded_hook(oe_debug_module_t* module);
+void oe_debug_module_unloaded_hook(oe_debug_module_t* module);
+
 _Static_assert(sizeof(struct myst_timespec) == sizeof(struct timespec), "");
 
 typedef struct debug_module
@@ -45,10 +50,20 @@ typedef struct debug_module
     oe_debug_module_t base;
     struct debug_module* next;
     char __buf[PATH_MAX];
-    bool loaded;
 } debug_module_t;
 
+/* Modules that have been registered with the debugger. Each time a module is
+   registered, it is added to the front of the list. This list is maintained
+   in the same order that the debugger receives notifications. This allows the
+   debugger to efficiently sync in case _debug_modules and the debugger's own
+   list go out of sync.  */
 static debug_module_t* _debug_modules;
+
+/* List of modules yet to be registered with the debugger. The modules in this
+   list are removed one by one and then registered with the debugger and
+   prepended to the _debug_modules list.  */
+static debug_module_t* _debug_modules_pending;
+static myst_spinlock_t _modules_lock;
 
 long myst_syscall_isatty_ocall(int fd)
 {
@@ -92,29 +107,15 @@ void myst_cpuid_ocall(
     __cpuid_count(leaf, subleaf, *rax, *rbx, *rcx, *rdx);
 }
 
-OE_EXPORT
-OE_NEVER_INLINE
-void oe_notify_debugger_library_load(oe_debug_module_t* module)
-{
-    OE_UNUSED(module);
-}
-
-OE_EXPORT
-OE_NEVER_INLINE
-void oe_notify_debugger_library_unload(oe_debug_module_t* module)
-{
-    OE_UNUSED(module);
-}
-
 oe_result_t oe_debug_notify_library_loaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_load(module);
+    oe_debug_module_loaded_hook(module);
     return OE_OK;
 }
 
 oe_result_t oe_debug_notify_library_unloaded(oe_debug_module_t* module)
 {
-    oe_notify_debugger_library_unload(module);
+    oe_debug_module_unloaded_hook(module);
     return OE_OK;
 }
 
@@ -128,6 +129,7 @@ long myst_add_symbol_file_by_path(
     void* data = NULL;
     bool notify = true;
 
+    myst_spin_lock(&_modules_lock);
     if (!path || !text_data || !text_size)
         ERAISE(-EINVAL);
 
@@ -151,17 +153,23 @@ long myst_add_symbol_file_by_path(
         {
             /* notify gdb to load the symbols */
             oe_debug_notify_library_loaded(&di->base);
-            di->loaded = true;
+
+            /* add to the front of the list */
+            di->next = _debug_modules;
+            _debug_modules = di;
+        }
+        else
+        {
+            /* add to the front of the pending list */
+            di->next = _debug_modules_pending;
+            _debug_modules_pending = di;
         }
 
-        /* add to the front of the list */
-        di->next = _debug_modules;
-        _debug_modules = di;
         di = NULL;
     }
 
 done:
-
+    myst_spin_unlock(&_modules_lock);
     if (di)
         free(di);
 
@@ -194,7 +202,7 @@ long init_symbol_file_tmpdir(char* tmpdir)
 
     if (!mkdtemp(tmpdir))
         ERAISE(errno);
-    ECHECK(chmod(tmpdir, 0777));
+    ECHECK(chmod(tmpdir, 0750));
 
 done:
     return ret;
@@ -216,6 +224,7 @@ long myst_tcall_add_symbol_file(
     void* data = NULL;
     bool notify = false;
 
+    myst_spin_lock(&_modules_lock);
     if (!text_data || !text_size || (!file_data && file_size))
         ERAISE(-EINVAL);
 
@@ -259,7 +268,7 @@ long myst_tcall_add_symbol_file(
             {
                 ERAISE(-ENAMETOOLONG);
             }
-            if ((fd = creat(tmp, 0666)) < 0)
+            if ((fd = creat(tmp, 0750)) < 0)
                 goto done;
         }
     }
@@ -275,7 +284,7 @@ long myst_tcall_add_symbol_file(
             ERAISE(-ENAMETOOLONG);
         }
 
-        if ((fd = creat(tmp, 0666)) < 0)
+        if ((fd = creat(tmp, 0750)) < 0)
             goto done;
     }
 
@@ -307,16 +316,23 @@ long myst_tcall_add_symbol_file(
         {
             /* notify gdb to load the symbols */
             oe_debug_notify_library_loaded(&di->base);
-            di->loaded = true;
+
+            /* add to the front of the list */
+            di->next = _debug_modules;
+            _debug_modules = di;
+        }
+        else
+        {
+            /* add to the front of the pending list */
+            di->next = _debug_modules_pending;
+            _debug_modules_pending = di;
         }
 
-        /* add to the front of the list */
-        di->next = _debug_modules;
-        _debug_modules = di;
         di = NULL;
     }
 
 done:
+    myst_spin_unlock(&_modules_lock);
 
     if (di)
         free(di);
@@ -347,14 +363,21 @@ long myst_tcall_load_symbols(void)
 {
     int ret = 0;
 
-    for (debug_module_t* p = _debug_modules; p; p = p->next)
+    myst_spin_lock(&_modules_lock);
+
+    debug_module_t* next;
+    for (debug_module_t* p = _debug_modules_pending; p; p = next)
     {
-        if (!p->loaded)
-        {
-            oe_debug_notify_library_loaded(&p->base);
-            p->loaded = true;
-        }
+        next = p->next;
+
+        oe_debug_notify_library_loaded(&p->base);
+
+        p->next = _debug_modules;
+        _debug_modules = p;
     }
+    _debug_modules_pending = NULL;
+
+    myst_spin_unlock(&_modules_lock);
 
     return ret;
 }
@@ -371,8 +394,9 @@ long myst_tcall_unload_symbols(void)
     // If symbols need to be retained, don't delete the emitted shared
     // libraries.
     if (_retain_symbols())
-        goto done;
+        return ret;
 
+    myst_spin_lock(&_modules_lock);
     for (debug_module_t* p = _debug_modules; p;)
     {
         debug_module_t* next = p->next;
@@ -387,8 +411,8 @@ long myst_tcall_unload_symbols(void)
 
         p = next;
     }
+    myst_spin_unlock(&_modules_lock);
 
-done:
     return ret;
 }
 

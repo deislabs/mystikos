@@ -102,7 +102,7 @@ int load_sections(const char* path, sections_t* sections)
 
     /* read the section table into memory */
     {
-        const size_t size = eh.e_shnum * eh.e_shentsize;
+        const size_t size = (size_t)eh.e_shnum * (size_t)eh.e_shentsize;
 
         if (!(shdrs = malloc(size)))
         {

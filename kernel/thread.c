@@ -29,6 +29,7 @@
 #include <myst/printf.h>
 #include <myst/procfs.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/stack.h>
@@ -40,7 +41,7 @@
 #include <myst/times.h>
 #include <myst/trace.h>
 
-//#define TRACE
+// #define TRACE
 
 myst_spinlock_t myst_process_list_lock = MYST_SPINLOCK_INITIALIZER;
 
@@ -641,6 +642,9 @@ long myst_wait(
                     if (p->zombie_next != NULL)
                         p->zombie_next->zombie_prev = p->zombie_prev;
 
+                    /* inherit the child process times into the parent */
+                    myst_times_add_child_times_to_parent_times(process, p);
+
                     // free zombie process
                     free(p);
                 }
@@ -717,9 +721,6 @@ long myst_wait(
 #endif
             ERAISE(-ECHILD);
         }
-
-        myst_spin_unlock(&myst_process_list_lock);
-        locked = false;
 
         if ((options & WNOHANG))
         {
@@ -885,6 +886,17 @@ done:
 **==============================================================================
 */
 
+// This function is used by debugger/gdb-sgx-plugin/thread.py
+// Adding "-O2" so this hook function is not optimized out
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
+void myst_debug_hook_thread_exit(const myst_thread_t* thread)
+{
+    // This function should do nothing
+    assert(thread != NULL);
+}
+#pragma GCC pop_options
+
 bool myst_valid_td(const void* td)
 {
     return td && ((const myst_td_t*)td)->self == td;
@@ -981,6 +993,8 @@ static long _run_thread(void* arg_)
     if (myst_setjmp(&thread->jmpbuf) != 0)
     {
         /* ---------- running C-runtime thread descriptor ---------- */
+
+        myst_debug_hook_thread_exit(thread);
 
         assert(myst_gettid() != -1);
 
@@ -1089,20 +1103,14 @@ static long _run_thread(void* arg_)
             size_t i = thread->unmap_on_exit_used;
             while (i)
             {
-                if (!myst_munmap(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size))
-                {
-                    /* App process might have invoked SYS_mmap, which marks the
-                     * memory as owned by the calling app process, and then
-                     * SYS_myst_unmap_on_exit on the memory region. Clear the
-                     * pid vector to make sure the unmapped memory is marked as
-                     * not owned by any app process */
-                    myst_mman_pids_set(
-                        thread->unmap_on_exit[i - 1].ptr,
-                        thread->unmap_on_exit[i - 1].size,
-                        0);
-                }
+                /* App process might have invoked SYS_mmap, which marks the
+                 * memory as owned by the calling app process, and then
+                 * SYS_myst_unmap_on_exit on the memory region. Clear the
+                 * pid vector to make sure the unmapped memory is marked as
+                 * not owned by any app process */
+                myst_munmap_and_pids_clear_atomic(
+                    thread->unmap_on_exit[i - 1].ptr,
+                    thread->unmap_on_exit[i - 1].size);
                 i--;
             }
         }
@@ -1419,6 +1427,9 @@ static long _syscall_clone_vfork(
             free(self_path);
         }
 
+        /* Child inherits parent's shared memory mappings */
+        ECHECK(myst_shmem_share_mappings(child_process->pid));
+
         ECHECK(_get_entry_stack(child_thread));
     }
 
@@ -1600,9 +1611,9 @@ size_t myst_kill_thread_group()
          * so lets do it again to be sure */
         if (process->fdtable)
         {
-            myst_spin_lock(&process->fdtable->lock);
+            myst_rspin_lock(&process->fdtable->lock);
             myst_fdtable_interrupt(process->fdtable);
-            myst_spin_unlock(&process->fdtable->lock);
+            myst_rspin_unlock(&process->fdtable->lock);
         }
 
         /* wait for all other threads except ours and the process thread to go

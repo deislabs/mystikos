@@ -6,7 +6,7 @@ pipeline {
         timeout(time: 720, unit: 'MINUTES')
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         choice(name: "REGION", choices:['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
         string(name: "PACKAGE_NAME", description: "Release package to install (do not include extension)")

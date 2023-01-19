@@ -49,7 +49,7 @@ You can [download the latest build here](https://github.com/deislabs/mystikos/re
 
 ```
 # change this to match the latest version
-LATEST='0.7.0'
+LATEST='0.9.0'
 RELEASE="Ubuntu-1804_mystikos-${LATEST}-x86_64"
 
 # this will create the "mystikos" directory within your current working directory
@@ -63,7 +63,7 @@ export PATH="$PATH:$(pwd)/mystikos/bin"
 
 ```
 # change this to match the latest version
-LATEST='0.7.0'
+LATEST='0.8.0'
 RELEASE="Ubuntu-1804_mystikos-${LATEST}-x86_64"
 
 # this will install Mystikos in /opt/mystikos

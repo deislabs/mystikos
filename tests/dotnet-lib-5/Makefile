@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
-RETRY_W_BACKOFF=$(TOP)/scripts/retry_with_backoff
+MYST-RETRY=$(TOP)/scripts/myst-retry
 DOCKER_IMAGE_MUSL=hullcritical/dotnet-library-test:release-musl
 DOCKER_IMAGE_GLIBC=hullcritical/dotnet-library-test:release-glibc
 DOTNET=/dotnet-lib-release/testhost/net5.0-Linux-Release-x64/dotnet
@@ -17,7 +17,7 @@ all: build-runner
 build: rootfs
 
 appdir:
-	$(RETRY_W_BACKOFF) $(APPBUILDER) -i $(DOCKER_IMAGE_MUSL)
+	$(MYST-RETRY) $(APPBUILDER) -m -i $(DOCKER_IMAGE_MUSL)
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -51,9 +51,9 @@ rootfsr: $(RAPPDIR)
 	$(MYST) mkext2 $(RAPPDIR) $(RROOTFS)
 
 appdirr:
-	$(RETRY_W_BACKOFF) $(APPBUILDER) -o $(RAPPDIR) Dockerfile.musl.runner 
+	$(MYST-RETRY) $(APPBUILDER) -m -o $(RAPPDIR) Dockerfile.musl.runner 
 
-TESTCASE=testcases/pass.txt
+TESTCASE=testcases/pass.1
 
 run-runner:
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) $(RROOTFS) --app-config-path config-runner.json $(RUNNER) /testcases/pass.1 /dotnet-lib-release/

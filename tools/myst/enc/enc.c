@@ -171,7 +171,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         asm volatile("mov %%rsp, %0" : "=r"(rsp));
         asm volatile("mov %%rbp, %0" : "=r"(rbp));
 
-        oe_context->rip = _kargs.myst_handle_host_signal;
+        oe_context->rip =
+            (__typeof(oe_context->rip))_kargs.myst_handle_host_signal;
         // Update the rsp so that the myst_handle_host_signal can continue
         // from the current stack frame on which siginfo and mcontext are
         // saved. Also, make rsp 16-byte aligned and mimic the behavior of
@@ -179,8 +180,8 @@ static uint64_t _forward_exception_as_signal_to_kernel(
         // convention as myst_handle_host_signal is expected to be called
         oe_context->rsp = (rsp & -16) - 8;
         oe_context->rbp = rbp;
-        oe_context->rdi = &siginfo;
-        oe_context->rsi = &mcontext;
+        oe_context->rdi = (__typeof(oe_context->rdi)) & siginfo;
+        oe_context->rsi = (__typeof(oe_context->rsi)) & mcontext;
 
         return OE_EXCEPTION_CONTINUE_EXECUTION;
     }
@@ -293,6 +294,19 @@ __attribute__((format(printf, 2, 3))) static void _exception_handler_strace(
 static uint64_t _vectored_handler(oe_exception_record_t* er)
 {
     const uint16_t opcode = *((uint16_t*)er->context->rip);
+    void* saved_fs = NULL;
+    void* fsbase;
+    void* gsbase;
+
+    /* restore FS to OE's default value so that we can make ocalls */
+    asm volatile("mov %%fs:0, %0" : "=r"(fsbase));
+    asm volatile("mov %%gs:0, %0" : "=r"(gsbase));
+
+    if (fsbase != gsbase)
+    {
+        asm volatile("wrfsbase %0" ::"r"(gsbase));
+        saved_fs = fsbase;
+    }
 
     if (er->code == OE_EXCEPTION_ILLEGAL_INSTRUCTION)
     {
@@ -317,6 +331,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
 
                 /* Skip over the illegal instruction. */
                 er->context->rip += 2;
+
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
@@ -358,6 +376,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 /* Skip over the illegal instruction. */
                 er->context->rip += 2;
 
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
+
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
             }
@@ -380,6 +402,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                  * For other cases, this function does not have any
                  * effectiveness. */
                 (*_kargs.myst_signal_restore_mask)();
+
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
                 break;
@@ -410,6 +436,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 er->context->rax = (uint64_t)_exception_handler_syscall(
                     (long)er->context->rax, params);
 
+                /* Restore FS if needed */
+                if (saved_fs)
+                    asm volatile("wrfsbase %0" ::"r"(saved_fs));
+
                 // If the specific syscall is not supported in Mystikos, the
                 // exception handler will cause abort.
                 return OE_EXCEPTION_CONTINUE_EXECUTION;
@@ -419,6 +449,10 @@ static uint64_t _vectored_handler(oe_exception_record_t* er)
                 break;
         }
     }
+
+    /* Restore FS if needed */
+    if (saved_fs)
+        asm volatile("wrfsbase %0" ::"r"(saved_fs));
 
     return _forward_exception_as_signal_to_kernel(er);
 }
@@ -639,13 +673,13 @@ static long _enter(void* arg_)
                 final_options.base.rootfs,
                 err,
                 final_options.base.unhandled_syscall_enosys,
-                sizeof(err)) != 0)
+                sizeof(err),
+                final_options.base.crt_memcheck) != 0)
         {
             fprintf(stderr, "init_kernel_args() failed\n");
             assert(0);
         }
 
-        _kargs.shell_mode = final_options.base.shell_mode;
         _kargs.debug_symbols = final_options.base.debug_symbols;
         _kargs.memcheck = final_options.base.memcheck;
         _kargs.nobrk = final_options.base.nobrk;
@@ -660,6 +694,8 @@ static long _enter(void* arg_)
                                      ? final_options.base.main_stack_size
                                      : MYST_PROCESS_INIT_STACK_SIZE;
         _kargs.thread_stack_size = final_options.base.thread_stack_size;
+        _kargs.host_uds = final_options.base.host_uds;
+        _kargs.syslog_level = final_options.base.syslog_level;
 
         /* whether user-space FSGSBASE instructions are supported */
         _kargs.have_fsgsbase_instructions =

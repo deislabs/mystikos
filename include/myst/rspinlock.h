@@ -7,7 +7,6 @@
 #include <assert.h>
 
 #include <myst/spinlock.h>
-#include <myst/thread.h>
 
 // clang-format off
 #define MYST_RSPINLOCK_INITIALIZER { 0 }
@@ -53,8 +52,10 @@ MYST_INLINE void myst_rspin_lock(myst_rspinlock_t* s)
 
 MYST_INLINE void myst_rspin_unlock(myst_rspinlock_t* s)
 {
-    assert(s->count > 0);
-    assert(s->owner == __myst_rspin_self());
+    assert("rspin unlock with bad count" && s->count > 0);
+    assert(
+        "rspin unlock with non-owner thread" &&
+        s->owner == __myst_rspin_self());
 
     if (--s->count == 0)
     {

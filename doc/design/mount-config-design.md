@@ -1,9 +1,9 @@
 # Automatic filesystem mount configuration design
 
-During startup we need the ability to mount directories from the insecure host into the enclave.
+During startup we need the ability to mount directories from the untrusted host into the enclave.
 Currently an application can do this through a system call,
 but this needs to be automated at start-up if the necessary configuration is given.
-Configuration needed for a mount includes the mount source path which is on an insecure filesystem,
+Configuration needed for a mount includes the mount source path which is on an untrusted filesystem,
 mount target directory within the TEE filesystem,
 and other data relating configuration like if it is read-only or not.
 
@@ -84,7 +84,7 @@ The following new command line argument will be added:
 
 | Name | Value |
 | -- | -- |
-| source | This is the source location of the mount in the insecure host. |
+| source | This is the source location of the mount, it has to be an absolute path. 1) For mounting hostfs, this path should point to a directory on untrusted host. 2) For mounting ext2, this path should point to a EXT2 archive on untrusted host. 3) For mounting ramfs, this path should point to a CPIO archive within TEE filesystem(rootfs).  |
 | target | This is the mount point within the TEE. There needs to be an associated target mount configuration specified at signing for this location otherwise the mount will fail. This mount point path needs to already exist in the TEE filesystem. |
 
 The target location is part of the TEE measurement which specifies that the target directory is being accessed from an insecure source.

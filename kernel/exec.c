@@ -28,6 +28,7 @@
 #include <myst/reloc.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/spinlock.h>
 #include <myst/strings.h>
@@ -945,6 +946,22 @@ done:
     return ret;
 }
 
+// This function is used by debugger/gdb-sgx-plugin/thread.py
+// Adding "-O2" so this hook function is not optimized out
+#pragma GCC push_options
+#pragma GCC optimize "-O2"
+void myst_debug_hook_myst_exec(
+    const myst_thread_t* thread,
+    size_t argc,
+    const char* argv[])
+{
+    // This function should do nothing
+    assert(thread != NULL);
+    assert(argc != 0);
+    assert(argv != NULL);
+}
+#pragma GCC pop_options
+
 int myst_exec(
     myst_thread_t* thread,
     const void* crt_data_in,
@@ -977,6 +994,8 @@ int myst_exec(
     size_t num_bytes_read;
     char* prog_interp = NULL;
     size_t actual_thread_stack_size = thread_stack_size;
+
+    myst_debug_hook_myst_exec(thread, argc, argv);
 
     if (thread_stack_size)
         _thread_stack_size = thread_stack_size;
@@ -1237,6 +1256,7 @@ int myst_exec(
     if (callback)
         (*callback)(callback_arg);
 
+    MYST_ILOG("Entering CRT.");
     /* enter the C-runtime on the target thread descriptor */
     (*enter)(sp, dynv, myst_syscall, crt_args);
 

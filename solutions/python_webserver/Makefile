@@ -9,7 +9,7 @@ ifdef STRACE
 OPTS += --strace
 endif
 
-OPTS += --memory-size=256m
+OPTS += --memory-size=1g --thread-stack-size=1m
 
 ifdef PERF
 OPTS += --perf
@@ -32,16 +32,22 @@ OPTS += --roothash=roothash
 endif
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 TIMEOUT=60s
 
-run:
+_run:
 	test -f server.pid && kill -9 `cat server.pid` || true
 	$(MYST_EXEC) $(OPTS) rootfs /miniconda/bin/python3 /app/hello_server.py & echo $$! > server.pid
 	./wait.sh
 	curl 127.0.0.1:8000
 	test -f server.pid && kill -9 `cat server.pid` && rm server.pid || true
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
+
+server:
+	$(MYST_EXEC) $(OPTS) rootfs /miniconda/bin/python3 /app/hello_server.py
 
 clean:
 	test -f server.pid && kill -9 `cat server.pid` || true

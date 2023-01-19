@@ -8,6 +8,7 @@ APPDIR        = appdir
 APP_NAME      = redis-server
 SERVICE_ADDR  = localhost
 SERVICE_PORT  = 6379
+TIMEOUT       = 60s
 
 ifdef STRACE
 OPTS += --strace
@@ -27,7 +28,7 @@ package: init $(APPDIR) private.pem
 	echo "\n\nport $(SERVICE_PORT)" >> $(APPDIR)/etc/redis.conf
 	$(MYST) package-sgx $(APPDIR) private.pem config.json
 
-run: package
+_run: package
 	# This is running in ramfs mode
 	# Kill the server from a previous run if it wasn't shut down properly.
 	./kill.sh
@@ -35,7 +36,7 @@ run: package
 	# Launch the Redis Server
 	@ echo -e "\n------starting Redis server------\n"
 	myst/bin/$(APP_NAME) $(OPTS) & echo $$! > $(APP_NAME).pid
-	./wait.sh $(SERVICE_PORT)
+	timeout $(TIMEOUT) ./wait.sh $(SERVICE_PORT)
 	
 	# Launch testing client script
 	@echo "Run test client outside of the Enclave ..."
@@ -44,12 +45,15 @@ run: package
 	# Kill the running instance of the server before exit.
 	./kill.sh
 
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
+
 gdb: clean package
 	@ echo -e "\n------start debugging Redis server------\n"
 	$(MYST_GDB) --args myst/bin/$(APPNAME) $(OPTS)
 
 $(APPDIR):
-	$(APPBUILDER) -d Dockerfile
+	$(APPBUILDER) -m -d Dockerfile
 
 private.pem:
 	openssl genrsa -out private.pem -3 3072

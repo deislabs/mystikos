@@ -5,7 +5,8 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-BRANCH=mystikos.v6
+BRANCH=master
+COMMIT=d8e1004945f255a7b7b62f4cb3bb43e0e3a83c0a
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
@@ -36,7 +37,7 @@ build:
 	$(MAKE) configure_oe
 	$(MAKE) install_oe
 
-fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/bin/myst-gdb
+fetch_oecache: $(TOP)/build/openenclave $(TOP)/build/lib/openenclave/debugger \
 	$(TOP)/build/bin/myst-lldb
 
 $(TOP)/build/openenclave:
@@ -44,12 +45,12 @@ $(TOP)/build/openenclave:
 	rm -rf $(BUILDDIR)/openenclave
 	cp -r $(CACHE) $(BUILDDIR)/openenclave
 
-$(TOP)/build/bin/myst-gdb:
-	mkdir -p $(BUILDDIR)/bin
-	rm -f $(BUILDDIR)/bin/myst-gdb
-	ln -s $(BUILDDIR)/openenclave/bin/oegdb $(BUILDDIR)/bin/myst-gdb
+$(TOP)/build/lib/openenclave/debugger: $(TOP)/build/openenclave
+	mkdir -p $(BUILDDIR)/lib/openenclave
+	rm -f $(BUILDDIR)/lib/openenclave/debugger
+	ln -s $(BUILDDIR)/openenclave/lib/openenclave/debugger $(BUILDDIR)/lib/openenclave/debugger
 
-$(TOP)/build/bin/myst-lldb:
+$(TOP)/build/bin/myst-lldb: $(TOP)/build/openenclave
 	mkdir -p $(BUILDDIR)/bin
 	rm -f $(BUILDDIR)/bin/myst-lldb
 	ln -s $(BUILDDIR)/openenclave/bin/oelldb $(BUILDDIR)/bin/myst-lldb
@@ -57,13 +58,16 @@ $(TOP)/build/bin/myst-lldb:
 FETCH_SUBMODULE = git submodule update --init --progress
 
 openenclave:
-	git clone $(URL) -b $(BRANCH)
+	git clone $(URL)
+	( cd openenclave; git checkout $(COMMIT) )
 	( cd openenclave; $(FETCH_SUBMODULE) tools/oeedger8r-cpp )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL )
+	$(MAKE) configure_oe
 
 configure_oe: $(OPENENCLAVE_BUILD)/Makefile
 
@@ -87,15 +91,18 @@ $(OPENENCLAVE_BUILD)/Makefile:
 
 install_oe:
 	$(MAKE) -C $(OPENENCLAVE_BUILD) install
+	cp ${OPENENCLAVE_BUILD}/output/lib/openenclave/host/liboesign.a ${TOP}/build/openenclave/lib/openenclave/host
 ifdef MYST_USE_BUILD_CACHE
 	rm -rf $(CACHE)
 	$(MAKE) -C $(OPENENCLAVE_BUILD) install DESTDIR=$(CACHE_DIR)/tmp
+	cp ${OPENENCLAVE_BUILD}/output/lib/openenclave/host/liboesign.a ${CACHE_DIR}/tmp/${OPENENCLAVE_INSTALL_PREFIX}/lib/openenclave/host
 	mv $(CACHE_DIR)/tmp/$(OPENENCLAVE_INSTALL_PREFIX) $(CACHE)
 	rm -rf $(CACHE_DIR)/tmp
 endif
 	mkdir -p $(TOP)/build/bin
-	rm -f $(TOP)/build/bin/myst-gdb
-	ln -s $(TOP)/build/openenclave/bin/oegdb $(TOP)/build/bin/myst-gdb
+	mkdir -p $(TOP)/build/lib/openenclave
+	rm -f ${TOP}/build/lib/openenclave/debugger
+	ln -s ${TOP}/build/openenclave/lib/openenclave/debugger ${TOP}/build/lib/openenclave/debugger
 	# Patch minimum required lldb version from 7 to 8.
 	sed -i 's/-7/-8/g' $(TOP)/build/openenclave/bin/oelldb
 	rm -f $(TOP)/build/bin/myst-lldb
@@ -103,7 +110,7 @@ endif
 
 clean:
 	rm -rf $(TOP)/build/openenclave
-	rm -f $(TOP)/build/bin/myst-gdb
+	rm -f ${TOP}/build/lib/openenclave/debugger
 	rm -f $(TOP)/build/bin/myst-lldb
 
 distclean: clean

@@ -407,4 +407,15 @@ typedef struct myst_syscall_pair
 
 const myst_syscall_pair_t* myst_syscall_pairs(void);
 
+/* Stores the syscall group name, corresponding syscalls, and number of syscalls
+ */
+typedef struct myst_syscall_group
+{
+    const char* name;
+    const int* syscalls;
+    size_t size;
+} myst_syscall_group_t;
+
+const myst_syscall_group_t* myst_syscall_group(const char* name);
+
 #endif /* _MYST_SYSCALL_H */

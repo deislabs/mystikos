@@ -16,6 +16,11 @@ endif
 
 TIMEOUT=1200
 
+all: build
+
+build: __clean
+	@ $(MAKE) __build
+
 __clean:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) clean $(NL) )
 
@@ -26,6 +31,4 @@ __run:
 	@ $(foreach i, $(DIRS), $(MAKE) -C $(i) run $(NL) )
 
 tests:
-	@ $(MAKE) -s __clean 
-	@ $(MAKE) -s __build
 	@ TIMEOUT=$(TIMEOUT) $(RUNTEST) $(MAKE) -j -s __run

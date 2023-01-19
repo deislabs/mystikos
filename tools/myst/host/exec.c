@@ -59,6 +59,16 @@
 /* TODO: Make it configurable through json */
 #define CLOCK_TICK 1000
 
+/* forward declarations of the OE data type and internal API */
+typedef oe_result_t (
+    *oe_load_extra_enclave_data_hook_t)(void* arg, uint64_t baseaddr);
+
+void oe_register_load_extra_enclave_data_hook(
+    oe_load_extra_enclave_data_hook_t hook);
+
+/* forward declaration of the hook implemented in regions_sgx.c */
+oe_result_t myst_load_extra_enclave_data_hook(void* arg, uint64_t baseaddr);
+
 static struct myst_shm shared_memory = {0};
 
 /* wait for so many milliseconds */
@@ -203,6 +213,34 @@ static void _wait_on_child_threads(void)
     }
 }
 
+#define EXTENDED_FEATURE_FLAGS_FUNCTION 0x7
+void _print_platform_details()
+{
+    uint32_t rax = 0;
+    uint32_t rbx = 0;
+    uint32_t rcx = 0;
+    uint32_t rdx = 0;
+
+    myst_cpuid_ocall(
+        EXTENDED_FEATURE_FLAGS_FUNCTION, 0x0, &rax, &rbx, &rcx, &rdx);
+
+    if (!((rbx >> 2) & 1))
+    {
+        printf("CPU does not support SGX.\n");
+        return;
+    }
+
+    printf("SGX Flexible Launch Control: ");
+    if (((rcx >> 30) & 1))
+    {
+        printf("supported.\n");
+    }
+    else
+    {
+        printf("unsupported.\n");
+    }
+}
+
 int exec_launch_enclave(
     const char* enc_path,
     oe_enclave_type_t type,
@@ -246,6 +284,9 @@ int exec_launch_enclave(
         settings[num_settings++] = setting;
     }
 
+    /* Register the hook */
+    oe_register_load_extra_enclave_data_hook(myst_load_extra_enclave_data_hook);
+
     /* Load the enclave: calls oe_load_extra_enclave_data_hook() */
 #ifndef SUPPRESS_SWITCHLESS
     r = oe_create_myst_enclave(
@@ -256,7 +297,10 @@ int exec_launch_enclave(
 #endif
 
     if (r != OE_OK)
-        _err("failed to load enclave: result=%s", oe_result_str(r));
+    {
+        _print_platform_details();
+        _err("failed to load enclave: result=%s.\n ", oe_result_str(r));
+    }
 
     /* Serialize the argv[] strings */
     if (myst_buf_pack_strings(&argv_buf, argv, _count_args(argv)) != 0)
@@ -358,20 +402,62 @@ Options:\n\
                             main thread, where <size> may have a\n\
                             multiplier suffix: k 1024, m 1024*1024, or\n\
                             g 1024*1024*1024\n\
-    --app-config-path <json> -- specifies the configuration json file for\n\
-                                running an unsigned binary. The file can be\n\
-                                the same one used for the signing process.\n\
+    --app-config-path <json>\n\
+                         -- specifies the configuration json file for\n\
+                            running an unsigned binary. The file can be\n\
+                            the same one used for the signing process.\n\
     --host-to-enc-uid-map <host-uid:enc-uid[,host-uid2:enc-uid2,...]>\n\
                          -- comma separated list of uid mappings between\n\
-                             the host and the enclave\n\
+                            the host and the enclave\n\
     --host-to-enc-gid-map <host-gid:enc-gid[,host-gid2:enc-gid2,...]>\n\
                          -- comma separated list of gid mappings between\n\
-                             the host and the enclave\n\
+                            the host and the enclave\n\
     --unhandled-syscall-enosys <true/false>\n\
                          -- flag indicating if the app must exit when\n\
                             it encounters an unimplemented syscall\n\
                             'true' implies the syscall would not terminate\n\
                             and instead return ENOSYS.\n\
+    --strace            \n\
+                         -- Use this option to display the system call traces of \n\
+                            the execution\n\
+    --strace-failing\n\
+                         -- When specified, all syscalls that fail will be logged.\n\
+                            Other syscalls will not be logged, unless specified via \n\
+                            filter (see below). Set a breakpoint in _strace_failure_hook \n\
+                            to stop execution whenever a syscall fails. Use breakpoint \n\
+                            conditions to control the behavior of the breakpoint.\n\
+                            E.g: Use syscall number as a condition in the breakpoint\n\
+    --strace-filter 'SYS_name1:group1:SYS_name2:...'\n\
+                         -- Specify the set of syscalls or groups to be traced. When filters \n\
+                            are specified, only those syscalls/groups specified in the filter \n\
+                            will be traced, in addition to failing syscalls if\n\
+                            specified as described above. Any combination of syscalls and groups \n\
+                            can be used. For a list of all the groups and their consituents check\n\
+                            out 'man strace' \n\
+                            E.g: To trace open and mprotect syscalls, and 'desc' group of \n\
+                            syscalls (file descriptor related group), specify \n\
+                            --strace-filter 'SYS_open:SYS_mprotect:desc'\n\
+    --strace-exclude-filter 'SYS_name1:SYS_name2:group1...'\n\
+                         -- Specify a set of syscalls or groups to exclude from the strace log. \n\
+                            All other syscalls will be logged in the strace. Failing syscalls, even \n\
+                            if excluded, will also be logged if --strace-failing is specified. Any \n\
+                            combination of syscalls and groups can be used.  For a list of all the \n\
+                            groups and their consituents check out 'man strace' \n\
+                            E.g: To exclude open and mprotect syscalls and the group of \n\
+                            file syscalls, specify\n\
+                            --strace-exclude-filter='SYS_open:SYS_mprotect:file'\n\
+    --strace-filter-tid 'tid1:tid2...'\n\
+                         -- Specify a set of thread ID's to be traced, all others are excluded \n\
+                            from the output. Can be used in conjunction with any of the above filters \n\
+                            E.g: To filter by tid=101, specify - \n\
+                            --strace-filter-tid '101'\n\
+    --strace-filter-pid 'pid1:pid2...'\n\
+                         -- Specify a set of process IDs to be traced, all others are excluded \n\
+                            from the output. Can be used in conjunction with any of the above filters \n\
+                            E.g: To filter by pid=101, specify - \n\
+                            --strace-filter-pid=101\n\
+    --syslog-level=<emerg|alert|crit|err|warn|notice|info|debug>\n\
+                         -- Configure kernel's system logger level \n\
 \n"
 
 int exec_action(int argc, const char* argv[], const char* envp[])
@@ -414,7 +500,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.strace_config.trace_syscalls = true;
         }
 
-        if (myst_parse_strace_config(&argc, argv, &options.strace_config) == 0)
+        if (myst_strace_parse_config(&argc, argv, &options.strace_config) == 0)
         {
             options.strace_config.trace_syscalls = true;
         }
@@ -426,16 +512,18 @@ int exec_action(int argc, const char* argv[], const char* envp[])
             options.trace_errors = true;
         }
 
+        /* Get --crt-memcheck option */
+        if (cli_getopt(&argc, argv, "--crt-memcheck", NULL) == 0)
+        {
+            options.crt_memcheck = true;
+        }
+
         /* Get --trace-times option */
         if (cli_getopt(&argc, argv, "--trace-times", NULL) == 0 ||
             cli_getopt(&argc, argv, "--ttrace", NULL) == 0)
         {
             options.trace_times = true;
         }
-
-        /* Get --shell option */
-        if (cli_getopt(&argc, argv, "--shell", NULL) == 0)
-            options.shell_mode = true;
 
         /* Get --memcheck option */
         if (cli_getopt(&argc, argv, "--memcheck", NULL) == 0)
@@ -456,6 +544,10 @@ int exec_action(int argc, const char* argv[], const char* envp[])
         /* Get --report-native-tids option */
         if (cli_getopt(&argc, argv, "--report-native-tids", NULL) == 0)
             options.report_native_tids = true;
+
+        /* Get --host-uds option */
+        if (cli_getopt(&argc, argv, "--host-uds", NULL) == 0)
+            options.host_uds = true;
 
         /* Get --max-affinity-cpus */
         {
@@ -490,6 +582,14 @@ int exec_action(int argc, const char* argv[], const char* envp[])
                 argv[0]);
             return 1;
         }
+
+        if (get_syslog_level_opts(&argc, argv, &options.syslog_level) != 0)
+            _err(
+                "%s: invalid --syslog-level option. Should be one of - "
+                "\"emerg\", "
+                "\"alert\", \"crit\", \"err\", \"warn\", \"notice\", "
+                "\"info\", \"debug\".",
+                argv[0]);
 
         /* Get MYST_MEMCHECK environment variable */
         {
@@ -650,6 +750,7 @@ int exec_action(int argc, const char* argv[], const char* envp[])
     if (test_user_space_fsgsbase() == 0)
         options.have_fsgsbase_instructions = true;
 
+    assert(myst_validate_file_path(commandline_config));
     if (extract_roothashes_from_ext2_images(
             rootfs, &mount_mapping, &roothash_buf) != 0)
     {
@@ -781,7 +882,7 @@ long myst_interrupt_thread_ocall(pid_t tid)
 long myst_write_console_ocall(int fd, const void* buf, size_t count)
 {
     long ret = 0;
-    FILE* stream;
+    FILE* stream = NULL;
 
     if (!buf)
         ERAISE(-EINVAL);

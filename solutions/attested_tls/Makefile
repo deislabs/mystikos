@@ -18,7 +18,7 @@ all: myst app
 
 #OPTS = --strace
 
-run: appdir
+_run: appdir
 	# Kill the running instance of the TLS server before exit.
 	@trap "exit" INT TERM
 	@trap "killall -9 tlssrv_host" EXIT
@@ -28,15 +28,18 @@ run: appdir
 	# Launch the TLS client with myst
 	$(MYST_EXEC) rootfs /client 127.0.0.1 $(OPTS)
 	@wait
+	
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 app:	app/peer_tee_identity.h
 	rm -rf app/client app/tee.h
-	docker build -t alpine.build -f app-dockerfile .
+	docker build -t attested_tls.alpine.build -f app-dockerfile .
 	cp $(TOP)/include/myst/tee.h app
-	docker run --rm -v $(CURDIR)/app:/app alpine.build bash -c \
+	$(MYST_RETRY) docker run --rm -v $(CURDIR)/app:/app attested_tls.alpine.build bash -c \
     "gcc -g -o /app/client /app/client.c /app/tlscli.c -lmbedtls -lmbedx509 -lmbedcrypto $(MYST_DEFINES)"
 	sudo chown $(USER):$(GROUP) app/client
 	$(TOP)/scripts/appbuilder Dockerfile
@@ -67,3 +70,5 @@ clean:
 	make clean -C oe_enclave/enc
 	make clean -C oe_enclave/host
 	rm -rf app/client app/tee.h app/peer_tee_identity.h
+	docker rmi attested_tls.alpine.build || true
+

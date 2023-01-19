@@ -28,6 +28,7 @@
 #include <myst/spinlock.h>
 #include <myst/strings.h>
 #include <myst/syscall.h>
+#include <myst/syslog.h>
 #include <myst/thread.h>
 #include <myst/trace.h>
 #include <myst/uid_gid.h>
@@ -59,11 +60,17 @@ typedef struct ramfs
     myst_mount_resolve_callback_t resolve;
     size_t ninodes;
     myst_fs_t* lockfs;
+    ramfs_minor_num_t device_num;
 } ramfs_t;
 
 static bool _ramfs_valid(const ramfs_t* ramfs)
 {
     return ramfs && ramfs->magic == RAMFS_MAGIC;
+}
+
+static bool _is_shmfs(const ramfs_t* ramfs)
+{
+    return ramfs && ramfs->device_num == RAMFS_SHMFS;
 }
 
 /*
@@ -253,6 +260,9 @@ static int _inode_new(
 
     inode->gid = myst_syscall_getegid();
     inode->uid = myst_syscall_geteuid();
+
+    if (_is_shmfs(ramfs) && S_ISREG(mode))
+        inode->buf.flags = MYST_BUF_PAGE_ALIGNED;
 
     /* The root directory is its own parent */
     if (!parent)
@@ -1003,7 +1013,7 @@ static off_t _fs_lseek(
 {
     ramfs_t* ramfs = (ramfs_t*)fs;
     off_t ret = 0;
-    off_t new_offset;
+    off_t new_offset = 0;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
@@ -1116,6 +1126,16 @@ done:
     return ret;
 }
 
+static bool is_posix_shmfs_active_file(ramfs_t* ramfs, inode_t* inode)
+{
+    assert(ramfs && _ramfs_valid(ramfs));
+    assert(inode && _inode_valid(inode));
+    if (_is_shmfs(ramfs) && S_ISREG(inode->mode) &&
+        inode->buf.flags & MYST_BUF_ACTIVE_MAPPING)
+        return true;
+    return false;
+}
+
 static ssize_t _fs_write(
     myst_fs_t* fs,
     myst_file_t* file,
@@ -1163,6 +1183,13 @@ static ssize_t _fs_write(
 
         if (new_offset > _file_size(file))
         {
+            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
+            {
+                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
+                          "a posix shared memory file with active mappings.");
+                ERAISE(-EINVAL);
+            }
+
             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
@@ -1283,6 +1310,13 @@ static ssize_t _fs_pwrite(
 
         if (new_offset > _file_size(file))
         {
+            if (is_posix_shmfs_active_file(ramfs, file->shared->inode))
+            {
+                MYST_WLOG("Unsupported Operation: Attempt was made to write to "
+                          "a posix shared memory file with active mappings.");
+                ERAISE(-EINVAL);
+            }
+
             if (myst_buf_resize(&file->shared->inode->buf, new_offset) != 0)
                 ERAISE(-ENOMEM);
         }
@@ -1368,35 +1402,38 @@ static int _fs_close(myst_fs_t* fs, myst_file_t* file)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
+    inode_t* inode;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file))
         ERAISE(-EINVAL);
 
     assert(file->shared->inode);
-    assert(_inode_valid(file->shared->inode));
-    assert(file->shared->inode->nopens > 0);
+    assert(_inode_valid((inode = file->shared->inode)));
+    assert(inode->nopens > 0);
 
     if (--file->shared->use_count == 0)
     {
         /* If a virtual file has a close-callback, call it */
-        if (file->shared->inode->v_cb.close_cb)
-            file->shared->inode->v_cb.close_cb(file);
+        if (inode->v_cb.close_cb)
+            inode->v_cb.close_cb(file);
 
         /* For open-time virtual files, release the virtual file
         data on close */
-        if (file->shared->inode->v_cb.open_cb)
+        if (inode->v_cb.open_cb)
             myst_buf_release(&file->shared->vbuf);
 
-        file->shared->inode->nopens--;
+        inode->nopens--;
 
+        bool active_mmaps =
+            (_is_shmfs(ramfs) && myst_buf_has_active_mmap(&inode->buf));
         /* handle case where file was deleted while open */
-        if (file->shared->inode->nopens == 0 && file->shared->inode->nlink == 0)
+        if (!active_mmaps && inode->nlink == 0 && inode->nopens == 0)
         {
-            _inode_free(ramfs, file->shared->inode);
+            _inode_free(ramfs, inode);
         }
         else
         {
-            _update_timestamps(file->shared->inode, ACCESS);
+            _update_timestamps(inode, ACCESS);
         }
 
         memset(file->shared, 0xdd, sizeof(myst_file_t));
@@ -1464,7 +1501,7 @@ done:
     return ret;
 }
 
-static int _stat(inode_t* inode, struct stat* statbuf)
+static int _stat(ramfs_t* ramfs, inode_t* inode, struct stat* statbuf)
 {
     int ret = 0;
     struct stat buf;
@@ -1486,7 +1523,7 @@ static int _stat(inode_t* inode, struct stat* statbuf)
     }
 
     memset(&buf, 0, sizeof(buf));
-    buf.st_dev = 0;
+    buf.st_dev = ramfs->device_num;
     buf.st_ino = (ino_t)inode;
     buf.st_mode = inode->mode;
     buf.st_nlink = inode->nlink;
@@ -1532,7 +1569,7 @@ static int _fs_stat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK((ret = tfs->fs_stat(tfs, locals->suffix, statbuf)));
         goto done;
     }
-    ERAISE(_stat(inode, statbuf));
+    ERAISE(_stat(ramfs, inode, statbuf));
 
 done:
 
@@ -1568,7 +1605,7 @@ static int _fs_lstat(myst_fs_t* fs, const char* pathname, struct stat* statbuf)
         ECHECK(tfs->fs_lstat(tfs, locals->suffix, statbuf));
         goto done;
     }
-    ERAISE(_stat(inode, statbuf));
+    ERAISE(_stat(ramfs, inode, statbuf));
 
 done:
 
@@ -1587,7 +1624,7 @@ static int _fs_fstat(myst_fs_t* fs, myst_file_t* file, struct stat* statbuf)
         ERAISE(-EINVAL);
 
     assert(_inode_valid(file->shared->inode));
-    ERAISE(_stat(file->shared->inode, statbuf));
+    ERAISE(_stat(ramfs, file->shared->inode, statbuf));
 
 done:
     return ret;
@@ -1729,9 +1766,12 @@ static int _fs_unlink(myst_fs_t* fs, const char* pathname)
     // Delete the inode immediately if it's a symbolic link
     // or nobody owned. The deletion is delayed to _fs_close
     // if file is still linked or opened by someone.
+    // For shm files, cleanup also needs to wait for existing mappings related
+    // to the file to be unmapped.
     if (S_ISLNK(inode->mode) || (inode->nlink == 0 && inode->nopens == 0))
     {
-        _inode_free(ramfs, inode);
+        if (!_is_shmfs(ramfs) || !myst_buf_has_active_mmap(&inode->buf))
+            _inode_free(ramfs, inode);
     }
 
 done:
@@ -1855,6 +1895,30 @@ done:
     return ret;
 }
 
+static int _truncate(ramfs_t* ramfs, inode_t* inode, size_t length)
+{
+    int ret = 0;
+
+    /* truncate does not apply to virtual files */
+    if (_is_virtual_inode(inode))
+        ERAISE(-EINVAL);
+
+    if (is_posix_shmfs_active_file(ramfs, inode))
+    {
+        MYST_WLOG("Unsupported Operation: Attempt was made to truncate "
+                  "a posix shared memory file with active mappings.");
+        ERAISE(-EINVAL);
+    }
+
+    if (myst_buf_resize(&inode->buf, length) != 0)
+        ERAISE(-ENOMEM);
+
+    _update_timestamps(inode, CHANGE | MODIFY);
+
+done:
+    return ret;
+}
+
 static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
 {
     int ret = 0;
@@ -1885,14 +1949,7 @@ static int _fs_truncate(myst_fs_t* fs, const char* pathname, off_t length)
     if (S_ISDIR(inode->mode))
         ERAISE(-EISDIR);
 
-    /* truncate does not apply to virtual files */
-    if (_is_virtual_inode(inode))
-        ERAISE(-EINVAL);
-
-    if (myst_buf_resize(&inode->buf, (size_t)length) != 0)
-        ERAISE(-ENOMEM);
-
-    _update_timestamps(inode, CHANGE | MODIFY);
+    ECHECK(_truncate(ramfs, inode, (size_t)length));
 
 done:
 
@@ -1906,6 +1963,7 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
 {
     int ret = 0;
     ramfs_t* ramfs = (ramfs_t*)fs;
+    uint32_t access;
 
     if (!_ramfs_valid(ramfs) || !_file_valid(file) || length < 0)
         ERAISE(-EINVAL);
@@ -1913,17 +1971,15 @@ static int _fs_ftruncate(myst_fs_t* fs, myst_file_t* file, off_t length)
     if (S_ISDIR(file->shared->inode->mode))
         ERAISE(-EISDIR);
 
-    if (file->shared->access == O_PATH)
+    access = file->shared->access;
+
+    if (access == O_PATH)
         ERAISE(-EBADF);
 
-    /* truncate does not apply to virtual files */
-    if (_is_virtual_inode(file->shared->inode))
+    if (!((access & O_RDWR) || (access & O_WRONLY)))
         ERAISE(-EINVAL);
 
-    if (myst_buf_resize(&file->shared->inode->buf, (size_t)length) != 0)
-        ERAISE(-ENOMEM);
-
-    _update_timestamps(file->shared->inode, CHANGE | MODIFY);
+    ECHECK(_truncate(ramfs, file->shared->inode, (size_t)length));
 
 done:
     return ret;
@@ -2223,7 +2279,10 @@ static int _fs_symlink(myst_fs_t* fs, const char* target, const char* linkpath)
     if (myst_buf_append(&inode->buf, target, strlen(target) + 1) != 0)
         ERAISE(-ENOMEM);
 
+    inode = NULL;
 done:
+    if (inode)
+        _inode_free(ramfs, inode);
 
     if (locals)
         free(locals);
@@ -2872,9 +2931,75 @@ done:
     return ret;
 }
 
+static int _fs_file_data_start_addr(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    void** addr_out)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (_is_shmfs(ramfs))
+    {
+        if (!addr_out)
+            ERAISE(-EINVAL);
+
+        *addr_out = NULL;
+
+        /* memory for shm files are allocated on first ftruncate, or via writing
+        to the file(Pytorch multiprocessing does this). Fail if process mmaps
+        before that */
+        if (!(*addr_out = file->shared->inode->buf.data))
+            ERAISE(-ENOEXEC);
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
+}
+
+static int _fs_file_mapping_notify(
+    myst_fs_t* fs,
+    myst_file_t* file,
+    bool active)
+{
+    int ret = 0;
+    ramfs_t* ramfs = (ramfs_t*)fs;
+
+    if (!_ramfs_valid(ramfs) || !_file_valid(file))
+        ERAISE(-EINVAL);
+
+    if (_is_shmfs(ramfs))
+    {
+        inode_t* inode = file->shared->inode;
+        ECHECK(myst_buf_set_mmap_active(&inode->buf, active));
+
+        // Cleanup only if there are no active mmaps,
+        // inode has been unlinked, and no file handles
+        if (!active && !inode->nlink && !inode->nopens)
+        {
+            _inode_free(ramfs, inode);
+        }
+    }
+    else
+    {
+        ERAISE(-ENOTSUP);
+    }
+
+done:
+    return ret;
+}
+
 static int _init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
-    myst_fs_t** fs_out)
+    myst_fs_t** fs_out,
+    ramfs_minor_num_t device_num)
 {
     int ret = 0;
     ramfs_t* ramfs = NULL;
@@ -2937,6 +3062,8 @@ static int _init_ramfs(
         .fs_fdatasync = _fs_fsync_and_fdatasync,
         .fs_fsync = _fs_fsync_and_fdatasync,
         .fs_release_tree = _fs_release_tree,
+        .fs_file_data_start_addr = _fs_file_data_start_addr,
+        .fs_file_mapping_notify = _fs_file_mapping_notify,
     };
     // clang-format on
     inode_t* root_inode = NULL;
@@ -2957,6 +3084,7 @@ static int _init_ramfs(
     ramfs->root = root_inode;
     ramfs->resolve = resolve_cb;
     myst_strlcpy(ramfs->target, "/", sizeof(ramfs->target));
+    ramfs->device_num = device_num;
     root_inode = NULL;
 
     *fs_out = &ramfs->base;
@@ -2975,14 +3103,15 @@ done:
 
 int myst_init_ramfs(
     myst_mount_resolve_callback_t resolve_cb,
-    myst_fs_t** fs_out)
+    myst_fs_t** fs_out,
+    ramfs_minor_num_t device_num)
 {
     int ret = 0;
     myst_fs_t* ramfs = NULL;
     myst_fs_t* lockfs;
 
     /* always wrap ramfs inside lockfs */
-    ECHECK(_init_ramfs(resolve_cb, &ramfs));
+    ECHECK(_init_ramfs(resolve_cb, &ramfs, device_num));
     ECHECK(myst_lockfs_init(ramfs, &lockfs));
     ((ramfs_t*)ramfs)->lockfs = lockfs;
     ramfs = NULL;

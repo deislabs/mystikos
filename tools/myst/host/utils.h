@@ -14,9 +14,13 @@
 // default Mystikos RAM size
 #define DEFAULT_MMAN_SIZE (64 * 1024 * 1024)
 
-// print error and exit process with 1
+// print error with program name prepended and exit process with 1
 MYST_PRINTF_FORMAT(1, 2)
 void _err(const char* fmt, ...);
+
+// only print error with program name prepended
+MYST_PRINTF_FORMAT(1, 2)
+void _err_noexit(const char* fmt, ...);
 
 // sets the program file name of the process
 const char* set_program_file(const char* program);
@@ -54,6 +58,8 @@ int get_fork_mode_opts(
     int* argc,
     const char* argv[],
     myst_fork_mode_t* fork_mode);
+
+int get_syslog_level_opts(int* argc, const char* argv[], int* syslog_level);
 
 long myst_add_symbol_file_by_path(
     const char* path,

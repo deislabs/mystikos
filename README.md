@@ -47,7 +47,7 @@ Mystikos.
 
 # Installation Guide for Ubuntu
 
-As of release version 0.7.0, Mystikos may be built and installed on Ubuntu 18.04 and 20.04. Earlier Mystikos versions are only compatible with Ubuntu 18.04.
+Mystikos may be built and installed on Ubuntu 18.04 and 20.04.
 
 ## Install from Released Package
 

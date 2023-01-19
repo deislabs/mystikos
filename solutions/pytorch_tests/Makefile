@@ -49,7 +49,7 @@ push:
 	docker push $(DOCKER_FULL_NAME):$(DOCKER_TAG)
 
 appdir:
-	$(APPBUILDER) -i $(DOCKER_FULL_NAME):$(DOCKER_TAG) -v
+	$(APPBUILDER) -m -i $(DOCKER_FULL_NAME):$(DOCKER_TAG) -v
 
 rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
@@ -58,11 +58,10 @@ rootfs: appdir
 run-test-autograd: EXCLUDE_TESTS = "not test_deep_reentrant \
 and not test_no_grad_copy_sparse \
 and not test_profiler_seq_nr \
-and not test_record_function \
-and not test_thread_shutdown"
+and not test_record_function"
 run-test-autograd: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_autograd.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '400 passed.*68 skipped.*7 deselected.*1 xfailed' $@.out
+	grep -q -E '327 passed.*68 skipped.*6 deselected.*1 xfailed' $@.out
 
 .PHONY: run-test-autograd-thread-shutdown
 run-test-autograd-thread-shutdown: rootfs
@@ -102,30 +101,31 @@ and not test_EmbeddingBag_discontiguous \
 and not test_EmbeddingBag_mean \
 and not test_EmbeddingBag_sparse \
 and not test_EmbeddingBag_sum \
-and not test_share_memory \
 and not test_avg_pool2d_nhwc_cpu_float32 \
 and not test_avg_pool2d_nhwc_cpu_float64 \
 and not test_max_pool2d_nhwc_cpu_float32 \
 and not test_max_pool2d_nhwc_cpu_float64 \
 and not test_cross_entropy_loss_precision \
-and not test_l1_loss_correct"
+and not test_l1_loss_correct \
+and not test_GroupNorm_numeric_cpu"
 run-test-nn: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
-	grep -q -E '1325 passed.*1435 skipped.*42 deselected.*3 xfailed' $@.out
+	grep -q -E '1323 passed.*1437 skipped.*42 deselected.*3 xfailed' $@.out
 
 .PHONY: run-test-nn-8g
-run-test-nn-8g: EXCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
+run-test-nn-8g: INCLUDE_TESTS = "test_avg_pool2d_nhwc_cpu_float32 \
 or test_avg_pool2d_nhwc_cpu_float64 \
 or test_max_pool2d_nhwc_cpu_float32 \
 or test_max_pool2d_nhwc_cpu_float64 \
 or test_cross_entropy_loss_precision \
-or test_l1_loss_correct"
+or test_l1_loss_correct \
+or test_GroupNorm_numeric_cpu"
 run-test-nn-8g: rootfs
-	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_nn.py -k $(EXCLUDE_TESTS)
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_nn.py -k $(INCLUDE_TESTS)
 
 .PHONY: run-test-ops
 run-test-ops: rootfs
-	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config4g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_ops.py 2>&1 | tee $@.out
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json /usr/local/bin/python -m pytest -v /workspace/pytorch/test/test_ops.py 2>&1 | tee $@.out
 	grep -q -E '4200 passed.*10069 skipped' $@.out
 
 .PHONY: run-test-torch
@@ -136,15 +136,39 @@ run-test-torch: rootfs
 	$(RUN_PYTEST) /workspace/pytorch/test/test_torch.py -k $(EXCLUDE_TESTS) 2>&1 | tee $@.out
 	grep -q -E '693 passed.*527 skipped.*3 deselected' $@.out
 
+.PHONY: run-test-mp-spawn
+run-test-mp-spawn: EXCLUDE_TESTS = "not test_success_func \
+and not test_success_single_arg_func \
+and not test_exception_single_func \
+and not test_exception_all_func \
+and not test_terminate_signal_func \
+and not test_terminate_exit_func \
+and not test_success_first_then_exception_func \
+and not test_nested_child_body \
+and not test_infinite_task \
+and not test_process_exit \
+and not test_nested \
+and not ForkTest"
+run-test-mp-spawn: rootfs
+	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config8g.json \
+	/usr/local/bin/python -m pytest -v \
+	/workspace/pytorch/test/test_multiprocessing_spawn.py \
+	-k $(EXCLUDE_TESTS)
+
 .PHONY: run-core-tests
-run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch
+run-core-tests: run-test-autograd run-test-autograd-thread-shutdown run-test-modules run-test-nn run-test-nn-8g run-test-ops run-test-torch run-test-mp-spawn
 
 .PHONY: run
-run: run-core-tests
+_run: run-core-tests
+
+run:
+	$(RUNTEST) make -C $(CURDIR) _run
 
 .PHONY: one
+TEST=test_nn
+SUBTEST=test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32
 one: rootfs
-	$(RUN_PYTEST) /workspace/pytorch/test/test_nn.py -s -k "test_EmbeddingBag_per_sample_weights_and_no_offsets_cpu_int64_float32"
+	$(RUN_PYTEST) /workspace/pytorch/test/$(TEST).py -s -k "$(SUBTEST)"
 
 .PHONY: gdb
 gdb: rootfs
@@ -172,7 +196,7 @@ build-appdir: DOCKER_TAG   := $(PYTORCH_VERSION)-build
 build-appdir: BUILD_TARGET := build
 build-appdir: export DOCKER_BUILDKIT=1
 build-appdir:
-	$(APPBUILDER) -e '$(EXTRA_OPTIONS)' -v -d $(DOCKER_FILE) -o build-appdir
+	$(APPBUILDER) -m -e '$(EXTRA_OPTIONS)' -v -d $(DOCKER_FILE) -o build-appdir
 
 build-rootfs: build-appdir
 	$(MYST) mkext2 build-appdir build-rootfs

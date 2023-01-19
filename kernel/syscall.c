@@ -73,6 +73,7 @@
 #include <myst/realpath.h>
 #include <myst/round.h>
 #include <myst/setjmp.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
@@ -193,20 +194,51 @@ static const char* _format_timespec(
 
 static bool _trace_syscall(long n)
 {
-    // Check if syscall tracing is enabled.
+    /* Check if syscall tracing is enabled. */
     if (__myst_kernel_args.strace_config.trace_syscalls)
     {
         if (__myst_kernel_args.strace_config.filter)
         {
-            // If filtering is enabled, trace only this syscall has been
-            // specified in the filter.
-            return __myst_kernel_args.strace_config.trace[n];
+            /* If filtering is enabled, trace only this syscall if it has been
+               specified in the filter. */
+            if (__myst_kernel_args.strace_config.trace[n] == 0)
+                return false;
         }
-        else
+        if (__myst_kernel_args.strace_config.tid_filter_num > 0)
         {
-            // Trace all syscalls.
-            return true;
+            /* Check if thread filtering is enabled & follow filter */
+            pid_t current_tid = myst_thread_self()->tid;
+
+            for (int i = 0; i < __myst_kernel_args.strace_config.tid_filter_num;
+                 i++)
+            {
+                if (current_tid ==
+                    __myst_kernel_args.strace_config.tid_trace[i])
+                    return true;
+            }
+
+            /* tid filter is specified, but no match in filter */
+            return false;
         }
+        if (__myst_kernel_args.strace_config.pid_filter_num > 0)
+        {
+            /* Check if thread filtering is enabled & follow filter */
+            pid_t current_pid = myst_process_self()->pid;
+
+            for (int i = 0; i < __myst_kernel_args.strace_config.pid_filter_num;
+                 i++)
+            {
+                if (current_pid ==
+                    __myst_kernel_args.strace_config.pid_trace[i])
+                    return true;
+            }
+
+            /* pid filter is specified, but no match in filter */
+            return false;
+        }
+
+        /* syscall filtering is enabled & syscall is to be traversed */
+        return true;
     }
     return false;
 }
@@ -387,17 +419,36 @@ static int _socketaddr_to_str(
         ERAISE(-EFAULT);
     }
 
-    const uint8_t* p = (uint8_t*)addr->sa_data;
-    uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
-    const uint8_t ip1 = p[2];
-    const uint8_t ip2 = p[3];
-    const uint8_t ip3 = p[4];
-    const uint8_t ip4 = p[5];
-
-    if (snprintf(out, limit, "%u.%u.%u.%u:%u", ip1, ip2, ip3, ip4, port) >=
-        (int)limit)
+    if (addr->sa_family == AF_UNIX)
     {
-        ERAISE(-ENAMETOOLONG);
+        if (addr->sa_data[0])
+        {
+            if (myst_snprintf(out, limit, "%s", addr->sa_data) == ERANGE)
+                ERAISE(-ENAMETOOLONG);
+        }
+        // abstract namespace address
+        else if (
+            myst_snprintf(
+                out, limit, "%s(abstract namespace)", addr->sa_data + 1) ==
+            ERANGE)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
+    }
+    else
+    {
+        const uint8_t* p = (uint8_t*)addr->sa_data;
+        uint16_t port = (uint16_t)((p[0] << 8) | p[1]);
+        const uint8_t ip1 = p[2];
+        const uint8_t ip2 = p[3];
+        const uint8_t ip3 = p[4];
+        const uint8_t ip4 = p[5];
+
+        if (snprintf(out, limit, "%u.%u.%u.%u:%u", ip1, ip2, ip3, ip4, port) >=
+            (int)limit)
+        {
+            ERAISE(-ENAMETOOLONG);
+        }
     }
 
 done:
@@ -2282,7 +2333,15 @@ long myst_syscall_execveat(
             ERAISE(-ENOMEM);
 
         for (size_t i = 0; i < argc; i++)
+        {
             argv[i] = argv_in[i];
+            if (__myst_kernel_args.strace_config.trace_syscalls)
+            {
+                myst_eprintf(" %s ", argv[i]);
+                if (i == argc - 1)
+                    myst_eprintf("\n");
+            }
+        }
 
         argv[0] = abspath;
         argv[argc] = NULL;
@@ -2349,9 +2408,21 @@ int myst_syscall_bind(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
+    struct sockaddr* new_addr;
+    socklen_t new_addrlen;
+    bool reresolved;
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
-    ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
+    ECHECK(myst_host_uds_addr_reresolve(
+        sockfd, sd, sock, addr, addrlen, &reresolved, &new_addr, &new_addrlen));
+
+    if (!reresolved)
+        ret = (*sd->sd_bind)(sd, sock, addr, addrlen);
+    else
+    {
+        ret = (*sd->sd_bind)(sd, sock, new_addr, new_addrlen);
+        free(new_addr);
+    }
 
 done:
     return ret;
@@ -2366,6 +2437,9 @@ long myst_syscall_connect(
     myst_fdtable_t* fdtable = myst_fdtable_current();
     myst_sockdev_t* sd;
     myst_sock_t* sock;
+    struct sockaddr* new_addr;
+    socklen_t new_addrlen;
+    bool reresolved;
     myst_fdtable_type_t type;
 
     ECHECK(myst_fdtable_get_any(
@@ -2377,7 +2451,16 @@ long myst_syscall_connect(
     if (myst_is_bad_addr_read(addr, sizeof(struct sockaddr)))
         ERAISE(-EFAULT);
 
-    ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
+    ECHECK(myst_host_uds_addr_reresolve(
+        sockfd, sd, sock, addr, addrlen, &reresolved, &new_addr, &new_addrlen));
+
+    if (!reresolved)
+        ret = (*sd->sd_connect)(sd, sock, addr, addrlen);
+    else
+    {
+        ret = (*sd->sd_connect)(sd, sock, new_addr, new_addrlen);
+        free(new_addr);
+    }
 
 done:
     return ret;
@@ -2405,6 +2488,7 @@ long myst_syscall_recvfrom(
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     ret = (*sd->sd_recvfrom)(sd, sock, buf, len, flags, src_addr, addrlen);
 
 done:
@@ -2439,6 +2523,7 @@ long myst_syscall_sendto(
         ERAISE(-EFAULT);
 
     ECHECK(myst_fdtable_get_sock(fdtable, sockfd, &sd, &sock));
+
     ret = (*sd->sd_sendto)(sd, sock, buf, len, flags, dest_addr, addrlen);
 
 done:
@@ -2738,7 +2823,7 @@ long myst_syscall_sysinfo(struct sysinfo* info)
     // Only clear out non-reserved portion of the structure.
     // This is to be defensive against different sizes of this
     // structure in musl and glibc.
-    memset(info, 0, sizeof(struct sysinfo) - 256);
+    memset(info, 0, sizeof(*info) - sizeof(info->__reserved));
     info->totalram = totalram;
     info->freeram = freeram;
     info->mem_unit = 1;
@@ -2797,12 +2882,30 @@ done:
 
 long myst_syscall_getrusage(int who, struct rusage* usage)
 {
-    // ATTN: support child process and per-thread usage reporting.
-    if (who == RUSAGE_CHILDREN || who == RUSAGE_THREAD)
+    // ATTN: support per-thread usage reporting.
+    if (who == RUSAGE_THREAD)
         return -EINVAL;
 
-    long stime = myst_times_system_time();
-    long utime = myst_times_user_time();
+    struct tms tm;
+    myst_times_process_times(myst_process_self(), &tm);
+
+    long stime = tm.tms_stime;
+    long utime = tm.tms_utime;
+
+    if (who == RUSAGE_SELF)
+    {
+        stime = tm.tms_stime;
+        utime = tm.tms_utime;
+    }
+    else if (who == RUSAGE_CHILDREN)
+    {
+        stime = tm.tms_cstime;
+        utime = tm.tms_cutime;
+    }
+
+    // NOTE: glibc and musl have different sized rusage structures. Not clearing
+    // out the reserved makes it inline with that of glibc.
+    memset(usage, 0, sizeof(*usage) - sizeof(usage->__reserved));
     usage->ru_utime.tv_sec = utime / 1000000000;
     usage->ru_utime.tv_usec = utime % 1000000000 * 1000;
     usage->ru_stime.tv_sec = stime / 1000000000;
@@ -3540,12 +3643,14 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d flags=%d fd=%d offset=%lu",
+        "addr=%lx length=%zu(%lx) prot=%d(%s) flags=%d(%s) fd=%d offset=%lu",
         (long)addr,
         length,
         length,
         prot,
+        myst_mman_prot_to_string(prot),
         flags,
+        myst_mman_flags_to_string(flags),
         fd,
         offset);
 
@@ -3563,24 +3668,30 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         if (flags & MAP_FIXED)
         {
-            pid_t pid = myst_getpid();
-
-            size_t rounded_up_length;
-            if (myst_round_up(length, PAGE_SIZE, &rounded_up_length) < 0)
+            // addr hint with MAP_FIXED not supported for shared mappings
+            if (flags & MAP_SHARED)
+            {
+                MYST_WLOG("MAP_FIXED is not supported for shared mappings");
                 return (_return(n, -EINVAL));
+            }
 
-            /* if calling process does not own this mapping */
-            if (myst_mman_pids_test(addr, rounded_up_length, pid) !=
-                (ssize_t)rounded_up_length)
+            /* Caller should own the memory range */
+            if (!myst_process_owns_mem_range(addr, length, true))
                 return (_return(n, -EINVAL));
         }
         else
         {
-            /* address hint is unsupported */
+            /* address hint is disregarded */
             addr = NULL;
         }
     }
 
+    if (fd >= 0)
+    {
+        myst_rspin_lock(&myst_fdtable_current()->lock);
+        myst_lockfs_lock();
+    }
+    myst_mman_lock();
     /* this can return (void*)-errno */
     long ret = (long)myst_mmap(addr, length, prot, flags, fd, offset);
 
@@ -3590,16 +3701,27 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
     {
         ret = -ENOMEM;
     }
-    else if (ret > 0)
+    else if (ret > 0 && !(flags & MAP_SHARED))
     {
         pid_t pid = myst_getpid();
         void* ptr = (void*)ret;
 
-        /* set ownership this mapping to pid */
+        /* set ownership of this mapping to pid */
         if (myst_mman_pids_set(ptr, length, pid) != 0)
+        {
+            myst_mman_unlock();
+            if (fd >= 0)
+                myst_lockfs_unlock();
             myst_panic("myst_mman_pids_set()");
+        }
 
         ret = (long)ptr;
+    }
+    myst_mman_unlock();
+    if (fd >= 0)
+    {
+        myst_rspin_unlock(&myst_fdtable_current()->lock);
+        myst_lockfs_unlock();
     }
 
     return (_return(n, ret));
@@ -3607,19 +3729,61 @@ static long _SYS_mmap(long n, long params[6], const myst_process_t* process)
 
 static long _SYS_mprotect(long n, long params[6])
 {
+    long ret = 0;
     const void* addr = (void*)params[0];
     const size_t length = (size_t)params[1];
     const int prot = (int)params[2];
 
     _strace(
         n,
-        "addr=%lx length=%zu(%lx) prot=%d",
+        "addr=%lx length=%zu(%lx) prot=%d(%s)",
         (long)addr,
         length,
         length,
-        prot);
+        prot,
+        myst_mman_prot_to_string(prot));
 
-    return (_return(n, (long)myst_mprotect(addr, length, prot)));
+    myst_mman_lock();
+    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_mprotect(addr, length, prot);
+
+done:
+
+    myst_mman_unlock();
+    return (_return(n, ret));
+}
+
+static long _SYS_maccess(long n, long params[6])
+{
+    long ret = 0;
+    const void* addr = (void*)params[0];
+    const size_t length = (size_t)params[1];
+    const int prot = (int)params[2];
+
+    _strace(
+        n,
+        "addr=%lx length=%zu(%lx) prot=%d(%s)",
+        (long)addr,
+        length,
+        length,
+        prot,
+        myst_mman_prot_to_string(prot));
+
+    myst_mman_lock();
+
+    /* TODO: this currently fails mprotect() on memory acquired by SYS_brk */
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_maccess(addr, length, prot);
+
+done:
+
+    myst_mman_unlock();
+    return (_return(n, ret));
 }
 
 static long _SYS_munmap(
@@ -3628,6 +3792,7 @@ static long _SYS_munmap(
     myst_thread_t* thread,
     const myst_td_t* crt_td)
 {
+    long ret = 0;
     void* addr = (void*)params[0];
     size_t length = (size_t)params[1];
 
@@ -3652,16 +3817,151 @@ static long _SYS_munmap(
         }
     }
 
-    long ret = (long)myst_munmap(addr, length);
+    myst_lockfs_lock();
+    myst_mman_lock();
+
+    /* Handle MAP_SHARED unmapping */
+    {
+        bool is_shmem;
+        if (myst_shmem_handle_munmap(addr, length, &is_shmem) < 0)
+            ERAISE(-EINVAL);
+
+        if (is_shmem)
+            goto done;
+    }
+
+    if (!myst_process_owns_mem_range(addr, length, true))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_munmap(addr, length);
 
     if (ret == 0)
     {
         /* set ownership this mapping to nobody */
         if (myst_mman_pids_set(addr, length, 0) != 0)
+        {
+            myst_mman_unlock();
+            myst_lockfs_unlock();
             myst_panic("myst_mman_pids_set()");
+        }
     }
 
+done:
+    myst_mman_unlock();
+    myst_lockfs_unlock();
+
     return (_return(n, ret));
+}
+
+static long _SYS_mremap(long n, long params[6])
+{
+    void* old_address = (void*)params[0];
+    size_t old_size = (size_t)params[1];
+    size_t new_size = (size_t)params[2];
+    int flags = (int)params[3];
+    void* new_address = (void*)params[4];
+    long ret;
+    map_type_t old_map_type = NONE;
+
+    _strace(
+        n,
+        "old_address=%p "
+        "old_size=%zu "
+        "new_size=%zu "
+        "flags=%d "
+        "new_address=%p ",
+        old_address,
+        old_size,
+        new_size,
+        flags,
+        new_address);
+
+    if (!new_size)
+        ERAISE(-EINVAL);
+
+    /* filesystem lock is required only in the shrink case, for closing file
+     * handles related to memory range being released. In the growing case,
+     * fdmappings entries are copied over from the old memory region, no
+     * filesystem operations involved. Note, the newly allocated memory is not
+     * part of the file mapping. */
+    if (new_size < old_size)
+        myst_lockfs_lock();
+    myst_mman_lock();
+
+    if (!(old_map_type =
+              myst_process_owns_mem_range(old_address, old_size, NULL)))
+        ERAISE(-EINVAL);
+
+    ret =
+        (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
+
+    if (old_map_type != SHARED && ret >= 0)
+    {
+        const pid_t pid = myst_getpid();
+
+        /* set ownership of old mapping to nobody */
+        if (myst_mman_pids_set(old_address, old_size, 0) != 0)
+        {
+            myst_mman_unlock();
+            if (new_size < old_size)
+                myst_lockfs_unlock();
+            myst_panic("myst_mman_pids_set()");
+        }
+
+        /* set ownership of new mapping to pid */
+        if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
+        {
+            myst_mman_unlock();
+            if (new_size < old_size)
+                myst_lockfs_unlock();
+            myst_panic("myst_mman_pids_set()");
+        }
+    }
+
+done:
+    myst_mman_unlock();
+    if (new_size < old_size)
+        myst_lockfs_unlock();
+
+    return (_return(n, ret));
+}
+
+static long _SYS_msync(long n, long params[6])
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int flags = (int)params[2];
+    long ret = 0;
+
+    _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
+
+    myst_lockfs_lock();
+    myst_mman_lock();
+
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        ERAISE(-EINVAL);
+
+    ret = (long)myst_msync(addr, length, flags);
+
+done:
+    myst_mman_unlock();
+    myst_lockfs_unlock();
+
+    return (_return(n, ret));
+}
+
+static long _SYS_madvise(long n, long params[6])
+{
+    void* addr = (void*)params[0];
+    size_t length = (size_t)params[1];
+    int advice = (int)params[2];
+
+    _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
+
+    if (!myst_process_owns_mem_range(addr, length, NULL))
+        return (_return(n, -EINVAL));
+
+    return (_return(n, 0));
 }
 
 static long _SYS_brk(long n, long params[6])
@@ -3809,79 +4109,6 @@ static long _SYS_sched_yield(long n, long params[6])
     return (_return(n, myst_syscall_sched_yield()));
 }
 
-static long _SYS_mremap(long n, long params[6])
-{
-    void* old_address = (void*)params[0];
-    size_t old_size = (size_t)params[1];
-    size_t new_size = (size_t)params[2];
-    int flags = (int)params[3];
-    void* new_address = (void*)params[4];
-    long ret;
-
-    _strace(
-        n,
-        "old_address=%p "
-        "old_size=%zu "
-        "new_size=%zu "
-        "flags=%d "
-        "new_address=%p ",
-        old_address,
-        old_size,
-        new_size,
-        flags,
-        new_address);
-
-    {
-        const pid_t pid = myst_getpid();
-        myst_assume(pid > 0);
-
-        /* fail if the calling process does not own this mapping */
-        if (myst_mman_pids_test(old_address, old_size, pid) !=
-            (ssize_t)old_size)
-            return (_return(n, -EINVAL));
-    }
-
-    ret =
-        (long)myst_mremap(old_address, old_size, new_size, flags, new_address);
-
-    if (ret >= 0)
-    {
-        const pid_t pid = myst_getpid();
-
-        /* set ownership of old mapping to nobody */
-        if (myst_mman_pids_set(old_address, old_size, 0) != 0)
-            myst_panic("myst_mman_pids_set()");
-
-        /* set ownership of new mapping to pid */
-        if (myst_mman_pids_set((const void*)ret, new_size, pid) != 0)
-            myst_panic("myst_mman_pids_set()");
-    }
-
-    return (_return(n, ret));
-}
-
-static long _SYS_msync(long n, long params[6])
-{
-    void* addr = (void*)params[0];
-    size_t length = (size_t)params[1];
-    int flags = (int)params[2];
-
-    _strace(n, "addr=%p length=%zu flags=%d ", addr, length, flags);
-
-    return (_return(n, myst_msync(addr, length, flags)));
-}
-
-static long _SYS_madvise(long n, long params[6])
-{
-    void* addr = (void*)params[0];
-    size_t length = (size_t)params[1];
-    int advice = (int)params[2];
-
-    _strace(n, "addr=%p length=%zu advice=%d", addr, length, advice);
-
-    return (_return(n, 0));
-}
-
 static long _SYS_dup(long n, long params[6])
 {
     int oldfd = (int)params[0];
@@ -3951,18 +4178,6 @@ static long _SYS_myst_run_itimer(
     return (_return(n, myst_syscall_run_itimer(process)));
 }
 
-static long _SYS_myst_start_shell(long n, long params[6])
-{
-    (void)params;
-
-    _strace(n, NULL);
-
-    if (__myst_kernel_args.shell_mode)
-        myst_start_shell("\nMystikos shell (syscall)\n");
-
-    return (_return(n, 0));
-}
-
 static long _SYS_getitimer(long n, long params[6], myst_process_t* process)
 {
     int which = (int)params[0];
@@ -3980,7 +4195,16 @@ static long _SYS_setitimer(long n, long params[6], myst_process_t* process)
     struct itimerval* old_value = (void*)params[2];
 
     _strace(
-        n, "which=%d new_value=%p old_value=%p", which, new_value, old_value);
+        n,
+        "which=%d new_value=%p(interval {sec=%ld usec=%ld} value "
+        "{sec=%ld usec=%ld}) old_value=%p",
+        which,
+        new_value,
+        new_value ? new_value->it_interval.tv_sec : 0,
+        new_value ? new_value->it_interval.tv_usec : 0,
+        new_value ? new_value->it_value.tv_sec : 0,
+        new_value ? new_value->it_value.tv_usec : 0,
+        old_value);
 
     return (_return(
         n, myst_syscall_setitimer(process, which, new_value, old_value)));
@@ -4010,7 +4234,7 @@ static long _SYS_myst_clone(long n, long params[6])
         n,
         "fn=%p "
         "child_stack=%p "
-        "flags=%x "
+        "flags=%x (%s) "
         "arg=%p "
         "ptid=%p "
         "newtls=%p "
@@ -4018,6 +4242,7 @@ static long _SYS_myst_clone(long n, long params[6])
         fn,
         child_stack,
         flags,
+        flags & CLONE_VFORK ? "CLONE_VFORK" : "CLONE_THREAD",
         arg,
         ptid,
         newtls,
@@ -4494,10 +4719,20 @@ static long _SYS_getrusage(long n, long params[6])
 {
     int who = (int)params[0];
     struct rusage* usage = (struct rusage*)params[1];
+    long ret;
 
     _strace(n, "who=%d usage=%p", who, usage);
 
-    long ret = myst_syscall_getrusage(who, usage);
+    if (!usage || myst_is_bad_addr_write(usage, sizeof(*usage)))
+        ret = -EFAULT;
+    else if (
+        who != RUSAGE_THREAD && who != RUSAGE_CHILDREN && who != RUSAGE_SELF)
+        ret = -EINVAL;
+    else
+    {
+        ret = myst_syscall_getrusage(who, usage);
+    }
+
     return (_return(n, ret));
 }
 
@@ -4509,22 +4744,25 @@ static long _SYS_sysinfo(long n, long params[6])
     return (_return(n, ret));
 }
 
-static long _SYS_times(long n, long params[6])
+static long _SYS_times(long n, long params[6], myst_process_t* process)
 {
     struct tms* tm = (struct tms*)params[0];
     _strace(n, "tm=%p", tm);
 
-    long stime = myst_times_system_time();
-    long utime = myst_times_user_time();
+    struct tms process_tm;
+    myst_times_process_times(process, &process_tm);
+
+    long ret = process_tm.tms_stime + process_tm.tms_utime;
+
     if (tm != NULL)
     {
-        tm->tms_utime = utime;
-        tm->tms_stime = stime;
-        tm->tms_cutime = 0;
-        tm->tms_cstime = 0;
+        if (!myst_is_bad_addr_write(tm, sizeof(struct tms)))
+            *tm = process_tm;
+        else
+            ret = -EFAULT;
     }
 
-    return (_return(n, stime + utime));
+    return (_return(n, ret));
 }
 
 static long _SYS_syslog(long n, long params[6])
@@ -4873,7 +5111,7 @@ static long _SYS_mlock(long n, long params[6])
 static long _SYS_prctl(long n, long params[6])
 {
     int option = (int)params[0];
-    long ret = 0;
+    long ret = -EINVAL;
 
     _strace(n, "option=%d", option);
 
@@ -4884,8 +5122,8 @@ static long _SYS_prctl(long n, long params[6])
             return (_return(n, -EINVAL));
 
         // ATTN: Linux requires a 16-byte buffer:
-        const size_t n = 16;
-        myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), n);
+        myst_strlcpy(arg2, myst_get_thread_name(myst_thread_self()), 16);
+        ret = 0;
     }
     else if (option == PR_SET_NAME)
     {
@@ -4895,9 +5133,11 @@ static long _SYS_prctl(long n, long params[6])
 
         ret = myst_set_thread_name(myst_thread_self(), arg2);
     }
-    else
+    else if (option == PR_SET_PDEATHSIG)
     {
-        ret = -EINVAL;
+        // TODO: Send signal passed as arg2 to the calling process if and when
+        // its parent dies.
+        ret = 0;
     }
 
     return (_return(n, ret));
@@ -5162,16 +5402,6 @@ static long _SYS_clock_settime(long n, long params[6])
     _strace(n, "clk_id=%u tp=%s", clk_id, _format_timespec(&buf, tp));
 
     return (_return(n, myst_syscall_clock_settime(clk_id, tp)));
-}
-
-static long _SYS_clock_gettime(long n, long params[6])
-{
-    clockid_t clk_id = (clockid_t)params[0];
-    struct timespec* tp = (struct timespec*)params[1];
-
-    _strace(n, "clk_id=%u tp=%p", clk_id, tp);
-
-    return (_return(n, myst_syscall_clock_gettime(clk_id, tp)));
 }
 
 static long _SYS_clock_getres(long n, long params[6])
@@ -5791,6 +6021,17 @@ static long _SYS_prlimit64(long n, long params[6])
     return (_return(n, ret));
 }
 
+static long _SYS_getrlimit(long n, long params[6])
+{
+    int resource = (int)params[0];
+    struct rlimit* rlim = (struct rlimit*)params[1];
+
+    _strace(n, "resource=%d, rlim=%p", resource, rlim);
+
+    int ret = myst_limit_get_rlimit(0, resource, rlim);
+    return (_return(n, ret));
+}
+
 static long _SYS_sendmmsg(long n, long params[6], myst_thread_t* thread)
 {
     int sockfd = (int)params[0];
@@ -5970,7 +6211,7 @@ static long _SYS_connect(long n, long params[6])
         {
             _strace(
                 n,
-                "sockfd=%d addrlen=%u family=%u ip=%s",
+                "sockfd=%d addrlen=%u family=%u addr=%s",
                 sockfd,
                 addrlen,
                 addr->sa_family,
@@ -6523,6 +6764,10 @@ static long _syscall(void* args_)
         {
             BREAK(_SYS_mprotect(n, params));
         }
+        case SYS_myst_maccess:
+        {
+            BREAK(_SYS_maccess(n, params));
+        }
         case SYS_munmap:
         {
             BREAK(_SYS_munmap(n, params, thread, crt_td));
@@ -6612,10 +6857,6 @@ static long _syscall(void* args_)
         case SYS_myst_run_itimer:
         {
             BREAK(_SYS_myst_run_itimer(n, params, process));
-        }
-        case SYS_myst_start_shell:
-        {
-            BREAK(_SYS_myst_start_shell(n, params));
         }
         case SYS_getitimer:
         {
@@ -6809,7 +7050,9 @@ static long _syscall(void* args_)
             BREAK(_SYS_gettimeofday(n, params));
         }
         case SYS_getrlimit:
-            break;
+        {
+            BREAK(_SYS_getrlimit(n, params));
+        };
         case SYS_getrusage:
         {
             BREAK(_SYS_getrusage(n, params));
@@ -6820,7 +7063,7 @@ static long _syscall(void* args_)
         }
         case SYS_times:
         {
-            BREAK(_SYS_times(n, params));
+            BREAK(_SYS_times(n, params, process));
         }
         case SYS_ptrace:
             break;
@@ -7193,7 +7436,8 @@ static long _syscall(void* args_)
         }
         case SYS_clock_gettime:
         {
-            BREAK(_SYS_clock_gettime(n, params));
+            /* this is handled in myst_syscall() */
+            break;
         }
         case SYS_clock_getres:
         {
@@ -7594,14 +7838,17 @@ done:
 
     /* ---------- running target thread descriptor ---------- */
 
+    /* Process signals pending for this thread, if there is any,
+     * before switching back to the C-runtime thread descriptor to
+     * ensure running the signal processing code with the kernel
+     * thread descriptor. */
+    myst_signal_process(thread);
+
     /* the C-runtime must execute on its own thread descriptor */
     if (crt_td)
         myst_set_fsbase(crt_td);
 
     myst_times_leave_kernel(n);
-
-    // Process signals pending for this thread, if there is any.
-    myst_signal_process(thread);
 
     return syscall_ret;
 }
@@ -7611,6 +7858,16 @@ long myst_syscall(long n, long params[6])
     long ret;
     uint64_t rsp;
     myst_kstack_t* kstack;
+    void* saved_fs;
+    void* base_fs;
+
+    /* At this point, we cannot be sure about what FS is using (determined
+     * by _syscall). To ensure using the kernel FS (same as OE FS) when calling
+     * functions that could come across the OE layer (e.g., making an OCALL),
+     * we temporarily switch to the kernel FS if it has user value before
+     * calling the function and restore when the function returns. */
+    asm("mov %%fs:0, %0" : "=r"(saved_fs));
+    asm("mov %%gs:0, %0" : "=r"(base_fs));
 
     // Call myst_syscall_clock_gettime() upfront to avoid triggering the
     // overhead of myst_times_enter_kernel() and myst_times_leave_kernel(),
@@ -7619,6 +7876,8 @@ long myst_syscall(long n, long params[6])
     {
         clockid_t clk_id = (clockid_t)params[0];
         struct timespec* tp = (struct timespec*)params[1];
+        /* No need to switch FS as myst_syscall_clock_gettime does not make
+         * OCALLs */
         return myst_syscall_clock_gettime(clk_id, tp);
     }
 
@@ -7629,11 +7888,22 @@ long myst_syscall(long n, long params[6])
     {
         int code = (int)params[0];
         unsigned long* addr = (unsigned long*)params[1];
+        /* No need to switch FS as myst_syscall_arch_prctl does not make
+         * OCALLs */
         return myst_syscall_arch_prctl(code, addr);
     }
 
+    /* Switch FS before myst_get_kstack, which could make OCALLs because of
+     * myst_mmap and myst_mprotect */
+    if (saved_fs != base_fs)
+        myst_set_fsbase(base_fs);
+
     if (!(kstack = myst_get_kstack()))
         myst_panic("no more kernel stacks");
+
+    /* Restore FS */
+    if (saved_fs != base_fs)
+        myst_set_fsbase(saved_fs);
 
     // Get the user rsp before switching to the kernel stack
     asm volatile("mov %%rsp, %0" : "=r"(rsp));
@@ -7677,14 +7947,14 @@ long myst_syscall_clock_gettime(clockid_t clk_id, struct timespec* tp)
 
     if (clk_id == CLOCK_PROCESS_CPUTIME_ID)
     {
-        long nanoseconds = myst_times_process_time();
+        long nanoseconds = myst_times_process_time(myst_process_self());
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;
     }
     if (clk_id == CLOCK_THREAD_CPUTIME_ID)
     {
-        long nanoseconds = myst_times_thread_time();
+        long nanoseconds = myst_times_thread_time(myst_thread_self());
         tp->tv_sec = nanoseconds / NANO_IN_SECOND;
         tp->tv_nsec = nanoseconds % NANO_IN_SECOND;
         return 0;

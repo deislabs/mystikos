@@ -71,6 +71,8 @@ long determine_final_options(
         final_opts->base.exec_stack = parsed_config->exec_stack;
         final_opts->base.unhandled_syscall_enosys =
             parsed_config->unhandled_syscall_enosys;
+        final_opts->base.host_uds = parsed_config->host_uds;
+        final_opts->base.syslog_level = parsed_config->syslog_level;
 
         // Some options should not be enabled unless running in debug mode
         if (tee_debug_mode)
@@ -78,12 +80,12 @@ long determine_final_options(
             final_opts->base.strace_config = cmdline_opts->strace_config;
             final_opts->base.trace_errors = cmdline_opts->trace_errors;
             final_opts->base.trace_times = cmdline_opts->trace_times;
-            final_opts->base.shell_mode = cmdline_opts->shell_mode;
             final_opts->base.debug_symbols = cmdline_opts->debug_symbols;
             final_opts->base.memcheck = cmdline_opts->memcheck;
             final_opts->base.perf = cmdline_opts->perf;
             final_opts->base.report_native_tids =
                 cmdline_opts->report_native_tids;
+            final_opts->base.crt_memcheck = cmdline_opts->crt_memcheck;
         }
         else
         {
@@ -93,11 +95,11 @@ long determine_final_options(
                 sizeof(final_opts->base.strace_config));
             final_opts->base.trace_errors = false;
             final_opts->base.trace_times = false;
-            final_opts->base.shell_mode = false;
             final_opts->base.debug_symbols = false;
             final_opts->base.memcheck = false;
             final_opts->base.perf = false;
             final_opts->base.report_native_tids = false;
+            final_opts->base.crt_memcheck = false;
         }
     }
     else

@@ -396,7 +396,7 @@ static long _sendmsg(
     typeof(myst_sendmsg_ocall) ocall)
 {
     long ret = 0;
-    long retval;
+    long retval = 0;
     oe_result_t oeret;
 
     if (sockfd < 0 || !msg)
@@ -631,7 +631,7 @@ static long _getsockname(int sockfd, struct sockaddr* addr, socklen_t* addrlen)
         goto done;
     }
 
-    if (!addr || !addrlen || *addrlen < 0)
+    if (!addr || !addrlen)
     {
         ret = -EINVAL;
         goto done;

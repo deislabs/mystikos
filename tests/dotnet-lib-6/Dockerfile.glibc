@@ -1,8 +1,9 @@
 FROM mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-16.04-20210924170333-538077f as builder
+ARG TAG=v6.0.1
 
 # Step 1. Build .Net runtime + library tests
 WORKDIR /build
-RUN git clone --depth 1 --single-branch --branch v6.0.1 https://github.com/dotnet/runtime.git
+RUN git clone --depth 1 --single-branch --branch ${TAG} https://github.com/dotnet/runtime.git
 WORKDIR /build/runtime/
 
 # Build clr+libs+libs.tests in Release

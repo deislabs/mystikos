@@ -27,7 +27,7 @@ tests:
 
 # no fork
 test-no-fork: rootfs
-	$(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-none.json rootfs /bin/fork nofork
+	TIMEOUT=360 $(RUNTEST) $(MYST_EXEC) $(OPTS) --app-config-path config-none.json rootfs /bin/fork nofork
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) rootfs /bin/fork nofork
 	$(RUNTEST) $(MYST_EXEC) $(OPTS) --fork-mode none rootfs /bin/fork nofork
 

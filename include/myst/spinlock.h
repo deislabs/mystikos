@@ -5,6 +5,7 @@
 #define _MYST_SPINLOCK_H
 
 #include <errno.h>
+#include <myst/assume.h>
 #include <myst/defs.h>
 #include <myst/types.h>
 

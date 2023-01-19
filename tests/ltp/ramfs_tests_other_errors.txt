@@ -9,7 +9,6 @@
 /ltp/testcases/kernel/syscalls/add_key/add_key05
 /ltp/testcases/kernel/syscalls/alarm/alarm07
 /ltp/testcases/kernel/syscalls/bind/bind02
-/ltp/testcases/kernel/syscalls/bind/bind04
 /ltp/testcases/kernel/syscalls/bind/bind05
 /ltp/testcases/kernel/syscalls/bind/bind06
 /ltp/testcases/kernel/syscalls/bpf/bpf_prog04
@@ -231,7 +230,6 @@
 /ltp/testcases/kernel/syscalls/get_robust_list/get_robust_list01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd01
 /ltp/testcases/kernel/syscalls/getcwd/getcwd03
-/ltp/testcases/kernel/syscalls/getdtablesize/getdtablesize01
 /ltp/testcases/kernel/syscalls/getegid/getegid01_16
 /ltp/testcases/kernel/syscalls/getegid/getegid02_16
 /ltp/testcases/kernel/syscalls/geteuid/geteuid01_16
@@ -254,8 +252,6 @@
 /ltp/testcases/kernel/syscalls/getresuid/getresuid02_16
 /ltp/testcases/kernel/syscalls/getresuid/getresuid03_16
 /ltp/testcases/kernel/syscalls/getrlimit/getrlimit02
-/ltp/testcases/kernel/syscalls/getrusage/getrusage01
-/ltp/testcases/kernel/syscalls/getrusage/getrusage02
 /ltp/testcases/kernel/syscalls/getrusage/getrusage03
 /ltp/testcases/kernel/syscalls/getrusage/getrusage03_child
 /ltp/testcases/kernel/syscalls/getrusage/getrusage04
@@ -726,3 +722,11 @@
 /ltp/testcases/kernel/syscalls/writev/writev05
 /ltp/testcases/kernel/syscalls/writev/writev06
 /ltp/testcases/kernel/syscalls/writev/writev07
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_23-1.run-test // creates 1k procs!
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_32-1.run-test // runs as different user
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_34-1.run-test // same
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_39-2.run-test // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_open/shm_open_8-1.run-test // tests property not mentioned by Unix file API - that fd for two successive open's will be successive.
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_10-2.run-test  // ENAMETOOLONG not supported
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_8-1.run-test // multi-user support issue
+/ltp/testcases/open_posix_testsuite/conformance/interfaces/shm_unlink/shm_unlink_9-1.run-test

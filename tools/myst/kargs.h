@@ -32,6 +32,7 @@ int init_kernel_args(
     const char* rootfs,
     char* err,
     bool unhandled_syscall_enosys,
-    size_t err_size);
+    size_t err_size,
+    bool enable_debug_malloc);
 
 #endif /* _MYST_MYST_KARGS_H */

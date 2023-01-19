@@ -38,6 +38,8 @@
 #include <myst/procfs.h>
 #include <myst/pubkey.h>
 #include <myst/ramfs.h>
+#include <myst/realpath.h>
+#include <myst/sharedmem.h>
 #include <myst/signal.h>
 #include <myst/stack.h>
 #include <myst/strings.h>
@@ -71,6 +73,67 @@ long myst_tcall(long n, long params[6])
     return ret;
 }
 
+/**
+ * Create target directory if do not exist
+ * Then call mount syscall
+ */
+static int _create_and_mount(
+    const char* source,
+    const char* target,
+    const char* fs_type,
+    unsigned long mountflags,
+    const void* data,
+    bool is_auto)
+{
+    int ret = 0;
+    struct locals
+    {
+        myst_path_t normalized_target;
+        myst_path_t suffix;
+    };
+    struct locals* locals = NULL;
+    myst_fs_t* parent_fs;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    ECHECK(myst_realpath(target, &locals->normalized_target));
+
+    // target has to be an absolute path
+    if (locals->normalized_target.buf[0] != '/')
+        ERAISE(-EINVAL);
+
+    ECHECK(myst_mount_resolve(
+        locals->normalized_target.buf, locals->suffix.buf, &parent_fs));
+
+    // check if target exists and is directory
+    // if not, create target directory
+    {
+        struct stat buf;
+        int errornum = (*parent_fs->fs_stat)(
+            parent_fs, locals->normalized_target.buf, &buf);
+
+        if (errornum == -ENOENT)
+            // target do not exist, create directory
+            ECHECK(myst_syscall_mkdir(locals->normalized_target.buf, 0777));
+        else if (errornum == 0 && !S_ISDIR(buf.st_mode))
+            // target exists but is not directory
+            ERAISE(-ENOTDIR);
+        else
+            ECHECK(errornum);
+    }
+
+    ret =
+        myst_syscall_mount(source, target, fs_type, mountflags, data, is_auto);
+
+done:
+
+    if (locals)
+        free(locals);
+
+    return ret;
+}
+
 static int _process_mount_configuration(myst_mounts_config_t* mounts)
 {
     size_t i;
@@ -82,13 +145,14 @@ static int _process_mount_configuration(myst_mounts_config_t* mounts)
 
     for (i = 0; i < mounts->mounts_count; i++)
     {
-        ret = myst_syscall_mount(
+        ret = _create_and_mount(
             mounts->mounts[i].source,
             mounts->mounts[i].target,
             mounts->mounts[i].fs_type,
             0,
             NULL,
             true);
+
         if (ret != 0)
         {
             myst_eprintf(
@@ -105,22 +169,21 @@ done:
     return ret;
 }
 
-static int _copy_host_etc_files()
+static int _copy_host_etc_file(const char* path)
 {
     int ret = 0;
     int fd = -1;
-    const char* resolv_file = "/etc/resolv.conf";
     void* buf = NULL;
     size_t buf_size;
     struct stat statbuf;
 
-    ECHECK(myst_load_host_file(resolv_file, &buf, &buf_size));
+    ECHECK(myst_load_host_file(path, &buf, &buf_size));
 
-    if (stat(resolv_file, &statbuf) == 0)
+    if (stat(path, &statbuf) == 0)
     {
-        if ((myst_syscall_unlink(resolv_file)) < 0)
+        if ((myst_syscall_unlink(path)) < 0)
         {
-            myst_eprintf("kernel: failed to unlink file %s\n", resolv_file);
+            myst_eprintf("kernel: failed to unlink file %s\n", path);
             ERAISE(-EINVAL);
         }
     }
@@ -148,14 +211,14 @@ static int _copy_host_etc_files()
             }
         }
     }
-    if ((fd = creat(resolv_file, 0644)) < 0)
+    if ((fd = creat(path, 0644)) < 0)
     {
-        myst_eprintf("kernel: failed to open file %s\n", resolv_file);
+        myst_eprintf("kernel: failed to open file %s\n", path);
         ERAISE(-EINVAL);
     }
     if ((myst_write_file_fd(fd, buf, buf_size)) < 0)
     {
-        myst_eprintf("kernel: failed to write to file %s\n", resolv_file);
+        myst_eprintf("kernel: failed to write to file %s\n", path);
         ERAISE(-EINVAL);
     }
 
@@ -167,6 +230,15 @@ done:
     if (buf)
         free(buf);
 
+    return ret;
+}
+
+static int _copy_host_etc_files()
+{
+    int ret = 0;
+    ECHECK(_copy_host_etc_file("/etc/resolv.conf"));
+    ECHECK(_copy_host_etc_file("/etc/hosts"));
+done:
     return ret;
 }
 
@@ -248,7 +320,7 @@ static int _init_tmpfs(const char* target, myst_fs_t** fs_out)
         ERAISE(-EINVAL);
     }
 
-    if (myst_init_ramfs(myst_mount_resolve, &fs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &fs, 0) != 0)
     {
         myst_eprintf("cannot initialize file system: %s\n", target);
         ERAISE(-EINVAL);
@@ -298,7 +370,7 @@ static int _setup_ramfs(void)
 {
     int ret = 0;
 
-    if (myst_init_ramfs(myst_mount_resolve, &_fs) != 0)
+    if (myst_init_ramfs(myst_mount_resolve, &_fs, 0) != 0)
     {
         myst_eprintf("failed initialize the RAM file system\n");
         ERAISE(-EINVAL);
@@ -540,7 +612,7 @@ static int _get_fstype(myst_kernel_args_t* args, myst_fstype_t* fstype)
         gid_t host_egid;
 
         ECHECK(myst_enc_uid_to_host(myst_syscall_geteuid(), &host_euid));
-        ECHECK(myst_enc_uid_to_host(myst_syscall_getegid(), &host_egid));
+        ECHECK(myst_enc_gid_to_host(myst_syscall_getegid(), &host_egid));
 
         long params[6] = {
             (long)args->rootfs, (long)&buf, (long)host_euid, (long)host_egid};
@@ -657,6 +729,10 @@ static void _print_boottime(void)
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
+#pragma GCC push_options
+#ifndef MYST_ENABLE_GCOV
+#pragma GCC optimize "-O2"
+#endif
 int myst_enter_kernel(myst_kernel_args_t* args)
 {
     int ret = 0;
@@ -685,11 +761,15 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __myst_kernel_args = *args;
     args = &__myst_kernel_args;
 
-    /* set the syslog level, depending on whether in TEE debug mode */
-    if (args->tee_debug_mode)
-        args->syslog_level = LOG_DEBUG;
-    else
-        args->syslog_level = LOG_NOTICE;
+    /* If no syslog level config was specified set defaults depending on whether
+     * in TEE debug mode */
+    if (args->syslog_level == -1)
+    {
+        if (args->tee_debug_mode)
+            args->syslog_level = LOG_DEBUG;
+        else
+            args->syslog_level = LOG_NOTICE;
+    }
 
     /* turn off or reduce various options when TEE is not in debug mode */
     if (!args->tee_debug_mode)
@@ -697,11 +777,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         args->trace_errors = false;
         args->trace_times = false;
         memset(&args->strace_config, 0, sizeof(args->strace_config));
-        args->shell_mode = false;
         args->memcheck = false;
         args->perf = false;
         args->debug_symbols = false;
-        args->shell_mode = false;
         args->report_native_tids = false;
     }
 
@@ -710,6 +788,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     __options.have_syscall_instruction = args->have_syscall_instruction;
     __options.have_fsgsbase_instructions = args->have_fsgsbase_instructions;
     __options.report_native_tids = args->report_native_tids;
+    __options.host_uds = args->host_uds;
 
     /* enable error tracing if requested */
     if (args->trace_errors)
@@ -726,6 +805,8 @@ int myst_enter_kernel(myst_kernel_args_t* args)
      * be used prior to this point */
     if (myst_setup_mman(args->mman_data, args->mman_size) != 0)
         ERAISE(-EINVAL);
+
+    MYST_ILOG("Entered Mystikos kernel.");
 
     /* call global constructors within the kernel */
     myst_call_init_functions();
@@ -813,7 +894,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     }
 
     /* Setup devfs */
-    devfs_setup();
+    ECHECK(devfs_setup());
+
+    /* Setup POSIX Shared Memory fs */
+    ECHECK(shmfs_setup());
 
     /* Create top-level proc entries */
     create_proc_root_entries();
@@ -826,9 +910,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     ECHECK(myst_tcall_set_run_thread_function(myst_run_thread));
 
     myst_times_start();
-
-    if (args->shell_mode)
-        myst_start_shell("\nMystikos shell (enter)\n");
 
     /* print how long it took to boot */
     if (__myst_kernel_args.perf || __myst_kernel_args.trace_times)
@@ -851,7 +932,7 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Run the main program: wait for SYS_exit to perform longjmp() */
     if (myst_setjmp(&thread->jmpbuf) == 0)
     {
-        myst_crt_args_t crt_args = {args->wanted_secrets};
+        myst_crt_args_t crt_args = {args->wanted_secrets, args->crt_memcheck};
         /* enter the C-runtime on the target thread descriptor */
         if ((tmp_ret = myst_exec(
                  thread,
@@ -918,6 +999,10 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         /* now all the threads have shutdown we can retrieve the exit status */
         exit_status = process->exit_status;
 
+        /* release signal related heap memory */
+        myst_signal_free(process);
+        myst_signal_free_siginfos(thread);
+
         /* release process mapping, including stack and crt */
         myst_release_process_mappings(process->pid);
 
@@ -962,13 +1047,6 @@ int myst_enter_kernel(myst_kernel_args_t* args)
         while (process->prev_process || process->next_process)
             myst_sleep_msec(10, false);
 
-        if (args->shell_mode)
-            myst_start_shell("\nMystikos shell (exit)\n");
-
-        /* release signal related heap memory */
-        myst_signal_free(process);
-        myst_signal_free_siginfos(thread);
-
         /* Free CWD */
         free(process->cwd);
         process->cwd = NULL;
@@ -1010,6 +1088,9 @@ int myst_enter_kernel(myst_kernel_args_t* args)
     /* Tear down the dev file system */
     devfs_teardown();
 
+    /* Tear down the posix shm file system */
+    shmfs_teardown();
+
     /* Tear down the RAM file system */
     _teardown_ramfs();
 
@@ -1042,3 +1123,4 @@ done:
 
     return ret;
 }
+#pragma GCC pop_options

@@ -16,7 +16,7 @@ REDEFINE_TESTS=1
 include $(TOP)/rules.mak
 
 tests:
-	$(RUNTEST) $(MAKE) test-mkcpio
+	$(MAKE) test-mkcpio
 
 test-mkcpio:
 	rm -rf $(APPDIR) $(APPDIR)2 dir1 dir2 dir1.txt dir2.txt difference1.txt rootfs private.pem public.pem $(APPNAME).signed

@@ -61,6 +61,7 @@ typedef struct _myst_wanted_secrets_config
 typedef struct myst_crt_args
 {
     myst_wanted_secrets_t* wanted_secrets;
+    bool crt_memcheck;
 } myst_crt_args_t;
 
 typedef struct _myst_strace_config
@@ -81,6 +82,25 @@ typedef struct _myst_strace_config
               MYST_MAX_SYSCALLS value is much higher (3000).
     */
     bool trace[MYST_MAX_SYSCALLS];
+
+    /* If the tid filter is enabled, this will store the number of tids to
+     * filter by */
+    int tid_filter_num;
+
+    /*
+        If tid filter is enabled, stores the list of tids to include.
+    */
+    pid_t tid_trace[MYST_MAX_IDS];
+
+    /* If the pid filter is enabled, this will store the number of pids to
+     * filter by */
+    int pid_filter_num;
+
+    /*
+        If pid filter is enabled, stores the list of pids to include.
+    */
+    pid_t pid_trace[MYST_MAX_IDS];
+
 } myst_strace_config_t;
 
 typedef struct myst_kernel_args
@@ -211,11 +231,11 @@ typedef struct myst_kernel_args
     /* whether debug symbols are needed */
     bool debug_symbols;
 
-    /* true if --shell option present */
-    bool shell_mode;
-
     /* true if --memcheck option present */
     bool memcheck;
+
+    /* true if --crt-memcheck option present */
+    bool crt_memcheck;
 
     /* true if --nobrk option is present (if so brk syscall returns -ENOTSUP */
     bool nobrk;
@@ -228,6 +248,9 @@ typedef struct myst_kernel_args
 
     /* true if --report-native-tids is present */
     bool report_native_tids;
+
+    /* true if --host-uds on command line or HostUDS in json config */
+    bool host_uds;
 
     // From the --main-stack-size=<size> option.
     size_t main_stack_size;
@@ -281,8 +304,6 @@ typedef struct myst_malloc_stats
 int myst_get_malloc_stats(myst_malloc_stats_t* stats);
 
 int myst_find_leaks(void);
-
-void myst_start_shell(const char* msg);
 
 const char* myst_syscall_str(long n);
 

@@ -286,7 +286,7 @@ static ssize_t _pd_read(
 {
     ssize_t ret = 0;
     ssize_t nread = 0;
-    shared_t* shared;
+    shared_t* shared = NULL;
     struct locals
     {
         uint8_t zeros[2 * BLOCK_SIZE];
@@ -423,7 +423,7 @@ static ssize_t _pd_write(
 {
     ssize_t ret = 0;
     bool locked = false;
-    shared_t* shared;
+    shared_t* shared = NULL;
     struct locals
     {
         uint8_t zeros[2 * BLOCK_SIZE];

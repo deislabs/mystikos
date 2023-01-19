@@ -10,10 +10,32 @@ APPROVED_AUTHORS = [
     'RRathna',
     'paulcallen',
     'radhikaj',
-    'rs--',
     'salsal97',
-    'Sahakait',
     'vtikoo'
+]
+
+// Do not trigger a full CI build if changes contain only these ignored files
+IGNORED_DIRS = [
+    '.jenkins/infrastructure',
+    '.jenkins/docker',
+    '.azure_pipelines',
+    '.github',
+    'doc'
+]
+// File name patterns to ignore using find command and -wholename option
+IGNORED_PATTERNS = [
+    '*/README.md'
+]
+IGNORED_FILES = [
+    '.gitignore',
+    'arch.png',
+    'BUILDING.md',
+    'CONTRIBUTING.md',
+    'DOCKER_IMAGES.md',
+    'LICENSE',
+    'owners.txt',
+    'README.md',
+    'VERSION'
 ]
 
 pipeline {
@@ -26,7 +48,7 @@ pipeline {
         disableConcurrentBuilds(abortPrevious: true)
     }
     parameters {
-        string(name: "REPOSITORY", defaultValue: "deislabs")
+        string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you want to build a pull request, enter the pull request ID number here. Will override branch builds.")
         choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solutions test")
@@ -94,7 +116,7 @@ pipeline {
                             checkout([$class: 'GitSCM',
                                 branches: [[name: params.BRANCH]],
                                 extensions: [],
-                                userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}/mystikos"]]]
+                                userRemoteConfigs: [[url: "https://github.com/${params.REPOSITORY}"]]]
                             )
                         }
                         GIT_COMMIT_ID = sh(
@@ -113,7 +135,7 @@ pipeline {
                     if ( params.PULL_REQUEST_ID ) {
                         // This is the git ref for a manual PR build
                         SOURCE_BRANCH = "origin/pr/${params.PULL_REQUEST_ID}"
-                    } else if ( params.BRANCH ) {
+                    } else if ( params.BRANCH != "main" ) {
                         // This is the git ref for a manual branch build
                         SOURCE_BRANCH = "origin/${params.BRANCH}"
                     } else {
@@ -126,16 +148,59 @@ pipeline {
                             script: "git log --pretty='%ae' origin/main..${SOURCE_BRANCH} | sort -u"
                         )
                     }
+                    println(COMMITTER_EMAILS)
+                }
+            }
+        }
+        stage('Determine changes') {
+            /* This stage is used to determine whether to skip the main testing stage
+               if the changes are only in ignored directories or files. 
+               This is only necessary for Jenkins multibranch pipeline builds.
+            */
+            steps {
+                script {
+                    dir("${WORKSPACE}") {
+                        CHANGED_FILES = sh(
+                            returnStdout: true,
+                            script: "git diff --name-only \$(git merge-base origin/main ${SOURCE_BRANCH})..${SOURCE_BRANCH}"
+                        )
+                        println("All changed files in PR: ${CHANGED_FILES}")
+                        for (dir in IGNORED_DIRS) {
+                            FILES = sh(
+                                returnStdout: true,
+                                script: "find ${dir} -type f"
+                            )
+                            for (file in FILES.tokenize()) {
+                                IGNORED_FILES.add(file)
+                            }
+                        }
+                        for (pattern in IGNORED_PATTERNS) {
+                            FILES = sh(
+                                returnStdout: true,
+                                script: "find . -type f -wholename '${pattern}'"
+                            )
+                            for (file in FILES.tokenize()) {
+                                // Remove the leading ./ from the file name before adding it
+                                IGNORED_FILES.add(file.substring(2))
+                            }
+                        }
+                    }
+                    println("All ignored files: ${IGNORED_FILES}")
+                    // Remove ignored files from the list of changed files
+                    FILES_TO_TEST = CHANGED_FILES.tokenize().minus(IGNORED_FILES)
+                    println("Files to test: ${FILES_TO_TEST}")
                 }
             }
         }
         stage('Run PR Tests') {
             when {
-                /* Jobs must meet any of the situations below in order to build:
+                /* Jobs must have files that need to be tested, and 
+                   meet any of the situations below in order to build:
                     1. Started manually
                     2. Started by a scheduler
                     2. Triggered by a GitHub pull request to main
                 */
+                expression { return FILES_TO_TEST != null && ! FILES_TO_TEST.isEmpty() }
                 anyOf {
                     triggeredBy 'UserIdCause'
                     triggeredBy 'TimerTrigger'

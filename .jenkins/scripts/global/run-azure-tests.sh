@@ -31,6 +31,12 @@ if [[ -z "${AZURE_CLIENT_ID}" || -z "${AZURE_CLIENT_SECRET}" || -z "${AZURE_TENA
     exit 1
 fi
 
+# Build first
+for test_suite in "$@"
+do
+	make -C "${test_suite}"
+done
+
 for test_suite in "$@"
 do
 	RUN_AZURE_TESTS=1 make tests -C "${test_suite}"

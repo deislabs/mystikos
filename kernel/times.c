@@ -8,6 +8,7 @@
 #include <myst/clock.h>
 #include <myst/eraise.h>
 #include <myst/kernel.h>
+#include <myst/mmanutils.h>
 #include <myst/printf.h>
 #include <myst/syscall.h>
 #include <myst/thread.h>
@@ -30,8 +31,12 @@ static syscall_time_t _syscall_times[MYST_MAX_SYSCALLS];
 
 long myst_lapsed_nsecs(const struct timespec* t0, const struct timespec* t1)
 {
-    return (t1->tv_sec - t0->tv_sec) * NANO_IN_SECOND +
-           (t1->tv_nsec - t0->tv_nsec);
+    __uint128_t t1_ns =
+        ((__uint128_t)t1->tv_sec * NANO_IN_SECOND) + t1->tv_nsec;
+    __uint128_t t0_ns =
+        ((__uint128_t)t0->tv_sec * NANO_IN_SECOND) + t0->tv_nsec;
+
+    return (long)(t1_ns - t0_ns);
 }
 
 static bool is_zero_tp(struct timespec* tp)
@@ -48,6 +53,7 @@ void myst_times_start()
 void myst_times_enter_kernel(long syscall_num)
 {
     myst_thread_t* current = myst_thread_self();
+    myst_process_t* process = current->process;
 
     (void)syscall_num;
 
@@ -62,6 +68,8 @@ void myst_times_enter_kernel(long syscall_num)
     myst_assume(lapsed >= 0);
 
     __atomic_fetch_add(&process_times.tms_utime, lapsed, __ATOMIC_SEQ_CST);
+    __atomic_fetch_add(
+        &process->process_times.tms_utime, lapsed, __ATOMIC_SEQ_CST);
 }
 
 void myst_times_leave_kernel(long syscall_num)
@@ -84,31 +92,33 @@ void myst_times_leave_kernel(long syscall_num)
     myst_assume(lapsed >= 0);
 
     if (lapsed)
+    {
         __atomic_fetch_add(&process_times.tms_stime, lapsed, __ATOMIC_SEQ_CST);
+        __atomic_fetch_add(
+            &myst_process_self()->process_times.tms_stime,
+            lapsed,
+            __ATOMIC_SEQ_CST);
+    }
 }
 
-long myst_times_system_time()
+void myst_times_process_times(myst_process_t* process, struct tms* tm)
 {
-    return process_times.tms_stime;
+    if (tm)
+    {
+        *tm = process->process_times;
+    }
 }
 
-long myst_times_user_time()
+long myst_times_process_time(myst_process_t* process)
 {
-    return process_times.tms_utime;
+    return process->process_times.tms_stime + process->process_times.tms_utime +
+           process->process_times.tms_cstime +
+           process->process_times.tms_cutime;
 }
 
-long myst_times_process_time()
+long myst_times_thread_time(myst_thread_t* thread)
 {
-    return process_times.tms_stime + process_times.tms_utime +
-           process_times.tms_cstime + process_times.tms_cutime;
-}
-
-long myst_times_thread_time()
-{
-    myst_thread_t* current = myst_thread_self();
-    long lapsed =
-        myst_lapsed_nsecs(&current->start_ts, &current->enter_kernel_ts);
-    return lapsed;
+    return myst_lapsed_nsecs(&thread->start_ts, &thread->enter_kernel_ts);
 }
 
 long myst_times_uptime()
@@ -123,30 +133,40 @@ long myst_times_get_cpu_clock_time(clockid_t clk_id, struct timespec* tp)
 
     if (per_thread)
     {
-        myst_thread_t* current = myst_thread_self();
-        if (tid == current->tid)
+        myst_thread_t* thread = myst_thread_self();
+        if (tid != thread->tid)
         {
-            long nanoseconds = myst_times_thread_time();
-            nanos_to_timespec(tp, nanoseconds);
-        }
-        else
-        {
-            myst_thread_t* t = myst_find_thread(tid);
-            if (!t)
+            thread = myst_find_thread(tid);
+            if (!thread)
                 return -EINVAL;
-
-            long nanoseconds =
-                myst_lapsed_nsecs(&t->start_ts, &t->enter_kernel_ts);
-            nanos_to_timespec(tp, nanoseconds);
         }
+        nanos_to_timespec(tp, myst_times_thread_time(thread));
     }
     else
     {
-        long nanoseconds = myst_times_process_time();
-        nanos_to_timespec(tp, nanoseconds);
+        myst_process_t* process = myst_process_self();
+        if (tid != process->pid)
+        {
+            process = myst_find_process_from_pid(tid, false);
+            if (!process)
+                return -EINVAL;
+        }
+        nanos_to_timespec(tp, myst_times_process_time(process));
     }
 
     return 0;
+}
+
+void myst_times_add_child_times_to_parent_times(
+    myst_process_t* parent,
+    myst_process_t* child)
+{
+    parent->process_times.tms_cstime = parent->process_times.tms_cstime +
+                                       child->process_times.tms_stime +
+                                       child->process_times.tms_cstime;
+    parent->process_times.tms_cutime = parent->process_times.tms_cutime +
+                                       child->process_times.tms_utime +
+                                       child->process_times.tms_cutime;
 }
 
 #define COLOR_YELLOW "\e[33m"

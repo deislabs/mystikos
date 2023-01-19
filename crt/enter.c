@@ -1,6 +1,8 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+#define hidden __attribute__((__visibility__("hidden")))
+
 #define _GNU_SOURCE
 #include <assert.h>
 #include <dlfcn.h>
@@ -26,7 +28,14 @@
 #include <myst/syscallext.h>
 #include <myst/tee.h>
 
+/* Locking functions used by MUSL to manage libc.threads_minus_1 */
+#include <pthread_impl.h>
+void __tl_lock(void);
+void __tl_unlock(void);
+
 static myst_wanted_secrets_t* _wanted_secrets;
+
+extern bool __crt_memcheck;
 
 void _dlstart_c(size_t* sp, size_t* dynv);
 
@@ -89,7 +98,42 @@ long myst_syscall(long n, long params[6])
         return ret;
     }
 
-    return (*_syscall_callback)(n, params);
+    if (n == SYS_myst_debug_malloc_check)
+    {
+        extern size_t debug_malloc_check(bool print_allocations);
+        return debug_malloc_check((bool)params[0]);
+    }
+
+    if (n == SYS_execve || n == SYS_execveat)
+    {
+        /* These system calls launch a new process with its own CRT and the
+         * current thread then belongs to the new process. Therefore, decrement
+         * the thread count of the current CRT that belongs to the parent
+         * process.
+         */
+        __tl_lock();
+        __libc.threads_minus_1--;
+        __tl_unlock();
+    }
+
+    long ret = (*_syscall_callback)(n, params);
+
+    // restore threads_minus_1 if execve fails
+    // not checking ret, as execve should not return on success
+    if (n == SYS_execve || n == SYS_execveat)
+    {
+        __tl_lock();
+        __libc.threads_minus_1++;
+        __tl_unlock();
+    }
+
+    return ret;
+}
+
+int myst_maccess(const void* addr, size_t length, int prot)
+{
+    long params[6] = {(long)addr, (long)length, (long)prot};
+    return myst_syscall(SYS_myst_maccess, params);
 }
 
 #ifdef MYST_ENABLE_GCOV
@@ -188,6 +232,7 @@ void myst_enter_crt(
     if (args)
     {
         _wanted_secrets = args->wanted_secrets;
+        __crt_memcheck = args->crt_memcheck;
     }
     _dlstart_c((size_t*)stack, (size_t*)dynv);
 }
@@ -241,7 +286,7 @@ bool myst_get_exec_stack_option()
 int myst_retrieve_wanted_secrets()
 {
     int ret = -1;
-    FILE* file = NULL;
+    int fd = -1;
     void* handle = NULL;
 
     if (_wanted_secrets == NULL || _wanted_secrets->secrets_count == 0)
@@ -342,8 +387,8 @@ int myst_retrieve_wanted_secrets()
         terminate_fn();
 
         /* Save the released secret to the specified file */
-        file = fopen(tmp->local_path, "w+");
-        if (file == NULL)
+        fd = open(tmp->local_path, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+        if (fd < 0)
         {
             fprintf(
                 stderr,
@@ -352,9 +397,9 @@ int myst_retrieve_wanted_secrets()
             goto done;
         }
 
-        r = fwrite(release_secret.data, 1, release_secret.length, file);
-        fclose(file);
-        file = NULL;
+        r = write(fd, release_secret.data, release_secret.length);
+        close(fd);
+        fd = -1;
         if (r != release_secret.length)
         {
             fprintf(
@@ -372,8 +417,8 @@ int myst_retrieve_wanted_secrets()
 
 done:
 
-    if (file)
-        fclose(file);
+    if (fd != -1)
+        close(fd);
 
     if (handle)
         dlclose(handle);

@@ -45,7 +45,7 @@ $(APPDIR)/bin/run: run.c
 	$(MUSL_GCC) -Wall -o $(APPDIR)/bin/run run.c
 
 $(APPDIR):
-	$(APPBUILDER) -i mystikos/libcxx_11x:0.1
+	$(APPBUILDER) -m -i mystikos/libcxx_11x:0.1
 	cp $(CURDIR)/tests.passed $(APPDIR)
 # To build a new image, push the new container to dockerhub and update 
 # this call.

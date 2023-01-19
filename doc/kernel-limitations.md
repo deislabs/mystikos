@@ -20,6 +20,7 @@ incompatibilities/limitations worth noting as summarized below:
 | [Exception handling limitation](#limitations-arisen-from-sgx1-limitations) | Direct #PF/#GP exception handling inside the Mystikos environment is not supported |  Exception handling with long delays |
 | [Network limitation](#network-limitations)  | Networking has to pass through host | Missed or delayed packets / Eavesdropping of unencrypted packets / D.o.S. |
 | [File system limitations](#file-System-limitations) | Support ramfs, hostfs, and ext2 only. Mounting of a file system has to be explicit. Changes are not always persisted. | Required FS conversion / Unprotected files once persisted to outside of TEE   |
+| [Runtime limitations](#runtime-limitations) | For certain low-level APIs, Mystikos kernel and Musl C runtime have limited support | Functions relying on un-supported APIs will be unavailable |
 
 * Note, many attacks above are only possible with a malicious host OS/kernel,
 which is deliberately excluded from TCB by the SGX threat model.
@@ -195,7 +196,10 @@ files for read/write, such as `/proc/self/exe`. Currently Mystikos only implemen
 a subset of these virtual files that are commonly used. An application could
 fail if it depends on a virtual file that is not implemented yet.
 
-Some libc functions/symbols that are present in glibc but not in musl. Our CRT
-is based on musl. And we try to achieve glibc compatibility by adding those
-missing functions/symbols to musl. An application could fail to start if it
-references one of the functions/symbols that we haven't patched yet.
+Regarding C runtime (CRT), Mystikos' CRT is based on [musl](https://wiki.musl-libc.org/), some libc 
+functions/symbols are present in glibc but not in musl. Although we try to 
+achieve glibc compatibility by adding those missing functions/symbols to musl, an
+application could fail to start (or even fail/crash at runtime) if it references one of the functions/symbols
+that we haven't patched yet. To figure out the missing dependencies, one can use `myst-gdb`
+ to load the generated file system archive ([example](/tests/curl/Makefile#L24)),
+and check if any unresolved symbols are reported.

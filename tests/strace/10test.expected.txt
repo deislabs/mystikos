@@ -1,0 +1,2 @@
+tid or pid file is invalid. Must be a positive number.
+Aborted (core dumped)

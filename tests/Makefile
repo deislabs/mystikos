@@ -15,7 +15,6 @@ DIRS += libc
 endif
 
 DIRS += args
-DIRS += pthread
 DIRS += urandom
 DIRS += buf
 DIRS += cpuid
@@ -36,7 +35,6 @@ DIRS += nbio
 DIRS += thread
 DIRS += gdb
 DIRS += lldb
-
 DIRS += dlopen
 DIRS += pipe
 DIRS += spawn
@@ -89,13 +87,11 @@ REDEFINE_TESTS=1
 DIRS += epoll
 DIRS += oe
 DIRS += procfs
-DIRS += cpython-tests
 
 ifeq ($(MYST_ENABLE_HOSTFS),1)
 DIRS += hostfs
 endif
 
-ifndef MYST_ENABLE_GCOV
 ifdef MYST_NIGHTLY_TEST
 DIRS += sockperf
 endif
@@ -106,10 +102,11 @@ DIRS += dotnet-lib-6
 DIRS += dotnet-proc-maps
 DIRS += dotnet-ubuntu
 DIRS += openmp
-endif
+DIRS += dotnet-sos
+DIRS += pthread
+DIRS += python_vfork
 
 DIRS += msync
-
 DIRS += robust
 DIRS += devfs
 DIRS += syscall_exception
@@ -117,12 +114,10 @@ DIRS += mutex
 DIRS += mprotect
 DIRS += eventfd
 DIRS += polleventfd
-DIRS += dotnet-sos
 DIRS += tkillself
 DIRS += thread_abort
 DIRS += synccall
 DIRS += python_subprocess
-DIRS += python_vfork
 DIRS += fcntl
 DIRS += stacksize
 DIRS += math
@@ -131,6 +126,7 @@ DIRS += stack_overflow
 DIRS += sendfile
 DIRS += strtonum
 DIRS += fsflags
+DIRS += hostfs_uds
 
 ifdef MYST_NIGHTLY_TEST
 DIRS += aspnetcore5
@@ -139,6 +135,11 @@ DIRS += glibc
 endif
 
 DIRS += appenv
+DIRS += go
+DIRS += strace
+DIRS += map_shared
+DIRS += posix-shm
+DIRS += debugmalloc
 
 .PHONY: $(DIRS)
 

@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <myst/maps.h>
+#include <myst/strings.h>
 
 void myst_maps_dump1(const myst_maps_t* maps)
 {
@@ -100,10 +101,11 @@ int myst_maps_load(myst_maps_t** maps_out)
         uint64_t inode;
         myst_maps_t* maps;
         char path[PATH_MAX] = "";
+        int path_offset = 0;
 
         n = sscanf(
             line,
-            "%lx-%lx %c%c%c%c %lu %u:%u %lu %s",
+            "%lx-%lx %c%c%c%c %lu %u:%u %lu %n",
             &start,
             &end,
             &r,
@@ -114,12 +116,29 @@ int myst_maps_load(myst_maps_t** maps_out)
             &minor,
             &major,
             &inode,
-            path);
+            &path_offset);
 
         if (n < 10)
         {
             ret = -ENOSYS;
             goto done;
+        }
+
+        // This is to avoid overflow when user's input is bigger than path
+        if (myst_strlcpy(path, &line[path_offset], sizeof(path)) >=
+            sizeof(path))
+        {
+            // path is not big enough to store input
+            ret = -ENOSYS;
+            goto done;
+        }
+
+        // Since we are not using scanf("%s")
+        // we have to remove newline at the end of string
+        {
+            int path_length = strlen(path);
+            if (path_length > 0 && path[path_length - 1] == '\n')
+                path[path_length - 1] = 0;
         }
 
         if (!(maps = calloc(1, sizeof(myst_maps_t))))
@@ -154,7 +173,13 @@ int myst_maps_load(myst_maps_t** maps_out)
         maps->major = major;
         maps->minor = minor;
         maps->inode = inode;
-        strcpy(maps->path, path);
+        if (myst_strlcpy(maps->path, path, sizeof(maps->path)) >=
+            sizeof(maps->path))
+        {
+            // maps->path not big enough to store path
+            ret = -ENOSYS;
+            goto done;
+        }
 
         if (tail)
         {

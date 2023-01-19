@@ -32,8 +32,9 @@
 
 typedef struct mount_table_entry
 {
-    char* source;
-    char* path;
+    char* source; /* path where the device or directory to be mounted is
+                     specified */
+    char* path;   /* path where device is attached */
     size_t path_size;
     myst_fs_t* fs;
     uint32_t flags;
@@ -179,7 +180,7 @@ int myst_mount(
         /* Find the file system onto which the mount will occur */
         ECHECK(myst_mount_resolve(target, locals->suffix, &parent));
 
-        ECHECK((*parent->fs_stat)(parent, target, &buf));
+        ECHECK((*parent->fs_stat)(parent, locals->suffix, &buf));
 
         if (!S_ISDIR(buf.st_mode))
             ERAISE(-ENOTDIR);
@@ -485,7 +486,7 @@ long myst_syscall_mount(
             ERAISE(-EINVAL);
 
         /* create a new ramfs instance */
-        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs));
+        ECHECK(myst_init_ramfs(myst_mount_resolve, &fs, 0));
 
         /* perform the mount */
         ECHECK(myst_mount(fs, source, target, is_auto));

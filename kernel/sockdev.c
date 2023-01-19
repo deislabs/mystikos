@@ -6,9 +6,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/un.h>
 
 #include <myst/eraise.h>
+#include <myst/fdtable.h>
+#include <myst/hostfs.h>
 #include <myst/iov.h>
+#include <myst/mount.h>
+#include <myst/options.h>
 #include <myst/panic.h>
 #include <myst/sockdev.h>
 #include <myst/spinlock.h>
@@ -25,6 +30,12 @@ struct myst_sock
     int fd;         /* the target-relative file descriptor */
     bool nonblock;
 };
+
+MYST_INLINE bool _valid_sockdev(const myst_sockdev_t* sockdev)
+{
+    return sockdev &&
+           ((sockdev == myst_udsdev_get()) || (sockdev == myst_sockdev_get()));
+}
 
 MYST_INLINE bool _valid_sock(const myst_sock_t* sock)
 {
@@ -898,7 +909,11 @@ int myst_sockdev_resolve(
                 ERAISE(-ENOTSUP);
             }
 
-            *dev = myst_udsdev_get();
+            if (!__options.host_uds)
+                *dev = myst_udsdev_get();
+            else
+                *dev = myst_sockdev_get();
+
             goto done;
         }
         case AF_INET:
@@ -924,5 +939,101 @@ int myst_sockdev_resolve(
     }
 
 done:
+    return ret;
+}
+
+int myst_host_uds_addr_reresolve(
+    int sockfd,
+    myst_sockdev_t* sockdev,
+    myst_sock_t* sock,
+    const struct sockaddr* addr,
+    socklen_t addrlen,
+    bool* reresolved,
+    struct sockaddr** addr_out,
+    socklen_t* addrlen_out)
+{
+    int ret = 0;
+    struct locals
+    {
+        char suffix[PATH_MAX];
+    };
+    struct locals* locals = NULL;
+    struct sockaddr_un* new_addr = NULL;
+
+    if (sockfd < 0 || !sockdev || !sock || !_valid_sockdev(sockdev))
+        ERAISE(-EINVAL);
+
+    if (!reresolved || !addr_out || !addrlen_out)
+        ERAISE(-EINVAL);
+
+    *reresolved = false;
+
+    if (sockdev != myst_sockdev_get())
+        return 0;
+
+    myst_sockdev_t* host_sockdev = sockdev;
+
+    int address_family = 0;
+    socklen_t af_optlen = sizeof(address_family);
+    ECHECK(host_sockdev->sd_getsockopt(
+        host_sockdev,
+        sock,
+        SOL_SOCKET,
+        SO_DOMAIN,
+        &address_family,
+        &af_optlen));
+
+    if (address_family != AF_UNIX)
+        return 0;
+
+    const struct sockaddr_un* sun = (const struct sockaddr_un*)addr;
+
+    /* abstract namespace UDSs need no address update */
+    if (*sun->sun_path == '\0')
+        return 0;
+
+    if (!(locals = malloc(sizeof(struct locals))))
+        ERAISE(-ENOMEM);
+
+    myst_fs_t* fs_out = NULL;
+    ECHECK(myst_mount_resolve(sun->sun_path, locals->suffix, &fs_out));
+    /* locals->suffix now holds the path relative to the root of the mounted
+     * filesytem */
+
+    if (!myst_is_hostfs(fs_out))
+    {
+        MYST_ELOG("Unsupported Unix domain socket operation: non host path "
+                  "used in bind() or connect() when running host UDS mode");
+        ERAISE(-ENOTSUP);
+    }
+
+    // At this point we have uds + hostfs path
+    // A new sockaddr structure needs to be created, as the file path is
+    // different on the host.
+    if (!(new_addr = calloc(1, sizeof(struct sockaddr_un))))
+        ERAISE(-ENOMEM);
+
+    new_addr->sun_family = AF_UNIX;
+    ECHECK(myst_hostfs_suffix_to_host_abspath(
+        fs_out,
+        new_addr->sun_path,
+        sizeof(new_addr->sun_path) - 1,
+        locals->suffix));
+    // TODO: check if suffix is a link?
+
+    *reresolved = true;
+    *addr_out = (struct sockaddr*)new_addr;
+    *addrlen_out = sizeof(*new_addr);
+
+    new_addr = NULL;
+
+done:
+
+    if (locals)
+        free(locals);
+
+    if (new_addr)
+        free(new_addr);
+
     return ret;
 }

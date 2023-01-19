@@ -18,7 +18,7 @@ gdb: rootfs
 	$(MYST_GDB) --args $(MYST_EXEC) $(OPTS) --memory-size=1024m rootfs /app/HelloWorld
 
 appdir:
-	$(APPBUILDER) Dockerfile
+	$(APPBUILDER) -m Dockerfile
 
 rootfs: appdir
 	$(MYST) mkcpio appdir rootfs

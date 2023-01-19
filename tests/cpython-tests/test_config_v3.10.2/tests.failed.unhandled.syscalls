@@ -1,7 +1,0 @@
-test_embed		SYS_listxattr
-test_os			SYS_splice
-test_posix		SYS_mknodat
-test_shutil		SYS_listxattr
-test_signal		SYS_rt_sigtimedwait
-test_unicode_file		SYS_listxattr
-test_wait3		Segmentation fault

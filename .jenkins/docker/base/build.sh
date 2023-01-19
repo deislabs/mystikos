@@ -13,10 +13,10 @@ IMAGE_TAG="latest"
 usage() {
     echo "Usage: $0 -m <string> -o <string> [OPTIONS..]" 1>&2
     echo "Create a base Docker image for Mystikos" 1>&2
-    echo "  -m     Mystikos release version (Example: 0.5.0)"
+    echo "  -m     Mystikos release version (Example: 0.5.0) or path to Mystikos tar.gz"
     echo "           See https://github.com/deislabs/mystikos/releases for release versions"
-    echo "  -o     Open Enclave Base Docker Image tag (Examples: latest, SGX-2.15.100)"
-    echo "           See https://hub.docker.com/repository/docker/oeciteam/openenclave-base-ubuntu-18.04 for release versions"
+    echo "  -o     Open Enclave Base Docker Image tag."
+    echo "           See https://github.com/openenclave/openenclave/blob/master/DOCKER_IMAGES.md for release versions"
     echo ""
     echo "Options:" 1>&2
     echo "  -u     Ubuntu release version [Default: 18.04]" 1>&2
@@ -64,23 +64,29 @@ case "${UBUNTU_VERSION}" in
            ;;
 esac
 
-# Download Mystikos release
-if [[ -f "${BUILD_DIR}/mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" ]]; then
-    rm "${BUILD_DIR}/mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
+if [[ "${MYSTIKOS_RELEASE_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    # Download Mystikos release
+    MYST_TARBALL="Ubuntu-${UBUNTU_VERSION//.}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz"
+    if [[ -f "${BUILD_DIR}/${MYST_TARBALL}" ]]; then
+        rm "${BUILD_DIR}/${MYST_TARBALL}"
+    fi
+    wget \
+    --directory-prefix="${BUILD_DIR}" \
+    --no-verbose \
+    --tries=3 \
+    --waitretry=3 \
+    https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/${MYST_TARBALL}
+else
+    echo "Mystikos release version does not match [0-9]+.[0-9]+.[0-9]+ ... assuming local tarball path."
+    MYST_TARBALL="${MYSTIKOS_RELEASE_VERSION}"
 fi
-wget \
-  --directory-prefix="${BUILD_DIR}" \
-  --no-verbose \
-  --tries=3 \
-  --waitretry=3 \
-  https://github.com/deislabs/mystikos/releases/download/v${MYSTIKOS_RELEASE_VERSION}/Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz
 
 # Build Docker image
 set -x
 DOCKER_BUILDKIT=1 docker build \
   --build-arg UBUNTU_VERSION="${UBUNTU_VERSION}" \
   --build-arg OPENENCLAVE_BASE_IMAGE_TAG="${OPENENCLAVE_BASE_IMAGE_TAG}" \
-  --build-arg MYSTIKOS_TARBALL="Ubuntu-${UBUNTU_VERSION//./}_mystikos-${MYSTIKOS_RELEASE_VERSION}-x86_64.tar.gz" \
+  --build-arg MYSTIKOS_TARBALL="${MYST_TARBALL}" \
   --no-cache \
   --file "${SOURCE_DIR}/Dockerfile" \
   --tag "mystikos-${UBUNTU_CODENAME}:${IMAGE_TAG}" \

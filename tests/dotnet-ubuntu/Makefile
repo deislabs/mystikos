@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 APPBUILDER=$(TOP)/scripts/appbuilder
-RETRY_W_BACKOFF=$(TOP)/scripts/retry_with_backoff
+MYST-RETRY=$(TOP)/scripts/myst-retry
 HEAP_SIZE="768M"
 OPTS += --report-native-tids
 
@@ -13,9 +13,9 @@ endif
 all: ext2fs
 
 appdir:
-	$(RETRY_W_BACKOFF) docker pull mcr.microsoft.com/dotnet/sdk:6.0
-	$(RETRY_W_BACKOFF) docker pull mcr.microsoft.com/dotnet/runtime:6.0
-	$(APPBUILDER) Dockerfile
+	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/sdk:6.0
+	$(MYST-RETRY) docker pull mcr.microsoft.com/dotnet/runtime:6.0
+	$(APPBUILDER) -m Dockerfile
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs

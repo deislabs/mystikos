@@ -1,0 +1,10 @@
+test_embed		SYS_listxattr
+test_os			SYS_splice
+test_shutil		SYS_listxattr
+test_signal		SYS_rt_sigtimedwait
+test_unicode_file		SYS_listxattr
+test_wait3		Segmentation fault
+test_multiprocessing_fork           Python import lock issue
+test_multiprocessing_forkserver     Python import lock issue
+test_multiprocessing_main_handling  Python import lock issue
+test_multiprocessing_spawn          UDS socket dup issue with multiple processes

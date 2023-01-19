@@ -1,0 +1,2 @@
+*** ERROR: oe_sgx_sign_enclave_from_engine() failed: result=OE_INVALID_SGX_SIGNING_KEY (0x3b)
+mystikos/build/bin/myst: error: Failed to sign "hello.signed/lib/openenclave/mystenc.so"

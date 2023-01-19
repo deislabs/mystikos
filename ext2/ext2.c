@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/param.h>
 #include <time.h>
 
 #include <myst/clock.h>
@@ -1260,6 +1261,7 @@ typedef enum follow
 
 static int _path_to_ino_recursive(
     ext2_t* ext2,
+    size_t* num_symlinks,
     const char* path,
     ext2_ino_t current_ino,
     follow_t follow,
@@ -1281,7 +1283,7 @@ static int _path_to_ino_recursive(
     myst_strarr_t toks = MYST_STRARR_INITIALIZER;
     char* p;
     char* save;
-    uint8_t i;
+    size_t i;
     ext2_ino_t previous_ino = 0;
     void* data = NULL;
     size_t size;
@@ -1326,6 +1328,10 @@ static int _path_to_ino_recursive(
             /* only check follow tag on final element */
             if (i + 1 != toks.size || follow == FOLLOW)
             {
+                /* fail if too many levels of symlinks */
+                if ((*num_symlinks)++ == MAXSYMLINKS)
+                    ERAISE(-ELOOP);
+
                 /* load the target from the symlink */
                 ECHECK((_load_file_by_ino(ext2, locals->ino, &data, &size)));
 
@@ -1371,6 +1377,7 @@ static int _path_to_ino_recursive(
                     // Recursively resolve links.
                     ECHECK(_path_to_ino_recursive(
                         ext2,
+                        num_symlinks,
                         locals->target,
                         current_ino,
                         FOLLOW,
@@ -1428,6 +1435,7 @@ static int _path_to_ino_realpath(
     ext2_ino_t curr_ino = EXT2_ROOT_INO;
     ext2_ino_t dino;
     ext2_ino_t ino;
+    size_t num_symlinks = 0;
 
     /* the path must be absolute */
     if (path[0] != '/')
@@ -1436,7 +1444,15 @@ static int _path_to_ino_realpath(
     *realpath = '\0';
 
     ECHECK(_path_to_ino_recursive(
-        ext2, path, curr_ino, follow, &dino, &ino, realpath, target_out));
+        ext2,
+        &num_symlinks,
+        path,
+        curr_ino,
+        follow,
+        &dino,
+        &ino,
+        realpath,
+        target_out));
 
     if (dir_ino_out)
         *dir_ino_out = dino;
@@ -3813,7 +3829,7 @@ off_t ext2_lseek(myst_fs_t* fs, myst_file_t* file, off_t offset, int whence)
 {
     off_t ret = 0;
     ext2_t* ext2 = (ext2_t*)fs;
-    off_t new_offset;
+    off_t new_offset = 0;
 
     if (!_ext2_valid(ext2) || !_file_valid(file))
         ERAISE(-EINVAL);
