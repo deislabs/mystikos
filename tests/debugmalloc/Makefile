@@ -26,7 +26,10 @@ ifdef PERF
 OPTS += --perf
 endif
 
-OPTS += --thread-stack-size=1048576 --crt-memcheck
+OPTS += --thread-stack-size=1048576
+OPTS += --crt-memcheck
+OPTS += --nobrk
+#OPTS += --memory-size=1g
 
 tests: all
 	$(RUNTEST) $(MYST_EXEC) rootfs /bin/debugmalloc $(OPTS)
