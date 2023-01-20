@@ -423,12 +423,18 @@ int myst_debug_posix_memalign(void** memptr, size_t alignment, size_t size)
         return EINVAL;
 
     /*
-    ** [padding][header][block][footer]
+    ** [padding1][header][block][padding2][footer]
     ** ^                ^
     ** |                |
     ** X                Y
     **
-    ** Note: both X and Y are on the alignment boundary
+    ** Note: both X and Y are on the alignment boundary passed to memalign.
+    **
+    ** padding1 aligns the header to that the block will be aligned on the
+    ** boundary given by the alignment parameter to memalign.
+    **
+    ** padding2 can be between 0 and 7 bytes (to align the footer on an 8-byte
+    ** boundary).
     */
 
 #ifdef DEBUG_MEMALIGN
