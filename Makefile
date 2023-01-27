@@ -10,7 +10,9 @@ DEBIAN_PACKAGE=$(PKGNAME).deb
 
 all:
 ifndef MYST_IGNORE_PREREQS
+ifndef MYST_BUILD_AS_SUBMODULE
 	$(MAKE) .git/hooks/pre-commit
+endif
 endif
 	$(MAKE) init
 	$(MAKE) dirs
