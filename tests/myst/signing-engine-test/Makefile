@@ -26,7 +26,13 @@ tests: rootfs $(PRIVATE)
 	$(RUNTEST) $(MYST) sign rootfs NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE)
 	$(RUNTEST) ./hello.signed/bin/myst $(EXEC) hello.signed/rootfs /bin/hello
 	rm -rf hello.signed
-	@ echo "=== passed test (myst-sign-engine-valid)\n\n"
+	@ echo "=== passed test (myst-sign-engine-valid-1)\n\n"
+
+	mkdir Helloworld
+	$(RUNTEST) $(MYST) sign rootfs NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE)  --outdir "Helloworld"
+	$(RUNTEST) ./Helloworld/bin/myst $(EXEC) Helloworld/rootfs /bin/hello
+	rm -rf Helloworld
+	@ echo "=== passed test (myst-sign-engine-valid-2)\n\n"
 
 	$(MYST) sign rootfs NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path /tmp/no_there --signing-engine-key $(PRIVATE) 2> 1 || sed -i 's/^.*mystikos/mystikos/' 1 || $(RUNTEST) diff 1 expected_invalid_parameter_op1.txt
 	rm -rf hello.signed
