@@ -169,6 +169,11 @@ if [ "$VERBOSE" = "false" ]; then
     DOCKER_BUILD_MODE="--quiet";
 fi
 
+# Determine if Docker buildx is available
+if docker buildx version; then
+    USE_BUILDX="true"
+fi
+
 # Retry removing Docker network
 docker_network_remove()
 {
@@ -221,12 +226,17 @@ get_image()
     if [ "$USE_DOCKERFILE" = "true" ]; then
         # in either quiet or none quiet mode, IMAGE id will always be exported to intermediate iidfile
         rm -f $TEMP_IMAGE_IIDFILE
-        # Create and use custom network for each image build to avoid collisions
-        # Note: By default, Docker network range will only allow for 30 networks at a time or a max of
-        # 27 concurent image builds. If more is desired, then Docker's default-address-pool will need
-        # to be changed to include more ip addresses.
+        # Create and use a custom network for each image build to avoid name conflicts
         docker network create $NETWORK_NAME
-        $(dirname $0)/myst-retry docker build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --network ${NETWORK_NAME} ${EXTRA_ARGS} .
+        # Use buildx to support using custom created networks
+        if [ "${USE_BUILDX:-'false'}" = "true" ]; then
+            # Create Docker buildx instance that uses the custom network
+            docker buildx create --name ${NETWORK_NAME} --driver-opt network=${NETWORK_NAME}
+            $(dirname $0)/myst-retry docker buildx build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --output=type=docker ${EXTRA_ARGS} .
+        # Support legacy Docker build system until official deprecation
+        else
+            DOCKER_BUILDKIT=0 $(dirname $0)/myst-retry docker build ${DOCKER_BUILD_MODE} --iidfile ${TEMP_IMAGE_IIDFILE} -f ${DOCKER_FILE} --network ${NETWORK_NAME} ${EXTRA_ARGS} .
+        fi
         docker_network_remove
         if [ ! -f "$TEMP_IMAGE_IIDFILE" ]; then
             echo "failed to build from Docker Image file $TEMP_IMAGE_IIDFILE";
