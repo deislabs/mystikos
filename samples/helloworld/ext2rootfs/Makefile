@@ -28,7 +28,9 @@ package.pem:
 
 package: package.pem ext2rootfs
 	echo "Generating a signed package"
-	@myst package-sgx --roothash=roothash appdir package.pem ../config.json
+	@myst package-sgx --roothash=roothash package.pem ../config.json
+
+export MYST_ROOTFS_PATH=$(CURDIR)/ext2rootfs
 
 run: package
 	echo "Running Mystikos packaged application. No myst exec-sgx necessary"
