@@ -17,6 +17,7 @@
 #include <myst/file.h>
 #include <myst/strings.h>
 #include <myst/types.h>
+#include <myst/cpio.h>
 #include <openenclave/host.h>
 #include "../config.h"
 #include "myst_u.h"
@@ -67,6 +68,11 @@ and <options> are one of:\n\
     --outdir <path>             -- optional output directory path. If not\n\
                                    specified goes into the configurations\n\
                                    <appdir>.signed directpry\n\
+    --roothash=<filename>       -- add the root hash given by filename to\n\
+                                   the image when siging, which permits\n\
+                                   mounting of EXT2 root file systems.\n\
+                                   The file argument contains an ASCII root\n\
+                                   hash.\n\
 \n\
 "
 
@@ -293,6 +299,7 @@ int _sign(int argc, const char* argv[])
     const char* signing_engine_name = NULL;
     const char* signing_engine_path = NULL;
     myst_buf_t roothash_buf = MYST_BUF_INITIALIZER;
+    char rootfs_path[] = "/tmp/mystXXXXXX";
 
     // We are in the right operation, right?
     assert(
@@ -341,6 +348,7 @@ int _sign(int argc, const char* argv[])
 
     const char* program_file = get_program_file();
     const char* rootfs_file = argv[2];
+    const char* rootfs = rootfs_file;
     const char* pem_file = argv[3];
     const char* config_file = argv[4];
     const char* target = NULL;  // Extracted from config file
@@ -440,10 +448,28 @@ int _sign(int argc, const char* argv[])
     assert(myst_validate_file_path(program_file));
     assert(myst_validate_file_path(temp_oeconfig_file));
 
+    /* if not a CPIO archive, create a zero-filled file with one page */
+    if (myst_cpio_test(rootfs) == -ENOTSUP)
+    {
+        int fd;
+        uint8_t page[PAGE_SIZE];
+
+        if ((fd = mkstemp(rootfs_path)) < 0)
+            _err("failed to create temporary file");
+
+        memset(page, 0, sizeof(page));
+
+        if (write(fd, page, sizeof(page)) != sizeof(page))
+            _err("failed to create file");
+
+        close(fd);
+        rootfs = rootfs_path;
+    }
+
     // Setup all the regions
     if ((details = create_region_details_from_files(
              target,
-             rootfs_file,
+             rootfs,
              pubkeys_opt,
              roothashes_opt,
              config_file,
@@ -452,6 +478,10 @@ int _sign(int argc, const char* argv[])
         unlink(temp_oeconfig_file);
         _err("Creating region data failed.");
     }
+
+    // Remove temporary file:
+    if (rootfs == rootfs_path)
+        unlink(rootfs);
 
     if (copy_files_to_signing_directory(
             sign_dir,
