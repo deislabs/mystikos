@@ -140,6 +140,7 @@ DIRS += strace
 DIRS += map_shared
 DIRS += posix-shm
 DIRS += debugmalloc
+DIRS += sign
 
 .PHONY: $(DIRS)
 
