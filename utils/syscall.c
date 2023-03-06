@@ -486,7 +486,8 @@ static int _desc_syscall_group[] = {SYS_read,
                                     SYS_copy_file_range,
                                     SYS_preadv2,
                                     SYS_pwritev2,
-                                    SYS_statx};
+                                    SYS_statx,
+                                    SYS_myst_poll_wake};
 
 static int _file_syscall_group[] = {SYS_stat,
                                     SYS_open,
@@ -583,7 +584,13 @@ static int _process_syscall_group[] = {SYS_clone,
                                        SYS_tgkill,
                                        SYS_waitid,
                                        SYS_rt_tgsigqueueinfo,
-                                       SYS_execveat};
+                                       SYS_execveat,
+                                       SYS_myst_get_process_thread_stack,
+                                       SYS_myst_get_exec_stack_option,
+                                       SYS_myst_clone,
+                                       SYS_myst_get_fork_info,
+                                       SYS_myst_kill_wait_child_forks,
+                                       SYS_myst_fork_wait_exec_exit};
 
 static int _signal_syscall_group[] = {SYS_rt_sigaction,
                                       SYS_rt_sigprocmask,
@@ -599,7 +606,10 @@ static int _signal_syscall_group[] = {SYS_rt_sigaction,
                                       SYS_tgkill,
                                       SYS_signalfd,
                                       SYS_signalfd4,
-                                      SYS_rt_tgsigqueueinfo};
+                                      SYS_rt_tgsigqueueinfo,
+                                      SYS_myst_interrupt_thread,
+                                      SYS_myst_kill_wait_child_forks,
+                                      SYS_myst_fork_wait_exec_exit};
 
 static int _memory_syscall_group[] = {SYS_mmap,
                                       SYS_mprotect,
@@ -624,7 +634,9 @@ static int _memory_syscall_group[] = {SYS_mmap,
                                       SYS_migrate_pages,
                                       SYS_move_pages,
                                       SYS_mlock2,
-                                      SYS_pkey_mprotect};
+                                      SYS_pkey_mprotect,
+                                      SYS_myst_maccess,
+                                      SYS_myst_unmap_on_exit};
 
 static int _stat_syscall_group[] = {SYS_stat};
 
@@ -676,7 +688,8 @@ static int _memory_mapping_change_syscall_group[] = {SYS_mmap,
                                                      SYS_shmdt,
                                                      SYS_remap_file_pages,
                                                      SYS_execveat,
-                                                     SYS_pkey_mprotect};
+                                                     SYS_pkey_mprotect,
+                                                     SYS_myst_unmap_on_exit};
 
 static int _stackcapture_on_enter_syscall_group[] = {SYS_execve,
                                                      SYS_exit,
@@ -712,15 +725,29 @@ static int _clock_syscall_group[] = {SYS_gettimeofday,
                                      SYS_clock_settime,
                                      SYS_clock_gettime,
                                      /*   SYS_lock_getres, */
-                                     SYS_clock_adjtime};
+                                     SYS_clock_adjtime,
+                                     SYS_myst_run_itimer};
 
 static int _comm_change_syscall_group[] = {SYS_execve, SYS_prctl, SYS_execveat};
 
-#define SYSCALL_GROUP_INITIALIZER(NAME) \
-    {#NAME, _##NAME##_syscall_group, MYST_COUNTOF(_##NAME##_syscall_group)}
+static int _myst_syscall_group[] = {SYS_myst_gcov,
+                                    SYS_myst_debug_malloc_check,
+                                    SYS_myst_trace,
+                                    SYS_myst_trace_ptr,
+                                    SYS_myst_add_symbol_file,
+                                    SYS_myst_load_symbols,
+                                    SYS_myst_unload_symbols,
+                                    SYS_myst_dump_stack,
+                                    SYS_myst_dump_ehdr,
+                                    SYS_myst_dump_argv,
+                                    SYS_myst_pre_launch_hook};
 
-const myst_syscall_group_t _groups[] =
-{
+#define SYSCALL_GROUP_INITIALIZER(NAME)                                       \
+    {                                                                         \
+#NAME, _##NAME##_syscall_group, MYST_COUNTOF(_##NAME##_syscall_group) \
+    }
+
+const myst_syscall_group_t _groups[] = {
     SYSCALL_GROUP_INITIALIZER(desc),
     SYSCALL_GROUP_INITIALIZER(file),
     SYSCALL_GROUP_INITIALIZER(ipc),
@@ -743,6 +770,7 @@ const myst_syscall_group_t _groups[] =
     SYSCALL_GROUP_INITIALIZER(creds),
     SYSCALL_GROUP_INITIALIZER(clock),
     SYSCALL_GROUP_INITIALIZER(comm_change),
+    SYSCALL_GROUP_INITIALIZER(myst),
 };
 
 __attribute__((__unused__)) static void _check_myst_syscalls(void)
