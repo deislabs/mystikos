@@ -13,11 +13,11 @@
 #include <sys/user.h>
 #include <unistd.h>
 
+#include <myst/cpio.h>
 #include <myst/elf.h>
 #include <myst/file.h>
 #include <myst/strings.h>
 #include <myst/types.h>
-#include <myst/cpio.h>
 #include <openenclave/host.h>
 #include "../config.h"
 #include "myst_u.h"
@@ -447,6 +447,9 @@ int _sign(int argc, const char* argv[])
     assert(myst_validate_file_path(config_file));
     assert(myst_validate_file_path(program_file));
     assert(myst_validate_file_path(temp_oeconfig_file));
+
+    /* validate rootfs for attacks */
+    assert(myst_control_file_path(rootfs));
 
     /* if not a CPIO archive, create a zero-filled file with one page */
     if (myst_cpio_test(rootfs) == -ENOTSUP)

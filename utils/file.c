@@ -283,3 +283,12 @@ int myst_validate_file_path(const char* path)
     myst_eprintf("The input path %s is invalid\n", path);
     return 0;
 }
+
+int myst_control_file_path(const char* path)
+{
+    if (strstr(path, "../") == NULL)
+        return 1;
+    myst_eprintf(
+        "The input path %s is invalid since it contains '../'\n", path);
+    return 0;
+}
