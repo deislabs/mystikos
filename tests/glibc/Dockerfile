@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as builder
+FROM ubuntu:20.04 as builder
 ARG TAG=release/2.34/master
 
 RUN apt-get update && apt-get install -y \

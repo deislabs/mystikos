@@ -1,13 +1,6 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update && apt-get install -y curl zip unzip tar git g++ wget build-essential libssl-dev libcurl4-openssl-dev libxml2-dev
-
-# Install newer Cmake than ubuntu 18.04 offers
-RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.20.2/cmake-3.20.2-linux-x86_64.tar.gz \
- && tar xf cmake-3.20.2-linux-x86_64.tar.gz \
- && mv cmake-3.20.2-linux-x86_64/bin/* /usr/bin/ \
- && mv cmake-3.20.2-linux-x86_64/share/cmake-3.20 /usr/share/ \
- && rm -rf cmake-3.20.2-linux-x86_64*
+RUN apt-get update && apt-get install -y curl zip unzip tar git g++ wget build-essential libssl-dev libcurl4-openssl-dev libxml2-dev cmake
 
 RUN git clone https://github.com/microsoft/vcpkg
 

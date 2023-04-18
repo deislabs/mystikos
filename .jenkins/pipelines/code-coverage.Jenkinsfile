@@ -21,7 +21,7 @@ pipeline {
     }
     environment {
         TEST_CONFIG = 'Code Coverage'
-        UBUNTU_VERSION = '18.04'
+        UBUNTU_VERSION = '20.04'
         VM_GENERATION = 'v3'
         MYST_SCRIPTS =      "${WORKSPACE}/scripts"
         JENKINS_SCRIPTS =   "${WORKSPACE}/.jenkins/scripts"

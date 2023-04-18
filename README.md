@@ -47,11 +47,11 @@ Mystikos.
 
 # Installation Guide for Ubuntu
 
-Mystikos may be built and installed on Ubuntu 18.04 and 20.04.
+Mystikos may be built and installed Ubuntu 20.04.
 
 ## Install from Released Package
 
-To install Mystikos using one of the released packages, please follow the appropriate guide to install on [Ubuntu 18.04](doc/user-install-ubuntu-1804.md) or [Ubuntu 20.04](doc/user-install-ubuntu-2004.md).
+To install Mystikos using one of the released packages, please follow the appropriate guide to install on [Ubuntu 20.04](doc/user-install-ubuntu-2004.md).
 
 ## Install From Source
 

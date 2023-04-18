@@ -2,11 +2,9 @@
 
 ## Prerequsites to run samples
 
-Follow the [installation guide](../README.md#installation-guide-for-ubuntu-1804) to set up prerequsites for the samples.
+Follow the [installation guide](../README.md#installation-guide-for-ubuntu) to set up prerequsites for the samples.
 
-[Download the Mystikos package from GitHub and set up the path](../README.md#download-mystikos) as described in the documentation or
-
-[build Mystikos from source and install the package](../BUILDING.md).
+[Download the Mystikos package from GitHub and set up the path](../README.md##install-from-released-package) as described in the documentation or [build Mystikos from source and install the package](../BUILDING.md).
 
 ## Common SGX Sample Information
 

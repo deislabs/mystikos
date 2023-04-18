@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 ARG CPYTHON_TAG=v3.8.11
 WORKDIR /
 

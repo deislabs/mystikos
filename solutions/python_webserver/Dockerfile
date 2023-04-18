@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Install Python with miniconda. The Ubuntu Python package is non-PIE.
 # See issue https://bugs.launchpad.net/ubuntu/+source/python2.7/+bug/1452115

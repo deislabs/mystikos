@@ -1,4 +1,4 @@
-FROM ubuntu:18.04 as builder
+FROM ubuntu:20.04 as builder
 
 RUN apt-get update && apt-get install -y \
     build-essential perl make automake autoconf m4 git libtool-bin
@@ -17,7 +17,7 @@ RUN ./autogen.sh \
     && make \
     && make install
 
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y build-essential
 

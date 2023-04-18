@@ -1,15 +1,11 @@
 OS_NAME=$(shell lsb_release -cs | xargs)
 OS_VERSION=$(shell lsb_release -rs | xargs)
 
-DRIVER=sgx_linux_x64_driver_1.35.bin
-DRIVER_URL=https://download.01.org/intel-sgx/sgx-dcap/1.7/linux/distro/ubuntu18.04-server
+DRIVER=sgx_linux_x64_driver_1.41.bin
+DRIVER_URL=https://download.01.org/intel-sgx/sgx-dcap/1.16/linux/distro/ubuntu20.04-server
 
 PIP_INSTALL=python3-pip
-PIP=pip3
-ifeq ("$(OS_NAME)", "bionic")
-PIP_INSTALL=python-pip
 PIP=pip
-endif
 
 all:
 	test -e package-installed || $(MAKE) packages
@@ -27,18 +23,18 @@ package_repo:
 
 packages: package_repo
 	$(MAKE) wait_dpkg
-	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-10 clang-format-10 pkg-config $(PIP_INSTALL)
+	sudo apt install -y gdb dkms libssl-dev cryptsetup-bin curl libcurl4-openssl-dev clang-11 clang-format-11 pkg-config $(PIP_INSTALL)
 	$(MAKE) wait_dpkg
 	sudo apt install -y libsgx-enclave-common libsgx-quote-ex libsgx-dcap-ql libsgx-dcap-ql-dev az-dcap-client
-ifeq ("$(OS_NAME)", "bionic")
-	python -m $(PIP) install --upgrade $(PIP)
+ifeq ("$(OS_NAME)", "focal")
+	python3 -m $(PIP) install --upgrade $(PIP)
 endif
 	$(PIP) install cmake && sudo ln -f -s $(HOME)/.local/bin/cmake /usr/bin/cmake
 	touch package-installed
 
 install_sgx_driver:
 ifndef CDPX_BYPASS
-ifeq ("$(OS_NAME)", "bionic")
+ifeq ("$(OS_NAME)", "focal")
 	wget $(DRIVER_URL)/$(DRIVER)
 	sudo bash ./$(DRIVER)
 endif

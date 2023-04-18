@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt update && apt install -y wget &&\
     wget -q https://repo.continuum.io/miniconda/Miniconda3-py39_4.9.2-Linux-x86_64.sh &&\

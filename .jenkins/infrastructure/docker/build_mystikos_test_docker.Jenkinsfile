@@ -21,7 +21,7 @@ def containers_to_build = [
 
 pipeline {
     agent {
-        label 'ACC-1804-DC4'
+        label 'nonSGX-ubuntu-2004'
     }
     options {
         timeout(time: 360, unit: 'MINUTES')

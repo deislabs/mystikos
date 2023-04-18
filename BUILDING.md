@@ -4,7 +4,7 @@ This document contains instructions to build mystikos on Linux
 
 ## Building from source
 
-Mystikos is compatible with **Ubuntu 18.04 and 20.04**. It may be compiled with or
+Mystikos is compatible with **Ubuntu 20.04**. It may be compiled with or
 without SGX capability.
 
 ## Install the prerequisites
@@ -29,11 +29,11 @@ The build process will automatically install all prerequisite for OE SDK first,
 including the Intel SGX driver and Intel Platform Software, and then build the
 project. Finally, it installs the build outputs to `/opt/mystikos`.
 
-Mystikos can be used to run applications on a non-SGX-capable Ubuntu 18.04
+Mystikos can be used to run applications on a non-SGX-capable Ubuntu 20.04
 machine while running with the Linux target (simulation mode). Obviously you
 need an SGX-capable machine to try out the SGX target. There are multiple ways
 which you might procure an SGX-capable machine, including but not limited to:
 - buy or build an Intel NUC (TODO: include specific model number)
-- use a [`DCsv2`-series (from DC1s_v2 up to DC8_V2) VM on Azure](https://aka.ms/accgetstarted)
+- use a [`DCsv2`-series (from DC1s_v2 up to DC8s_V2) VM on Azure](https://aka.ms/accgetstarted)
 - or use another cloud provider which also has SGX support
 - use your own servers
