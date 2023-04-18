@@ -7,7 +7,7 @@ set -e
 
 SOURCE_DIR=$(dirname "$0")
 BUILD_DIR="${PWD}"
-UBUNTU_VERSION="18.04"
+UBUNTU_VERSION="20.04"
 IMAGE_TAG="latest"
 
 usage() {
@@ -19,7 +19,7 @@ usage() {
     echo "           See https://github.com/openenclave/openenclave/blob/master/DOCKER_IMAGES.md for release versions"
     echo ""
     echo "Options:" 1>&2
-    echo "  -u     Ubuntu release version [Default: 18.04]" 1>&2
+    echo "  -u     Ubuntu release version [Default: 20.04]" 1>&2
     echo "  -t     Tag for the Docker image [Default: latest]" 1>&2
     exit 1
 }

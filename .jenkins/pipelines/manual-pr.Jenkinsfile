@@ -49,7 +49,7 @@ pipeline {
                 axes {
                     axis {
                         name 'OS_VERSION'
-                        values '18.04', '20.04'
+                        values '20.04'
                     }
                     axis {
                         name 'TEST_PIPELINE'

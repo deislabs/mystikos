@@ -42,7 +42,8 @@ The expected outputs, of course, are "1 4 9".
 
 We provide a `Dockerfile` for building and running the application as follows.
 Note this is a multi-stage dockerfile as `boost-dev` is only required for
-building. We can skip it in the final image to save space.
+building. We can skip it in the final image to save space. 
+> :warning: In this example we use Ubuntu 18.04, but you should use the latest supported Ubuntu LTS version instead.
 
 ```docker
 # stage 1 build

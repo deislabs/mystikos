@@ -1,4 +1,4 @@
-FROM mystikos.azurecr.io/mystikos-bionic:latest
+FROM mystikos.azurecr.io/mystikos-focal:latest
 
 ADD appdir/bin/hello /appdir/bin/hello
 ADD config.json config.json

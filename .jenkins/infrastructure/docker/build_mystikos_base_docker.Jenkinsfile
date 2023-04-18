@@ -2,7 +2,7 @@ library "OpenEnclaveJenkinsLibrary@${params.OECI_LIB_VERSION}"
 
 pipeline {
     agent {
-        label 'ACC-1804'
+        label 'nonSGX-ubuntu-2004'
     }
     options {
         timeout(time: 360, unit: 'MINUTES')
@@ -73,7 +73,6 @@ pipeline {
             steps {
                 dir("${env.BASE_DOCKERFILE_DIR}/build") {
                     sh """
-                        ../build.sh -m "${params.MYST_VERSION}" -o "${params.OE_BASE_CONTAINER_TAG}" -u "18.04" -t "${MYST_BASE_CONTAINER_TAG}"
                         ../build.sh -m "${params.MYST_VERSION}" -o "${params.OE_BASE_CONTAINER_TAG}" -u "20.04" -t "${MYST_BASE_CONTAINER_TAG}"
                     """
                 }
@@ -86,13 +85,10 @@ pipeline {
             steps {
                 script {
                     docker.withRegistry(params.CONTAINER_REPO, env.INTERNAL_REPO_CREDS) {
-                        base_1804_image = docker.image("mystikos-bionic:${MYST_BASE_CONTAINER_TAG}")
                         base_2004_image = docker.image("mystikos-focal:${MYST_BASE_CONTAINER_TAG}")
-                        common.exec_with_retry { base_1804_image.push() }
                         common.exec_with_retry { base_2004_image.push() }
 
                         if ( params.TAG_LATEST ) {
-                            common.exec_with_retry { base_1804_image.push('latest') }
                             common.exec_with_retry { base_2004_image.push('latest') }
                         }
                     }
@@ -132,13 +128,9 @@ pipeline {
                     CONTAINER_REPO = params.CONTAINER_REPO - ~"^(https|http)://"
                     BASE_2004_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
                     BASE_2004_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
-                    BASE_1804_PSW  = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG}", "libsgx-enclave-common")
-                    BASE_1804_DCAP = helpers.dockerGetAptPackageVersion("${CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG}", "libsgx-ae-id-enclave")
                     println "Ubuntu 20.04 PSW: ${BASE_2004_PSW}"
                     println "Ubuntu 20.04 DCAP: ${BASE_2004_DCAP}"
-                    println "Ubuntu 18.04 PSW: ${BASE_1804_PSW}"
-                    println "Ubuntu 18.04 DCAP: ${BASE_1804_DCAP}"
-                    if (BASE_2004_PSW == "N/A" || BASE_2004_DCAP == "N/A" || BASE_1804_PSW == "N/A" || BASE_1804_DCAP == "N/A") {
+                    if (BASE_2004_PSW == "N/A" || BASE_2004_DCAP == "N/A") {
                         error("Failed to get package versions")
                     }
                 }
@@ -150,7 +142,6 @@ pipeline {
                         fi
                         echo "\$(head -n 2 DOCKER_IMAGES.md)" > DOCKER_IMAGES_new.md
                         echo "| Mystikos Base Ubuntu 20.04 | ${params.CONTAINER_REPO}/mystikos-focal:${MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_2004_PSW} | ${BASE_2004_DCAP} |" >> DOCKER_IMAGES_new.md
-                        echo "| Mystikos Base Ubuntu 18.04 | ${params.CONTAINER_REPO}/mystikos-bionic:${MYST_BASE_CONTAINER_TAG} | ${params.MYST_VERSION} | ${OE_BASE_CONTAINER_TAG} | ${BASE_1804_PSW} | ${BASE_1804_DCAP} |" >> DOCKER_IMAGES_new.md
                         echo "\$(tail -n +3 DOCKER_IMAGES.md)" >> DOCKER_IMAGES_new.md
                         mv DOCKER_IMAGES_new.md DOCKER_IMAGES.md
                     """

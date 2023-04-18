@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 COPY ./build-myst.sh /build-myst.sh
 RUN /bin/chmod 777 /build-myst.sh

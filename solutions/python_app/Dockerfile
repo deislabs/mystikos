@@ -1,8 +1,8 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt update && apt install -y curl gnupg2 &&\
     curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - &&\
-    curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list &&\
+    curl https://packages.microsoft.com/config/ubuntu/20.04/prod.list > /etc/apt/sources.list.d/mssql-release.list &&\
     apt update && \
     apt install -y wget &&\
     ACCEPT_EULA=Y apt install -y msodbcsql17 &&\

@@ -1,4 +1,5 @@
 # Installation Guiide for Ubuntu 18.04
+> :warning: Ubuntu 18.04 is no longer supported. Please use the latest supported Ubuntu LTS version instead.
 
 ## 1. Install Intel Drivers
 
