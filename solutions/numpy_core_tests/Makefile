@@ -22,7 +22,7 @@ rootfs: appdir
 	$(MYST) mkext2 appdir rootfs
 
 run: rootfs
-	TIMEOUT=150s $(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 /app/app.py
+	TIMEOUT=180s $(RUNTEST) $(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 /app/app.py
 
 one: rootfs
 	$(MYST_EXEC) rootfs $(OPTS) --app-config-path config.json /usr/local/bin/python3 -m pytest /usr/local/lib/python3.9/site-packages/$(TEST)
