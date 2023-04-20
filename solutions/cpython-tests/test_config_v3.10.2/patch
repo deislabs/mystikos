@@ -1,5 +1,5 @@
 diff --git a/Lib/test/test_cmd_line.py b/Lib/test/test_cmd_line.py
-index d93e98f..c42dabf 100644
+index d93e98f372..c42dabfb51 100644
 --- a/Lib/test/test_cmd_line.py
 +++ b/Lib/test/test_cmd_line.py
 @@ -433,6 +433,7 @@ def test_closed_stdout(self):
@@ -19,7 +19,7 @@ index d93e98f..c42dabf 100644
          # Issue 31845: a startup refactoring broke reading flags from env vars
          for value, expected in (("", 0), ("1", 1), ("text", 1), ("2", 2)):
 diff --git a/Lib/test/test_logging.py b/Lib/test/test_logging.py
-index 03d0319..ce2ab3c 100644
+index 03d0319306..ce2ab3c553 100644
 --- a/Lib/test/test_logging.py
 +++ b/Lib/test/test_logging.py
 @@ -675,6 +675,7 @@ def remove_loop(fname, tries):
@@ -63,7 +63,7 @@ index 03d0319..ce2ab3c 100644
          multiprocessing_imported = 'multiprocessing' in sys.modules
          try:
 diff --git a/Lib/test/test_mailbox.py b/Lib/test/test_mailbox.py
-index 604fc45..66d7b53 100644
+index 604fc4525f..66d7b53f7d 100644
 --- a/Lib/test/test_mailbox.py
 +++ b/Lib/test/test_mailbox.py
 @@ -1063,6 +1063,7 @@ def test_add_and_close(self):
@@ -75,7 +75,7 @@ index 604fc45..66d7b53 100644
          # Fork off a child process that will lock the mailbox temporarily,
          # unlock it and exit.
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index 56b72f4..b4a2096 100644
+index 56b72f465c..51d25333df 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -91,6 +91,7 @@ def test_getresgid(self):
@@ -170,8 +170,16 @@ index 56b72f4..b4a2096 100644
      def test_sched_rr_get_interval(self):
          try:
              interval = posix.sched_rr_get_interval(0)
+@@ -1509,6 +1516,7 @@ def test_path_with_null_byte(self):
+         self.assertRaises(ValueError, os.stat, fn_with_NUL)
+ 
+     @unittest.skipUnless(hasattr(os, "pidfd_open"), "pidfd_open unavailable")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_pidfd_open(self):
+         with self.assertRaises(OSError) as cm:
+             os.pidfd_open(-1)
 diff --git a/Lib/test/test_pty.py b/Lib/test/test_pty.py
-index 0c17812..d1f6a78 100644
+index 0c17812757..d1f6a78dd3 100644
 --- a/Lib/test/test_pty.py
 +++ b/Lib/test/test_pty.py
 @@ -127,6 +127,7 @@ def handle_sighup(signum, frame):
@@ -207,7 +215,7 @@ index 0c17812..d1f6a78 100644
          pty.spawn([sys.executable, '-c', 'print("hi there")'])
  
 diff --git a/Lib/test/test_random.py b/Lib/test/test_random.py
-index 5354edd..6274d43 100644
+index 5354eddab6..6274d4324a 100644
 --- a/Lib/test/test_random.py
 +++ b/Lib/test/test_random.py
 @@ -1312,6 +1312,7 @@ def test__all__(self):
@@ -219,7 +227,7 @@ index 5354edd..6274d43 100644
          # Test the global Random instance gets reseeded in child
          r, w = os.pipe()
 diff --git a/Lib/test/test_support.py b/Lib/test/test_support.py
-index 7929098..1093f50 100644
+index 79290986c4..1093f50055 100644
 --- a/Lib/test/test_support.py
 +++ b/Lib/test/test_support.py
 @@ -44,6 +44,7 @@ def tearDownClass(cls):
@@ -247,7 +255,7 @@ index 7929098..1093f50 100644
          # Make sure that there is no other pending child process
          support.reap_children()
 diff --git a/Lib/test/test_thread.py b/Lib/test/test_thread.py
-index 4ae8a83..c8c8473 100644
+index 4ae8a833b9..c8c8473988 100644
 --- a/Lib/test/test_thread.py
 +++ b/Lib/test/test_thread.py
 @@ -225,6 +225,7 @@ def setUp(self):
@@ -259,7 +267,7 @@ index 4ae8a83..c8c8473 100644
      def test_forkinthread(self):
          pid = None
 diff --git a/Lib/test/test_tracemalloc.py b/Lib/test/test_tracemalloc.py
-index 82be98d..9b81418 100644
+index 82be98dfd8..9b81418546 100644
 --- a/Lib/test/test_tracemalloc.py
 +++ b/Lib/test/test_tracemalloc.py
 @@ -347,6 +347,7 @@ def fork_child(self):
@@ -287,7 +295,7 @@ index 82be98d..9b81418 100644
          for nframe in INVALID_NFRAME:
              with self.subTest(nframe=nframe):
 diff --git a/Lib/test/test_uuid.py b/Lib/test/test_uuid.py
-index d6a8333..0556d2d 100755
+index d6a8333427..0556d2dc4e 100755
 --- a/Lib/test/test_uuid.py
 +++ b/Lib/test/test_uuid.py
 @@ -640,6 +640,7 @@ def test_uuid5(self):
