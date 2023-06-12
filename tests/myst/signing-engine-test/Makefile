@@ -32,7 +32,23 @@ tests: rootfs $(PRIVATE)
 	$(MAKE) test-ext2
 	$(MAKE) test-cpio
 
+verify:
+	oesign dump --enclave-image=./hello.signed/lib/openenclave/mystenc.so		# Verify without package mode enclave
+	myst dump-sgx ./myst/bin/hello												# Verify packaged binary
+
 test-ext2: rootfs roothash
+	$(RUNTEST) $(MYST) package-sgx --roothash=roothash NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE)
+	$(RUNTEST) ./myst/bin/hello --rootfs=ext2rootfs				# METHOD 1
+	MYST_ROOTFS_PATH=ext2rootfs $(RUNTEST) ./myst/bin/hello		# METHOD 2
+	rm -rf myst
+	@ echo "=== passed test (myst-sign-package-ext2-valid-1)\n\n"
+
+	$(RUNTEST) $(MYST) package-sgx --roothash=roothash NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE) --outfile "helloworld"
+	$(RUNTEST) ./helloworld --rootfs=ext2rootfs				# METHOD 1
+	MYST_ROOTFS_PATH=ext2rootfs	$(RUNTEST) ./helloworld 	# METHOD 2
+	rm helloworld
+	@ echo "=== passed test (myst-sign-package-ext2-valid-2)\n\n"
+
 	$(RUNTEST) $(MYST) sign ext2rootfs NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE) --roothash=roothash
 	$(RUNTEST) ./hello.signed/bin/myst $(EXEC) hello.signed/rootfs /bin/hello
 	rm -rf hello.signed
@@ -61,6 +77,16 @@ test-ext2: rootfs roothash
 	@ echo "=== passed test (myst-sign-ext2-engine-sign-wrong)\n\n"
 
 test-cpio: rootfs
+	$(RUNTEST) $(MYST) package-sgx appdir $(PRIVATE) config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE)
+	$(RUNTEST) ./myst/bin/hello
+	rm -rf myst
+	@ echo "=== passed test (myst-sign-package-cpio-valid-1)\n\n"
+
+	$(RUNTEST) $(MYST) package-sgx appdir $(PRIVATE) config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE) --outfile "helloworld"
+	$(RUNTEST) ./helloworld
+	rm helloworld
+	@ echo "=== passed test (myst-sign-package-cpio-valid-2)\n\n"
+
 	$(RUNTEST) $(MYST) sign cpiorootfs NULL config.json --signing-engine-name $(TEST_ENGINE_ID) --signing-engine-path $(TEST_ENGINE_PATH) --signing-engine-key $(PRIVATE)
 	$(RUNTEST) ./hello.signed/bin/myst $(EXEC) hello.signed/rootfs /bin/hello
 	rm -rf hello.signed
@@ -104,4 +130,4 @@ myst:
 	$(MAKE) -C $(TOP)/tools/myst
 
 clean:
-	rm -rf $(PRIVATE) wrongprivate.pem $(APPDIR) Helloworld ext2rootfs cpiorootfs hello.signed 1 2 3 4 roothash
+	rm -rf $(PRIVATE) wrongprivate.pem $(APPDIR) Helloworld ext2rootfs cpiorootfs hello.signed 1 2 3 4 roothash rootfs libmyst* myst*
