@@ -237,11 +237,11 @@ EXT2 image.
 ##### Running the signed application
 
 Since the EXT2 image is separate from the signed application, its location must
-be specified either by an environment variable (``MYST_ROOTFS``) or by an option
+be specified either by an environment variable (``MYST_ROOTFS_PATH``) or by an option
 (``--rootfs``). For example,
 
 ```
-$ MYST_ROOTFS=ext2image ./myst/bin/hello
+$ MYST_ROOTFS_PATH=ext2image ./myst/bin/hello
 ```
 
 Or equivalently,
