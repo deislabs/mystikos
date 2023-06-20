@@ -126,6 +126,32 @@ index 92d5c179..e94deece 100644
  }
  
  #define VDSO_USEFUL
+diff --git a/include/elf.h b/include/elf.h
+index 549f92c1..5c4740b9 100644
+--- a/include/elf.h
++++ b/include/elf.h
+@@ -385,7 +385,8 @@ typedef struct {
+ #define SHT_PREINIT_ARRAY 16
+ #define SHT_GROUP	  17
+ #define SHT_SYMTAB_SHNDX  18
+-#define	SHT_NUM		  19
++#define SHT_RELR   19
++#define	SHT_NUM		  20
+ #define SHT_LOOS	  0x60000000
+ #define SHT_GNU_ATTRIBUTES 0x6ffffff5
+ #define SHT_GNU_HASH	  0x6ffffff6
+@@ -751,7 +752,10 @@ typedef struct {
+ #define DT_PREINIT_ARRAY 32
+ #define DT_PREINIT_ARRAYSZ 33
+ #define DT_SYMTAB_SHNDX	34
+-#define	DT_NUM		35
++#define DT_RELRSZ 35
++#define DT_RELR 36
++#define DT_RELRENT 37
++#define	DT_NUM		38
+ #define DT_LOOS		0x6000000d
+ #define DT_HIOS		0x6ffff000
+ #define DT_LOPROC	0x70000000
 diff --git a/include/math.h b/include/math.h
 index 14f28ec8..09b5790d 100644
 --- a/include/math.h
@@ -261,7 +287,7 @@ index 20d50f2c..17cd6ac3 100644
 +{
 +}
 diff --git a/ldso/dynlink.c b/ldso/dynlink.c
-index afec985a..9f9b618d 100644
+index afec985a..9a9b5909 100644
 --- a/ldso/dynlink.c
 +++ b/ldso/dynlink.c
 @@ -3,6 +3,7 @@
@@ -303,7 +329,17 @@ index afec985a..9f9b618d 100644
  struct debug {
  	int ver;
  	void *head;
-@@ -217,6 +236,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
+@@ -204,7 +223,8 @@ static void decode_vec(size_t *v, size_t *a, size_t cnt)
+ 	size_t i;
+ 	for (i=0; i<cnt; i++) a[i] = 0;
+ 	for (; v[0]; v+=2) if (v[0]-1<cnt-1) {
+-		a[0] |= 1UL<<v[0];
++		if (v[0] < 8*sizeof(long))
++			a[0] |= 1UL<<v[0];
+ 		a[v[0]] = v[1];
+ 	}
+ }
+@@ -217,6 +237,14 @@ static int search_vec(size_t *v, size_t *r, size_t key)
  	return 1;
  }
  
@@ -318,7 +354,31 @@ index afec985a..9f9b618d 100644
  static uint32_t sysv_hash(const char *s0)
  {
  	const unsigned char *s = (void *)s0;
-@@ -658,6 +685,25 @@ static void *map_library(int fd, struct dso *dso)
+@@ -511,6 +539,23 @@ static void do_relocs(struct dso *dso, size_t *rel, size_t rel_size, size_t stri
+ 	}
+ }
+ 
++static void do_relr_relocs(struct dso *dso, size_t *relr, size_t relr_size)
++{
++	unsigned char *base = dso->base;
++	size_t *reloc_addr;
++	for (; relr_size; relr++, relr_size-=sizeof(size_t))
++		if ((relr[0]&1) == 0) {
++			reloc_addr = laddr(dso, relr[0]);
++			*reloc_addr++ += (size_t)base;
++		} else {
++			int i = 0;
++			for (size_t bitmap=relr[0]; (bitmap>>=1); i++)
++				if (bitmap&1)
++					reloc_addr[i] += (size_t)base;
++			reloc_addr += 8*sizeof(size_t)-1;
++		}
++}
++
+ static void redo_lazy_relocs()
+ {
+ 	struct dso *p = lazy_head, *next;
+@@ -658,6 +703,25 @@ static void *map_library(int fd, struct dso *dso)
  					ph->p_memsz < DEFAULT_STACK_MAX ?
  					ph->p_memsz : DEFAULT_STACK_MAX;
  			}
@@ -344,7 +404,7 @@ index afec985a..9f9b618d 100644
  		}
  		if (ph->p_type != PT_LOAD) continue;
  		nsegs++;
-@@ -895,6 +941,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
+@@ -895,6 +959,7 @@ static int fixup_rpath(struct dso *p, char *buf, size_t buf_size)
  static void decode_dyn(struct dso *p)
  {
  	size_t dyn[DYN_CNT];
@@ -352,7 +412,7 @@ index afec985a..9f9b618d 100644
  	decode_vec(p->dynv, dyn, DYN_CNT);
  	p->syms = laddr(p, dyn[DT_SYMTAB]);
  	p->strings = laddr(p, dyn[DT_STRTAB]);
-@@ -906,8 +953,21 @@ static void decode_dyn(struct dso *p)
+@@ -906,8 +971,21 @@ static void decode_dyn(struct dso *p)
  		p->rpath_orig = p->strings + dyn[DT_RUNPATH];
  	if (dyn[0]&(1<<DT_PLTGOT))
  		p->got = laddr(p, dyn[DT_PLTGOT]);
@@ -375,7 +435,7 @@ index afec985a..9f9b618d 100644
  	if (search_vec(p->dynv, dyn, DT_VERSYM))
  		p->versym = laddr(p, *dyn);
  }
-@@ -1043,38 +1103,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1043,38 +1121,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  				fd = path_open(name, p->rpath, buf, sizeof buf);
  		}
  		if (fd == -1) {
@@ -415,7 +475,7 @@ index afec985a..9f9b618d 100644
  			fd = path_open(name, sys_path, buf, sizeof buf);
  		}
  		pathname = buf;
-@@ -1098,6 +1127,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
+@@ -1098,6 +1145,7 @@ static struct dso *load_library(const char *name, struct dso *needed_by)
  	map = noload ? 0 : map_library(fd, &temp_dso);
  	close(fd);
  	if (!map) return 0;
@@ -423,7 +483,37 @@ index afec985a..9f9b618d 100644
  
  	/* Avoid the danger of getting two versions of libc mapped into the
  	 * same process when an absolute pathname was used. The symbols
-@@ -1683,6 +1713,13 @@ void __dls2b(size_t *sp, size_t *auxv)
+@@ -1334,6 +1382,8 @@ static void reloc_all(struct dso *p)
+ 			2+(dyn[DT_PLTREL]==DT_RELA));
+ 		do_relocs(p, laddr(p, dyn[DT_REL]), dyn[DT_RELSZ], 2);
+ 		do_relocs(p, laddr(p, dyn[DT_RELA]), dyn[DT_RELASZ], 3);
++		if (!DL_FDPIC)
++			do_relr_relocs(p, laddr(p, dyn[DT_RELR]), dyn[DT_RELRSZ]);
+ 
+ 		if (head != &ldso && p->relro_start != p->relro_end &&
+ 		    mprotect(laddr(p, p->relro_start), p->relro_end-p->relro_start, PROT_READ)
+@@ -1498,7 +1548,19 @@ static void do_init_fini(struct dso **queue)
+ 		if (dyn[0] & (1<<DT_INIT_ARRAY)) {
+ 			size_t n = dyn[DT_INIT_ARRAYSZ]/sizeof(size_t);
+ 			size_t *fn = laddr(p, dyn[DT_INIT_ARRAY]);
+-			while (n--) ((void (*)(void))*fn++)();
++			while (n--) 
++			{
++				/* If function address is an offset, displace by base address*/
++				if (*fn < (size_t)p->base &&
++					(*fn + (size_t)p->base) < (size_t)(p->base + p->map_len))
++				{
++					size_t fn_relocated = *fn + (size_t)p->base;
++					((void (*)(void))fn_relocated)();
++				}
++				else
++					((void (*)(void))*fn)();
++				fn++;
++			}
+ 		}
+ 
+ 		pthread_mutex_lock(&init_fini_lock);
+@@ -1683,6 +1745,13 @@ void __dls2b(size_t *sp, size_t *auxv)
  	else ((stage3_func)laddr(&ldso, dls3_def.sym->st_value))(sp, auxv);
  }
  
@@ -437,7 +527,7 @@ index afec985a..9f9b618d 100644
  /* Stage 3 of the dynamic linker is called with the dynamic linker/libc
   * fully functional. Its job is to load (if not already loaded) and
   * process dependencies and relocations for the main application and
-@@ -1716,6 +1753,10 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1716,6 +1785,10 @@ void __dls3(size_t *sp, size_t *auxv)
  		env_path = getenv("LD_LIBRARY_PATH");
  		env_preload = getenv("LD_PRELOAD");
  	}
@@ -448,7 +538,7 @@ index afec985a..9f9b618d 100644
  
  	/* If the main program was already loaded by the kernel,
  	 * AT_PHDR will point to some location other than the dynamic
-@@ -1797,6 +1838,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1797,6 +1870,7 @@ void __dls3(size_t *sp, size_t *auxv)
  			dprintf(2, "%s: %s: Not a valid dynamic program\n", ldname, argv[0]);
  			_exit(1);
  		}
@@ -456,7 +546,7 @@ index afec985a..9f9b618d 100644
  		close(fd);
  		ldso.name = ldname;
  		app.name = argv[0];
-@@ -1936,6 +1978,7 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1936,6 +2010,7 @@ void __dls3(size_t *sp, size_t *auxv)
  	/* Determine if malloc was interposed by a replacement implementation
  	 * so that calloc and the memalign family can harden against the
  	 * possibility of incomplete replacement. */
@@ -464,7 +554,7 @@ index afec985a..9f9b618d 100644
  	if (find_sym(head, "malloc", 1).dso != &ldso)
  		__malloc_replaced = 1;
  
-@@ -1955,7 +1998,13 @@ void __dls3(size_t *sp, size_t *auxv)
+@@ -1955,7 +2030,13 @@ void __dls3(size_t *sp, size_t *auxv)
  
  	errno = 0;
  
@@ -478,7 +568,7 @@ index afec985a..9f9b618d 100644
  	for(;;);
  }
  
-@@ -2058,6 +2107,10 @@ void *dlopen(const char *file, int mode)
+@@ -2058,6 +2139,10 @@ void *dlopen(const char *file, int mode)
  	pthread_mutex_lock(&init_fini_lock);
  	if (!p->constructed) ctor_queue = queue_ctors(p);
  	pthread_mutex_unlock(&init_fini_lock);
@@ -489,7 +579,7 @@ index afec985a..9f9b618d 100644
  	if (!p->relocated && (mode & RTLD_LAZY)) {
  		prepare_lazy(p);
  		for (i=0; p->deps[i]; i++)
-@@ -2100,6 +2153,7 @@ end:
+@@ -2100,6 +2185,7 @@ end:
  		free(ctor_queue);
  	}
  	pthread_setcancelstate(cs, 0);
@@ -497,7 +587,7 @@ index afec985a..9f9b618d 100644
  	return p;
  }
  
-@@ -2272,11 +2326,16 @@ no_redir:
+@@ -2272,11 +2358,16 @@ no_redir:
  	return __dlsym(p, s, ra);
  }
  
@@ -514,7 +604,7 @@ index afec985a..9f9b618d 100644
  	for(current = head; current;) {
  		info.dlpi_addr      = (uintptr_t)current->base;
  		info.dlpi_name      = current->name;
-@@ -2289,12 +2348,11 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void
+@@ -2289,12 +2380,11 @@ int dl_iterate_phdr(int(*callback)(struct dl_phdr_info *info, size_t size, void
  
  		ret = (callback)(&info, sizeof (info), data);
  
@@ -529,7 +619,7 @@ index afec985a..9f9b618d 100644
  	return ret;
  }
  
-@@ -2302,7 +2360,7 @@ static void error(const char *fmt, ...)
+@@ -2302,7 +2392,7 @@ static void error(const char *fmt, ...)
  {
  	va_list ap;
  	va_start(ap, fmt);
@@ -766,6 +856,19 @@ index cbabde47..e78515e4 100644
 +size_t __strftime_l(char *restrict, size_t, const char *restrict, const struct tm *restrict, locale_t);
  
  #endif
+diff --git a/src/internal/dynlink.h b/src/internal/dynlink.h
+index 764e3a1a..0171c71a 100644
+--- a/src/internal/dynlink.h
++++ b/src/internal/dynlink.h
+@@ -93,7 +93,7 @@ struct fdpic_dummy_loadmap {
+ #endif
+ 
+ #define AUX_CNT 32
+-#define DYN_CNT 32
++#define DYN_CNT 37
+ 
+ typedef void (*stage2_func)(unsigned char *, size_t *);
+ 
 diff --git a/src/internal/pthread_impl.h b/src/internal/pthread_impl.h
 index 5742dfc5..fe718786 100644
 --- a/src/internal/pthread_impl.h
