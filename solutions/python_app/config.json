@@ -9,7 +9,8 @@
     // Mystikos specific values
 
     // The heap size of the user application. Increase this setting if your app experienced OOM.
-    "MemorySize": "2g",
+    "MemorySize": "4g",
+    "MaxAffinityCPUs": 4,
     // The path to the entry point application in rootfs
     "ApplicationPath": "/miniconda/bin/python3",
     // The parameters to the entry point application
