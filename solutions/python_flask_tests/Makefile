@@ -24,5 +24,8 @@ run_single:
 # Run single test for debugging
 	$(RUNTEST) $(MYST_EXEC) --app-config-path config.json $(OPTS) rootfs /usr/local/bin/python /usr/local/bin/pytest tests/test_instance_config.py::test_egg_installed_paths
 
+gdb:
+	$(MYST_GDB) --args $(MYST_EXEC) --app-config-path config.json $(OPTS) rootfs /usr/local/bin/python /usr/local/bin/pytest tests/test_instance_config.py::test_egg_installed_paths
+
 clean:
 	rm -rf appdir rootfs

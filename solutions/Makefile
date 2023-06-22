@@ -18,11 +18,11 @@ DIRS += msgpack_c
 
 DIRS += dotnet
 DIRS += aspnet_core
-#DIRS += numpy_core_tests
+DIRS += numpy_core_tests
 DIRS += cpython-tests
 
 DIRS += memcached
-#DIRS += python_flask_tests
+DIRS += python_flask_tests
 DIRS += python_web_frameworks
 DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST

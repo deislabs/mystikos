@@ -1,4 +1,5 @@
-FROM python:3.9-slim
+FROM python:3.9-slim-bullseye
+# Pin to older version of image as newer image comes with newer libstdc++ and libc versions, which use elf/loader features musl does not support.
 
 WORKDIR /app
 
@@ -14,5 +15,4 @@ RUN python -m pip install --upgrade pip setuptools &&\
 
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["/bin/bash"]
-# CMD ["/usr/local/bin/pytest"]
+ENTRYPOINT ["/usr/local/bin/python", "/usr/local/bin/pytest"]
