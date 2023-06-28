@@ -90,25 +90,7 @@ pipeline {
                     }
                     axis {
                         name 'VM_GENERATION'
-                        values 'v3', 'v2'
-                    }
-                }
-                excludes {
-                    // Skip builds with Ubuntu 20.04 and v2
-                    // But include 'Unit' and 'Solutions' tests
-                    exclude {
-                        axis {
-                            name 'OS_VERSION'
-                            values '20.04'
-                        }
-                        axis {
-                            name 'VM_GENERATION'
-                            values 'v2'
-                        }
-                        axis {
-                            name 'TEST_PIPELINE'
-                            values 'DotNet', 'DotNet-P1', 'Azure-SDK', 'PyTorch', 'OpenMP-Testsuite'
-                        }
+                        values 'v3'
                     }
                 }
                 stages {

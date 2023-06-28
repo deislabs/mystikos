@@ -86,7 +86,7 @@ pipeline {
                     }
                     axis {
                         name 'VM_GENERATION'
-                        values 'v3', 'v2'
+                        values 'v3'
                     }
                 }
                 stages {
