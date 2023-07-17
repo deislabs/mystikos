@@ -47,7 +47,7 @@ jobs:
 
     - name: Building Mystikos
       run: |
-        make MYST_PRODUCT_BUILD=1 -j4
+        make CDPX_BYPASS=1 -j4
               
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
