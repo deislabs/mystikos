@@ -86,6 +86,7 @@ OE_BINDIR += $(BUILDDIR)/openenclave/bin
 
 OEENCLAVE_INCLUDES =
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)
+OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty/openssl_3
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty/libc
 OEENCLAVE_INCLUDES += -I$(OE_INCDIR)/openenclave/3rdparty/mbedtls
