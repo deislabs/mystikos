@@ -5,8 +5,8 @@ TOP=$(abspath $(CURDIR)/../..)
 BUILDDIR=${TOP}/build
 
 URL=https://github.com/openenclave/openenclave
-BRANCH=master
-COMMIT=9385705291d2180589a8bd690e1b32c874e12250
+BRANCH=v0.19.x
+COMMIT=38cfb435aa78b40546a87d22fa9c61587eeb7f21
 
 OPENENCLAVE_INSTALL_PREFIX=$(BUILDDIR)/openenclave
 OPENENCLAVE_SRC = $(CURDIR)/openenclave
@@ -64,6 +64,7 @@ openenclave:
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/musl/musl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/mbedtls/mbedtls )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl )
+	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/openssl_3 )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/openssl/intel-sgx-ssl )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/snmalloc )
 	( cd openenclave; $(FETCH_SUBMODULE) 3rdparty/symcrypt_engine/SymCrypt-OpenSSL )

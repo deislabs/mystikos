@@ -92,6 +92,7 @@ clean:
 ##==============================================================================
 
 build-prereqs:
+	sudo apt install -y lsb-release
 	make -C $(TOP)/prereqs/
 
 init: build-prereqs
