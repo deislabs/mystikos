@@ -49,7 +49,7 @@ endif
 
 LDFLAGS += $(OEENCLAVE_LDFLAGS)
 
-ifeq ($(MYST_OE_CRYPTO), openssl)
+ifeq ($(MYST_OE_CRYPTO), openssl_3)
 # The following workaround can be removed once internal crypto
 # implementation is ported to use OpenSSL
 LDFLAGS += -lmbedx509
