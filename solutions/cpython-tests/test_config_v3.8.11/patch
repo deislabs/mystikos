@@ -84,6 +84,18 @@ index effac97..7d8cb89 100644
      def test_lock_conflict(self):
          # Fork off a child process that will lock the mailbox temporarily,
          # unlock it and exit.
+diff --git a/Lib/test/test_poll.py b/Lib/test/test_poll.py
+index ef966bf..34a227b 100644
+--- a/Lib/test/test_poll.py
++++ b/Lib/test/test_poll.py
+@@ -117,6 +117,7 @@ class PollTests(unittest.TestCase):
+     # Another test case for poll().  This is copied from the test case for
+     # select(), modified to use poll() instead.
+ 
++    @unittest.skip("Temporarily disabled in Mystikos") # unsupported mmap from child before execve
+     def test_poll2(self):
+         cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
+         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE,
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
 index 9bdd284..87c8a65 100644
 --- a/Lib/test/test_posix.py
@@ -222,8 +234,20 @@ index 899ca10..b9b0225 100644
      def test_after_fork(self):
          # Test the global Random instance gets reseeded in child
          r, w = os.pipe()
+diff --git a/Lib/test/test_select.py b/Lib/test/test_select.py
+index 458998a..b7e6498 100644
+--- a/Lib/test/test_select.py
++++ b/Lib/test/test_select.py
+@@ -44,6 +44,7 @@ class SelectTestCase(unittest.TestCase):
+         self.assertIsNot(r, x)
+         self.assertIsNot(w, x)
+ 
++    @unittest.skip("Temporarily disabled in Mystikos") # unsupported mmap from child before execve
+     def test_select(self):
+         cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
+         with os.popen(cmd) as p:
 diff --git a/Lib/test/test_ssl.py b/Lib/test/test_ssl.py
-index 32bb2aa..0c9c6bd 100644
+index 32bb2aa..1259d86 100644
 --- a/Lib/test/test_ssl.py
 +++ b/Lib/test/test_ssl.py
 @@ -417,7 +417,8 @@ class BasicSocketTests(unittest.TestCase):
@@ -236,7 +260,15 @@ index 32bb2aa..0c9c6bd 100644
      def test_random_fork(self):
          status = ssl.RAND_status()
          if not status:
-@@ -4662,6 +4663,7 @@ class TestSSLDebug(unittest.TestCase):
+@@ -1619,6 +1620,7 @@ class ContextTests(unittest.TestCase):
+ 
+     @unittest.skipIf(sys.platform == "win32", "not-Windows specific")
+     @unittest.skipIf(IS_LIBRESSL, "LibreSSL doesn't support env vars")
++    @unittest.skip("Temporarily disabled in Mystikos")
+     def test_load_default_certs_env(self):
+         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+         with support.EnvironmentVarGuard() as env:
+@@ -4662,6 +4664,7 @@ class TestSSLDebug(unittest.TestCase):
              return len(list(f))
  
      @requires_keylog

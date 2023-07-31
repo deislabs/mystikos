@@ -31,6 +31,7 @@ Here is a list of all the skipped individual unit tests
 * test_ssl
     * test_random_fork
     * test_keylog_defaults
+    * test_load_default_certs_env
 * test_support
     * test_temp_dir__forked_child
     * test_reap_children
@@ -56,6 +57,9 @@ Here is a list of all the skipped individual unit tests
   * test_mkfifo_dir_fd
   * test_sched_rr_get_interval
   * test_sched_priority
+* test_poll
+  * test_poll2
+* test_select
 
 ### v3.9
 
@@ -96,6 +100,8 @@ Here is a list of all the skipped individual unit tests
   * test_mkfifo_dir_fd
   * test_sched_rr_get_interval
   * test_sched_priority
+  * test_pidfd_open
+* test_select
 
 
 ### v3.10
