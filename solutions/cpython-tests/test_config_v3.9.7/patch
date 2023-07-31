@@ -75,7 +75,7 @@ index 6f891d4..3ab6374 100644
          # Fork off a child process that will lock the mailbox temporarily,
          # unlock it and exit.
 diff --git a/Lib/test/test_posix.py b/Lib/test/test_posix.py
-index f4edb8b..924582c 100644
+index f4edb8b..f05108e 100644
 --- a/Lib/test/test_posix.py
 +++ b/Lib/test/test_posix.py
 @@ -88,6 +88,7 @@ class PosixTester(unittest.TestCase):
@@ -166,6 +166,14 @@ index f4edb8b..924582c 100644
      def test_sched_rr_get_interval(self):
          try:
              interval = posix.sched_rr_get_interval(0)
+@@ -1469,6 +1480,7 @@ class PosixTester(unittest.TestCase):
+         open(fn, 'wb').close()
+         self.assertRaises(ValueError, os.stat, fn_with_NUL)
+ 
++    @unittest.skip("Temporarily disabled in Mystikos") # SYS_pidfd_open not supported in Mystikos.
+     @unittest.skipUnless(hasattr(os, "pidfd_open"), "pidfd_open unavailable")
+     def test_pidfd_open(self):
+         with self.assertRaises(OSError) as cm:
 diff --git a/Lib/test/test_pty.py b/Lib/test/test_pty.py
 index 9c32467..9156d89 100644
 --- a/Lib/test/test_pty.py
@@ -192,6 +200,18 @@ index 0fa3a09..d7a1941 100644
      def test_after_fork(self):
          # Test the global Random instance gets reseeded in child
          r, w = os.pipe()
+diff --git a/Lib/test/test_select.py b/Lib/test/test_select.py
+index 458998a..b7e6498 100644
+--- a/Lib/test/test_select.py
++++ b/Lib/test/test_select.py
+@@ -44,6 +44,7 @@ class SelectTestCase(unittest.TestCase):
+         self.assertIsNot(r, x)
+         self.assertIsNot(w, x)
+ 
++    @unittest.skip("Temporarily disabled in Mystikos") # unsupported mmap from child before execve
+     def test_select(self):
+         cmd = 'for i in 0 1 2 3 4 5 6 7 8 9; do echo testing...; sleep 1; done'
+         with os.popen(cmd) as p:
 diff --git a/Lib/test/test_support.py b/Lib/test/test_support.py
 index 60a7741..c2ec44f 100644
 --- a/Lib/test/test_support.py
