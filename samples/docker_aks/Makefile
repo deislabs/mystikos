@@ -34,7 +34,7 @@ $(PACKAGE): $(APPDIR)
 	./$(PACKAGE) red green blue
 
 run: $(APPDIR)
-	@docker run --rm --device=/dev/sgx:/dev/sgx --volume /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket $(DOCKER_IMG)
+	@docker run --rm --device=/dev/sgx_enclave:/dev/sgx_enclave --volume /var/run/aesmd/aesm.socket:/var/run/aesmd/aesm.socket $(DOCKER_IMG)
 
 clean:
 	@rm -rf $(APPDIR) $(MYST_TARBALL) private.pem 

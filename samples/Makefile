@@ -4,5 +4,5 @@ DIRS = docker_aks helloworld java_hello_world pytorch_onnx_inference rust tensor
 
 run clean:
 	for dir in $(DIRS); do \
-    	$(MAKE) -C $$dir -f Makefile $@; \
+    	$(MAKE) -C $$dir -f Makefile $@ || exit 1;\
   	done
