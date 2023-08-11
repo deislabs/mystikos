@@ -194,7 +194,9 @@ int cli_get_mapping_opts(
                 token = strtok(NULL, comma);
             }
             uid_gid_mappings->num_uid_mappings = i;
-            free(arg_copy);
+
+            if (arg_copy != NULL)
+                free(arg_copy);
         }
         else
         {
@@ -235,7 +237,9 @@ int cli_get_mapping_opts(
                 token = strtok(NULL, comma);
             }
             uid_gid_mappings->num_gid_mappings = i;
-            free(arg_copy);
+
+            if (arg_copy != NULL)
+                free(arg_copy);
         }
         else
         {
