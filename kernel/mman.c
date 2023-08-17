@@ -1140,6 +1140,8 @@ int myst_mman_init(myst_mman_t* mman, uintptr_t base, size_t size)
     /* Set the magic number */
     mman->magic = MYST_MMAN_MAGIC;
 
+    mman->peak_usage = 0;
+    mman->current_usage = 0;
     /* Finally, set initialized to true */
     mman->initialized = 1;
 
@@ -2078,6 +2080,24 @@ int myst_mman_free_size(myst_mman_t* mman, size_t* size_out)
 
     *size_out = size;
 
+done:
+    return ret;
+}
+
+int myst_mman_peak_memory_usage(myst_mman_t* mman, long* size_out)
+{
+    ssize_t ret = 0;
+
+    if (*size_out)
+        *size_out = 0;
+
+    if (!mman || !size_out)
+    {
+        ret = -EINVAL;
+        goto done;
+    }
+
+    *size_out = mman->peak_usage;
 done:
     return ret;
 }
