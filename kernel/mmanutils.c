@@ -664,6 +664,17 @@ done:
     return ret;
 }
 
+void update_mem_usage(long length)
+{
+    long new_usage = _mman.current_usage + length;
+    if(new_usage > _mman.peak_usage)
+    {
+        _mman.peak_usage = new_usage;
+    }
+
+    _mman.current_usage = new_usage;
+}
+
 long myst_mmap(
     void* addr,
     size_t length,
@@ -750,6 +761,10 @@ long myst_mmap(
 
         ECHECK(
             myst_mman_mmap(&_mman, addr, length, prot, tflags, (void**)&ret));
+
+        //Update mem usage myst_mmap
+        if (__myst_kernel_args.perf)
+            update_mem_usage(length);
 
         // ATTN: For failures in the rest of the function, do we need to return
         // the allocated memory
@@ -841,6 +856,10 @@ void* myst_mremap(
     ECHECK(
         myst_mman_mremap(&_mman, old_address, old_size, new_size, flags, &p));
 
+    //Update mem usage myst_mman_mremap
+    if (__myst_kernel_args.perf)
+        update_mem_usage((long)new_size - (long)old_size);
+
     // fixup shared mapping
     if (shm_mapping)
     {
@@ -928,6 +947,11 @@ int __myst_munmap(void* addr, size_t length, fdlist_t** head_out)
     ECHECK(myst_round_up(length, PAGE_SIZE, &length));
 
     ECHECK(myst_mman_munmap(&_mman, addr, length));
+
+    //Update mem usage myst_mman_munmap
+    if (__myst_kernel_args.perf)
+        update_mem_usage(-1 * (long)length);
+
     ECHECK(_remove_file_mappings(addr, length, head_out));
 
 done:
@@ -977,6 +1001,11 @@ long myst_syscall_brk(void* addr)
     myst_mman_brk(&_mman, addr, &ptr);
 
     return (long)ptr;
+}
+
+int myst_get_peak_memory_usage(long* size)
+{
+    return myst_mman_peak_memory_usage(&_mman, size);
 }
 
 int myst_get_total_ram(size_t* size)

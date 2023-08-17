@@ -726,6 +726,9 @@ static void _print_boottime(void)
     }
 }
 
+#define COLOR_YELLOW "\e[33m"
+#define COLOR_RESET "\e[0m"
+
 /* the main thread is the only thread that is not on the heap */
 static myst_thread_t _main_thread;
 
@@ -976,6 +979,17 @@ int myst_enter_kernel(myst_kernel_args_t* args)
          * call to myst_set_fsbase().
          */
         myst_set_fsbase(thread->target_td);
+
+        /* print out the peak memory usage seen during an application's lifetime at shutdown */
+        if (__myst_kernel_args.perf)
+        {
+            long size;
+            myst_get_peak_memory_usage(&size);
+            myst_eprintf(COLOR_YELLOW "\n");
+            myst_eprintf(
+                "=== exit: peak memory usage: %5.3lfm\n", (double)size / 1048576.0);
+            myst_eprintf(COLOR_RESET "\n");
+        }
 
         if (__myst_kernel_args.perf)
             myst_print_syscall_times("kernel shutdown", SIZE_MAX);

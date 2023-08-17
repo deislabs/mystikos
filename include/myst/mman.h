@@ -61,6 +61,12 @@ _Static_assert(sizeof(myst_vad_t) == 40, "");
 /* myst_mman_t data structures and fields */
 typedef struct myst_mman
 {
+    /* Peak memory usage */
+    long peak_usage;
+
+    /* Current memory usage */
+    long current_usage;
+
     /* Magic number (MYST_MMAN_MAGIC) */
     uint64_t magic;
 
@@ -145,6 +151,8 @@ void myst_mman_set_sanity(myst_mman_t* heap, bool sanity);
 bool myst_mman_is_sane(myst_mman_t* heap);
 
 int myst_mman_total_size(myst_mman_t* mman, size_t* size);
+
+int myst_mman_peak_memory_usage(myst_mman_t* mman, long* size);
 
 int myst_mman_free_size(myst_mman_t* mman, size_t* size);
 

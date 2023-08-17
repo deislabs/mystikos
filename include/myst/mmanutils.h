@@ -65,6 +65,8 @@ int myst_mprotect(const void* addr, const size_t len, const int prot);
 
 int myst_get_total_ram(size_t* size);
 
+int myst_get_peak_memory_usage(long* size);
+
 int myst_get_free_ram(size_t* size);
 
 int myst_release_process_mappings(pid_t pid);
