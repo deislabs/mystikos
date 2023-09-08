@@ -36,6 +36,18 @@ IGNORED_FILES = [
     'VERSION'
 ]
 
+/* Prevent Branch Indexing from triggering a build. This is necessary because
+   Branch Indexing will trigger a build for every Pull Request in the repository
+   every time it occurs and waste resources.
+*/
+build_cause = currentBuild.getBuildCauses().toString()
+if (build_cause.contains('BranchIndexingCause')) {
+  currentBuild.result = 'ABORTED'
+  error("Branch Indexing is not allowed. Please trigger manually or via a pull request.")
+} else {
+  println("Build cause: ${build_cause}")
+}
+
 pipeline {
     agent {
         label 'Jenkins-Shared-DC2'
