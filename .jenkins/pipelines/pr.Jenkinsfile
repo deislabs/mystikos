@@ -9,7 +9,8 @@ APPROVED_AUTHORS = [
     'paulcallen',
     'radhikaj',
     'salsal97',
-    'vtikoo'
+    'vtikoo',
+    'justanotherminh'
 ]
 
 // Do not trigger a full CI build if changes contain only these ignored files
