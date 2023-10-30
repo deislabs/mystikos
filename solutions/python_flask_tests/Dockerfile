@@ -4,8 +4,8 @@ FROM python:3.9-slim-bullseye
 WORKDIR /app
 
 RUN apt update && apt install -y git
-# Checkout Flask v2.3.2
-RUN git clone https://github.com/pallets/flask && cd flask && git checkout f3b8f570545200c87465d18386f3fc9f2258307a
+# Checkout Flask v2.3.3
+RUN git clone --depth 1 --single-branch --branch 2.3.3 https://github.com/pallets/flask
 
 WORKDIR /app/flask
 
