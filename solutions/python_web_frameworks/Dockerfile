@@ -1,4 +1,4 @@
-FROM python:3-alpine
+FROM python:3.11-alpine
 
 RUN apk add --update --no-cache python3-dev build-base pcre-dev linux-headers
 RUN pip install flask uwsgi
