@@ -3,7 +3,7 @@ FROM alpine:3.7 as builder
 RUN apk update && apk upgrade
 RUN apk add build-base perl make automake autoconf m4 git libexecinfo-dev
 
-RUN git clone -b sockperf_v2 --single-branch  https://github.com/Mellanox/sockperf.git
+RUN git clone --single-branch --branch sockperf_v2 https://github.com/Mellanox/sockperf.git
 
 WORKDIR /sockperf
 

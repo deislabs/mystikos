@@ -8,7 +8,7 @@ RUN rm -rf /app;mkdir -p /app
 WORKDIR /app
 
 ADD skip-tests.patch .
-RUN git clone https://github.com/Microsoft/cpprestsdk.git casablanca
+RUN git clone --depth 1 --single-branch https://github.com/Microsoft/cpprestsdk.git casablanca
         # apply patch to skip un-wanted tests and compile
 RUN cd casablanca;\
         git apply ../skip-tests.patch;\

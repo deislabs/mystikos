@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
 
 # checkout glibc
 WORKDIR /
-RUN git clone -b ${TAG} https://sourceware.org/git/glibc.git
+RUN git clone --depth 1 --single-branch --branch ${TAG} https://sourceware.org/git/glibc.git
 WORKDIR /glibc
 COPY patch.diff .
 RUN git apply patch.diff
