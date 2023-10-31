@@ -2,11 +2,11 @@ FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y curl zip unzip tar git g++ wget build-essential libssl-dev libcurl4-openssl-dev libxml2-dev cmake
 
-RUN git clone https://github.com/microsoft/vcpkg
+RUN git clone --depth 1 --single-branch https://github.com/microsoft/vcpkg
 
 RUN ./vcpkg/bootstrap-vcpkg.sh
 
-RUN git clone https://github.com/Azure/azure-sdk-for-cpp.git
+RUN git clone --depth 1 --single-branch https://github.com/Azure/azure-sdk-for-cpp.git
 
 RUN cd azure-sdk-for-cpp && mkdir build && cd build \
 		&& cmake .. -DCMAKE_BUILD_TYPE=Debug -DBUILD_STORAGE_SAMPLES=ON -DBUILD_TESTING=ON \

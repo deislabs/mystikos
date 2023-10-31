@@ -3,7 +3,7 @@ FROM ubuntu:20.04 as builder
 RUN apt-get update && apt-get install -y \
     build-essential perl make automake autoconf m4 git libtool-bin
 
-RUN git clone -b sockperf_v2 --single-branch  https://github.com/Mellanox/sockperf.git
+RUN git clone --single-branch --branch sockperf_v2 https://github.com/Mellanox/sockperf.git
 
 WORKDIR /sockperf
 

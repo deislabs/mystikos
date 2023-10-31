@@ -20,9 +20,9 @@ RUN cd googletest-release-1.7.0; \
     mv *.a /usr/lib;cp -r ../include/gtest /usr/include
 
 # clone and compile msgpack repo
-RUN git clone --single-branch --branch cpp_master https://github.com/msgpack/msgpack-c.git msgpack
+RUN git clone --depth 1 --single-branch --branch cpp-3.3.0 https://github.com/msgpack/msgpack-c.git msgpack
 RUN mkdir -p /app/msgpack/build; \
-    cd /app/msgpack/build;git checkout cpp-3.3.0; cmake ..;make
+    cd /app/msgpack/build;cmake ..;make
 RUN mkdir -p /app/tests
 # filter and copy all executable test binaries to another directory
 RUN cd /app/msgpack/build/test; \

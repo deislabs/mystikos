@@ -30,7 +30,7 @@ RUN curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Mini
 FROM dev-base as submodule-update
 ARG PYTORCH_VERSION=v1.10.0
 WORKDIR /opt
-RUN git clone -b ${PYTORCH_VERSION} https://github.com/pytorch/pytorch.git --single-branch --depth 1
+RUN git clone --depth 1 --single-branch --branch ${PYTORCH_VERSION} https://github.com/pytorch/pytorch.git
 WORKDIR /opt/pytorch
 RUN git submodule update --init --recursive --jobs 0
 

@@ -15,7 +15,7 @@ RUN wget https://github.com/madler/zlib/releases/download/v1.2.13/zlib-1.2.13.ta
     make && \
     make install
 
-RUN git clone --depth 1 --branch $CPYTHON_TAG https://github.com/python/cpython
+RUN git clone --depth 1 --single-branch --branch $CPYTHON_TAG https://github.com/python/cpython
 WORKDIR /cpython
 # Apply patch to skip certain unit tests
 COPY ./test_config_$CPYTHON_TAG/patch /cpython/
