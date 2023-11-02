@@ -5,10 +5,8 @@ APPDIR        := appdir
 BUILD_DIR     := $(CURDIR)
 CFLAGS        := -fPIC
 DOCKER_IMG    := mystikos-hello
-MYST_TARBALL := mystikos.tar.gz
-PSW_VERSION   := 2.15.100
-MYST_RELEASE_VERSION := 0.5.0
-PACKAGE := myst/bin/hello
+MYST_TARBALL  := mystikos.tar.gz
+PACKAGE 	  := myst/bin/hello
 
 .PHONY: $(APPDIR) run clean
 
@@ -18,7 +16,7 @@ $(APPDIR): hello.c
 	@rm -rf $(APPDIR)
 	@mkdir -p $(APPDIR)/bin
 	@gcc $(CFLAGS) -o $(APPDIR)/bin/hello hello.c
-	@docker build --build-arg PSW_VERSION=$(PSW_VERSION) --build-arg MYST_RELEASE_VERSION=$(MYST_RELEASE_VERSION) -t $(DOCKER_IMG) .
+	@docker build -t $(DOCKER_IMG) .
 
 # IMPORTANT: 
 # Before running this option, please set the RESOURCE_GROUP and CLUSTER_NAME options
