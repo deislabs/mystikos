@@ -9,7 +9,7 @@ Then, the rootfs, config.json and private key are packaged together by the mysti
 Read more about basic concepts [here](https://github.com/deislabs/mystikos/blob/main/doc/user-getting-started.md#getting-started---general-concepts) \
 Read more about package mode [here](https://github.com/deislabs/mystikos/blob/7fb5cfb9f0f30f83af9561a99495f58a82c06059/doc/sign-package.md#packaging-your-application-for-sgx-enclave-packaging)
 
-The corresponding docker image was published in Docker Hub. Details for the Dockerfile are available [here](Dockerfile).
+The corresponding docker image was published in Microsoft's public container registry(MCR). Details for the Dockerfile are available [here](Dockerfile).
 
 You can use the myst-helloworld yaml [here](myst-helloworld.yaml) for your Azure Kubernetes Service job, it will deploy one job (myst-helloworld).
 
@@ -68,7 +68,7 @@ Eg:
 
 ```yaml
       - name: myst-helloworld
-        image: mystikos/myst-helloworld:0.2
+        image: mcr.microsoft.com/acc/samples/myst-helloworld:0.3
         command: [ "./myst/bin/hello", "--strace", "red", "green", "blue"]
 ```
 
