@@ -10,7 +10,7 @@ spec:
     spec:
       containers:
       - name: myst-helloworld
-        image: mcr.microsoft.com/acc/samples/myst-helloworld:0.3
+        image: mcr.microsoft.com/acc/samples/myst-helloworld:latest
         volumeMounts:
         - name: var-run-aesmd
           mountPath: /var/run/aesmd
