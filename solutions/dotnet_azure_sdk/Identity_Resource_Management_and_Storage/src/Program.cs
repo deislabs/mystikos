@@ -47,24 +47,11 @@ namespace AzureIdentityStorageExample
             while (++repeat <= total)
             {
                 Console.WriteLine("Repeat #{0}...", repeat);
+                string resourceGroupName;
                 try
                 {
                     // Create a Resource Group
-                    string resourceGroupName = await CreateResourceGroupAsync(resourcesManagementClient);
-
-                    // Create a Storage account
-                    string storageName = await CreateStorageAccountAsync(storageManagementClient, resourceGroupName);
-
-                    // Create a container and upload a blob using a storage connection string
-                    await UploadBlobUsingStorageConnectionStringAsync(storageManagementClient, resourceGroupName, storageName);
-
-                    // Upload a blob using Azure.Identity.DefaultAzureCredential
-                    await UploadBlobUsingDefaultAzureCredentialAsync(storageManagementClient, resourceGroupName, storageName, credential);
-
-                    Console.WriteLine("Delete the resources...");
-
-                    // Delete the resource group
-                    await DeleteResourceGroupAsync(resourcesManagementClient, resourceGroupName);
+                    resourceGroupName = await CreateResourceGroupAsync(resourcesManagementClient);
                 }
                 catch (RequestFailedException ex)
                 {
@@ -76,9 +63,42 @@ namespace AzureIdentityStorageExample
                     Console.WriteLine($"Unexpected exception! {ex.Message} {ex.StackTrace}");
                     return -1;
                 }
+
+                try
+                {
+                    // Create a Storage account
+                    string storageName = await CreateStorageAccountAsync(storageManagementClient, resourceGroupName);
+
+                    // Create a container and upload a blob using a storage connection string
+                    await UploadBlobUsingStorageConnectionStringAsync(storageManagementClient, resourceGroupName, storageName);
+
+                    // Upload a blob using Azure.Identity.DefaultAzureCredential
+                    await UploadBlobUsingDefaultAzureCredentialAsync(storageManagementClient, resourceGroupName, storageName, credential);
+
+                }
+                catch (RequestFailedException ex)
+                {
+                    Console.WriteLine($"Request failed! {ex.Message} {ex.StackTrace}");
+                    await deleteResourceGroup(resourcesManagementClient, resourceGroupName);
+                    return -1;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Unexpected exception! {ex.Message} {ex.StackTrace}");
+                    await deleteResourceGroup(resourcesManagementClient, resourceGroupName);
+                    return -1;
+                }
+                await deleteResourceGroup(resourcesManagementClient, resourceGroupName);
             }
             Console.WriteLine("Success!");
             return 0;
+        }
+
+        private static async Task deleteResourceGroup(ResourcesManagementClient resourcesManagementClient, string resourceGroupName)
+        {
+            Console.WriteLine("Delete the resources...");
+            // Delete the resource group
+            await DeleteResourceGroupAsync(resourcesManagementClient, resourceGroupName);
         }
 
         /// <summary>
@@ -109,7 +129,10 @@ namespace AzureIdentityStorageExample
             string storageAccountName = await GenerateStorageAccountNameAsync(storageManagementClient);
             StorageAccountCreateParameters parameters =
                 new StorageAccountCreateParameters(new Sku("Standard_LRS"), Kind.BlobStorage, ResourceRegion)
-                    { AccessTier = AccessTier.Hot };
+                    {
+                        AccessTier = AccessTier.Hot,
+                        AllowBlobPublicAccess = true
+                    };
 
             StorageAccountsCreateOperation createStorageAccountOperation =
                 await storageManagementClient.StorageAccounts.StartCreateAsync(rgName, storageAccountName, parameters);
