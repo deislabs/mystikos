@@ -820,7 +820,7 @@ int main(int argc, const char* argv[])
         assert(ext2_unlink(fs, path) == 0);
     }
 
-    /* create a file with a hole in it */
+    /* create a file with black space in it */
     {
         myst_file_t* file;
         const char path[] = "/holes";

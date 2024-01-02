@@ -2411,7 +2411,7 @@ static int _ftruncate(ext2_t* ext2, myst_file_t* file, off_t length, bool isdir)
     }
     else if (length > file_size)
     {
-        /* make file larger (with a hole) */
+        /* make file larger (with a blank space) */
         _inode_set_size(&file->shared->inode, length);
         _update_timestamps(&file->shared->inode, CHANGE | MODIFY);
         ECHECK(_write_inode(ext2, file->shared->ino, &file->shared->inode));

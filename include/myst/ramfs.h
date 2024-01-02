@@ -32,7 +32,7 @@ have to be customized. Some examples:
     on the user provided buffer.
 
 - Customized stateful Read/Write: for files for which read and write operations
-    are stateful, such as PTY master and slaves. Read and write
+    are stateful, such as PTY leader and followers. Read and write
     operations on these files are applied on the file-level buffers.
 */
 

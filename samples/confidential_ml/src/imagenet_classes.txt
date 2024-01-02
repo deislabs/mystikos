@@ -5,7 +5,6 @@ tiger shark, Galeocerdo cuvieri
 hammerhead, hammerhead shark
 electric ray, crampfish, numbfish, torpedo
 stingray
-cock
 hen
 ostrich, Struthio camelus
 brambling, Fringilla montifringilla
@@ -213,7 +212,6 @@ vizsla, Hungarian pointer
 English setter
 Irish setter, red setter
 Gordon setter
-Brittany spaniel
 clumber, clumber spaniel
 English springer, English springer spaniel
 Welsh springer spaniel
@@ -246,7 +244,7 @@ Tibetan mastiff
 French bulldog
 Great Dane
 Saint Bernard, St Bernard
-Eskimo dog, husky
+husky
 malamute, malemute, Alaskan malamute
 Siberian husky
 dalmatian, coach dog, carriage dog
@@ -359,7 +357,7 @@ mink
 polecat, fitch, foulmart, foumart, Mustela putorius
 black-footed ferret, ferret, Mustela nigripes
 otter
-skunk, polecat, wood pussy
+skunk, polecat
 badger
 armadillo
 three-toed sloth, ai, Bradypus tridactylus
@@ -386,7 +384,7 @@ indri, indris, Indri indri, Indri brevicaudatus
 Indian elephant, Elephas maximus
 African elephant, Loxodonta africana
 lesser panda, red panda, panda, bear cat, cat bear, Ailurus fulgens
-giant panda, panda, panda bear, coon bear, Ailuropoda melanoleuca
+giant panda, panda, panda bear, Ailuropoda melanoleuca
 barracouta, snoek
 eel
 coho, cohoe, coho salmon, blue jack, silver salmon, Oncorhynchus kisutch
@@ -510,7 +508,7 @@ computer keyboard, keypad
 confectionery, confectionary, candy store
 container ship, containership, container vessel
 convertible
-corkscrew, bottle screw
+corkscrew
 cornet, horn, trumpet, trump
 cowboy boot
 cowboy hat, ten-gallon hat
@@ -523,7 +521,7 @@ Crock Pot
 croquet ball
 crutch
 cuirass
-dam, dike, dyke
+dam, dike
 desk
 desktop computer
 dial telephone, dial phone
@@ -732,7 +730,7 @@ plow, plough
 plunger, plumber's helper
 Polaroid camera, Polaroid Land camera
 pole
-police van, police wagon, paddy wagon, patrol wagon, wagon, black Maria
+police van, police wagon, patrol wagon, wagon, black Maria
 poncho
 pool table, billiard table, snooker table
 pop bottle, soda bottle
@@ -781,7 +779,6 @@ school bus
 schooner
 scoreboard
 screen, CRT screen
-screw
 screwdriver
 seat belt, seatbelt
 sewing machine
