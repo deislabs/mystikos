@@ -2441,7 +2441,7 @@ static int _fs_ioctl(
         {
             if (!devfs_is_pty_pts_device(file))
                 ERAISE(-ENOTTY);
-            // NOP. The PTY slave is always ready to serve.
+            // NOP. The PTY follower is always ready to serve.
             break;
         }
         case TIOCGPTN:

@@ -7,7 +7,7 @@ namespace FlightFinder.Server
         public readonly static Airport[] Airports = new[]
         {
             new Airport { Code = "ATL", DisplayName = "Hartsfield–Jackson Atlanta International" },
-            new Airport { Code = "PEK", DisplayName = "Beijing Capital International" },
+            new Airport { Code = "PEK", DisplayName = "Beijing International" },
             new Airport { Code = "DXB", DisplayName = "Dubai International" },
             new Airport { Code = "LAX", DisplayName = "Los Angeles International" },
             new Airport { Code = "HND", DisplayName = "Tokyo Haneda International" },

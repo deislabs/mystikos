@@ -27,17 +27,17 @@ static myst_fs_t* _devfs;
 
 struct pty_pair
 {
-    char* path_master;
-    char* path_slave;
-    myst_file_t* file_master;
-    myst_file_t* file_slave;
-    int slaveID;
+    char* path_leader;
+    char* path_follower;
+    myst_file_t* file_leader;
+    myst_file_t* file_follower;
+    int followerID;
     struct pty_pair* next;
 };
 
 static struct pty_pair* _pty_pairs = NULL;
 
-static int _nextSlaveID = 0;
+static int _nextfollowerID = 0;
 
 /*************************************
  * callbacks
@@ -99,28 +99,28 @@ done:
     return ret;
 }
 
-static struct pty_pair* _find_paired_master_by_path(const char* path)
+static struct pty_pair* _find_paired_leader_by_path(const char* path)
 {
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (strcmp(path, tmp->path_slave) == 0)
+        if (strcmp(path, tmp->path_follower) == 0)
             return tmp;
     }
     return NULL;
 }
 
-static int _open_slave_pty_cb(
+static int _open_follower_pty_cb(
     myst_file_t* file,
     myst_buf_t* buf,
     const char* path)
 {
     (void)buf;
     int ret = 0;
-    // find the paired master based on path
-    struct pty_pair* pair = _find_paired_master_by_path(path);
+    // find the paired leader based on path
+    struct pty_pair* pair = _find_paired_leader_by_path(path);
     if (pair == NULL)
         ERAISE(-ENXIO);
-    pair->file_slave = file;
+    pair->file_follower = file;
 
 done:
     return ret;
@@ -133,15 +133,15 @@ static int _close_pty_file_cb(myst_file_t* file)
     struct pty_pair* prev = NULL;
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (tmp->file_master == file || tmp->file_slave == file)
+        if (tmp->file_leader == file || tmp->file_follower == file)
         {
             if (prev)
                 prev->next = tmp->next;
             else
                 _pty_pairs = _pty_pairs->next;
 
-            free(tmp->path_master);
-            free(tmp->path_slave);
+            free(tmp->path_leader);
+            free(tmp->path_follower);
             free(tmp);
             break;
         }
@@ -151,36 +151,36 @@ static int _close_pty_file_cb(myst_file_t* file)
     return ret;
 }
 
-static int _read_master_pty_cb(myst_file_t* file, void* buf, size_t count)
+static int _read_leader_pty_cb(myst_file_t* file, void* buf, size_t count)
 {
     int ret = 0;
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (tmp->file_master == file)
+        if (tmp->file_leader == file)
         {
-            ret = myst_read_stateful_virtual_file(tmp->file_slave, buf, count);
+            ret = myst_read_stateful_virtual_file(tmp->file_follower, buf, count);
             goto done;
         }
     }
 
-    ERAISE(-EINVAL); /* can't find the paired slave PTY device */
+    ERAISE(-EINVAL); /* can't find the paired follower PTY device */
 
 done:
     return ret;
 }
 
-static int _read_slave_pty_cb(myst_file_t* file, void* buf, size_t count)
+static int _read_follower_pty_cb(myst_file_t* file, void* buf, size_t count)
 {
     int ret = 0;
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (tmp->file_slave == file)
+        if (tmp->file_follower == file)
         {
-            ret = myst_read_stateful_virtual_file(tmp->file_master, buf, count);
+            ret = myst_read_stateful_virtual_file(tmp->file_leader, buf, count);
             goto done;
         }
     }
-    ERAISE(-EINVAL); /* can't find the paired master PTY device */
+    ERAISE(-EINVAL); /* can't find the paired leader PTY device */
 
 done:
     return ret;
@@ -191,7 +191,7 @@ static int _write_pty_cb(myst_file_t* file, const void* buf, size_t count)
     return myst_write_stateful_virtual_file(file, buf, count);
 }
 
-static int _open_master_pty_cb(
+static int _open_leader_pty_cb(
     myst_file_t* file,
     myst_buf_t* buf,
     const char* path)
@@ -204,22 +204,22 @@ static int _open_master_pty_cb(
     if (pair == NULL)
         ERAISE(-ENOMEM);
 
-    if ((pair->path_master = strdup(path)) == NULL)
+    if ((pair->path_leader = strdup(path)) == NULL)
         ERAISE(-ENOMEM);
 
-    pair->slaveID = _nextSlaveID++;
-    snprintf(tmp, sizeof(tmp), "/pts/%d", pair->slaveID);
+    pair->followerID = _nextfollowerID++;
+    snprintf(tmp, sizeof(tmp), "/pts/%d", pair->followerID);
 
-    if ((pair->path_slave = strdup(tmp)) == NULL)
+    if ((pair->path_follower = strdup(tmp)) == NULL)
         ERAISE(-ENOMEM);
 
-    pair->file_master = file;
+    pair->file_leader = file;
     pair->next = _pty_pairs;
     _pty_pairs = pair;
 
-    v_cb.open_cb = _open_slave_pty_cb;
+    v_cb.open_cb = _open_follower_pty_cb;
     v_cb.close_cb = _close_pty_file_cb;
-    v_cb.read_cb = _read_slave_pty_cb;
+    v_cb.read_cb = _read_follower_pty_cb;
     v_cb.write_cb = _write_pty_cb;
 
     ECHECK(myst_create_virtual_file(
@@ -301,9 +301,9 @@ int devfs_setup()
     /* /dev/ptmx */
     {
         myst_vcallback_t v_cb = {0};
-        v_cb.open_cb = _open_master_pty_cb;
+        v_cb.open_cb = _open_leader_pty_cb;
         v_cb.close_cb = _close_pty_file_cb;
-        v_cb.read_cb = _read_master_pty_cb;
+        v_cb.read_cb = _read_leader_pty_cb;
         v_cb.write_cb = _write_pty_cb;
 
         myst_create_virtual_file(
@@ -332,9 +332,9 @@ int devfs_get_pts_id(myst_file_t* file, int* id)
 {
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (tmp->file_master == file)
+        if (tmp->file_leader == file)
         {
-            *id = tmp->slaveID;
+            *id = tmp->followerID;
             return 0;
         }
     }
@@ -345,7 +345,7 @@ bool devfs_is_pty_pts_device(myst_file_t* file)
 {
     for (struct pty_pair* tmp = _pty_pairs; tmp; tmp = tmp->next)
     {
-        if (tmp->file_master == file || tmp->file_slave == file)
+        if (tmp->file_leader == file || tmp->file_follower == file)
             return true;
     }
     return false;

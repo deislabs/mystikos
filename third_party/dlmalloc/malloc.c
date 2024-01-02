@@ -1462,7 +1462,7 @@ DLMALLOC_EXPORT int mspace_mallopt(int, int);
 #endif  /* LACKS_STRING_H */
 #if USE_BUILTIN_FFS
 #ifndef LACKS_STRINGS_H
-#include <strings.h>     /* for ffs */
+#include <strings.h>     /* for ffs function */
 #endif /* LACKS_STRINGS_H */
 #endif /* USE_BUILTIN_FFS */
 #if HAVE_MMAP
