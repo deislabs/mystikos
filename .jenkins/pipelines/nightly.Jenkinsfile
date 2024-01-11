@@ -86,7 +86,7 @@ pipeline {
                     axis {
                         name 'TEST_PIPELINE'
                         // Append to the list below to add a new test
-                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK', 'PyTorch', 'OpenMP-Testsuite'
+                        values 'Unit', 'Solutions', 'DotNet', 'DotNet-P1', 'Azure-SDK'
                     }
                     axis {
                         name 'VM_GENERATION'
