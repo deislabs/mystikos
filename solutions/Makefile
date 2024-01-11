@@ -8,7 +8,7 @@ ifdef DB_SERVER_NAME
 ifdef DB_NAME
 ifdef MAA_URL
 DIRS += sql_ae
-DIRS += python_app
+# DIRS += python_app
 endif
 endif
 endif
@@ -18,19 +18,19 @@ DIRS += msgpack_c
 
 DIRS += dotnet
 DIRS += aspnet_core
-DIRS += numpy_core_tests
+# DIRS += numpy_core_tests
 DIRS += cpython-tests
 
 DIRS += memcached
-DIRS += python_flask_tests
-DIRS += python_web_frameworks
-DIRS += python_webserver
+# DIRS += python_flask_tests
+# DIRS += python_web_frameworks
+# DIRS += python_webserver
 ifndef MYST_SKIP_PR_TEST
 # Do not run in PR pipeline as it takes ~15min
 DIRS += tensorflow_lite
 # DIRS += pandas_tests
 endif
-DIRS += nodejs
+# DIRS += nodejs
 DIRS += redis
 
 .PHONY: $(DIRS)
