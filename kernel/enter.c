@@ -115,7 +115,7 @@ static int _create_and_mount(
 
         if (errornum == -ENOENT)
             // target do not exist, create directory
-            ECHECK(myst_syscall_mkdir(locals->normalized_target.buf, 0777));
+            ECHECK(myst_mkdirhier(locals->normalized_target.buf, 0777));
         else if (errornum == 0 && !S_ISDIR(buf.st_mode))
             // target exists but is not directory
             ERAISE(-ENOTDIR);
