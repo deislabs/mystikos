@@ -18,6 +18,11 @@ namespace Azure.Security.KeyVault.Secrets.Samples
             // Environment variable with the Key Vault endpoint.
             string keyVaultUrl = Environment.GetEnvironmentVariable("AZURE_KEYVAULT_URL");
 
+            // Notice that the client is using default Azure credentials. To make default credentials work, ensure that you 
+            // have either a managed identity, or an app registration with environment variables 'AZURE_CLIENT_ID', 
+            // 'AZURE_CLIENT_KEY' and 'AZURE_TENANT_ID' are set with the service principal credentials.
+            // Alternatively, other authentication mechanisms can be used. For more information see
+            // See https://learn.microsoft.com/en-us/dotnet/api/overview/azure/identity-readme?view=azure-dotnet
             var client = new SecretClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
 
             int repeat = 0;

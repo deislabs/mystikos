@@ -89,10 +89,8 @@ pipeline {
         }
         stage('Setup AZ CLI') {
             steps {
-                withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
-                                    string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                    string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                    string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID')]) {
+                withCredentials([string(credentialsId: 'Jenkins-CI-Tenant-Id', variable: 'TENANT_ID'),
+                                 string(credentialsId: 'Jenkins-CI-Subscription-Id', variable: 'AZURE_SUBSCRIPTION_ID')]) {
                     sh """
                         ${JENKINS_SCRIPTS}/azure-sdk/install-azure-cli.sh
                         ${JENKINS_SCRIPTS}/azure-sdk/login-azure-cli.sh
@@ -146,13 +144,10 @@ pipeline {
         stage('Run Azure SDK tests') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'servicePrincipalId'),
-                                     string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'tenantId'),
-                                     string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'servicePrincipalKey'),
+                    withCredentials([string(credentialsId: 'Jenkins-CI-Tenant-Id', variable: 'AZURE_TENANT_ID'),
                                      string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_KEYVAULT_URL'),
                                      string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_TEST_KEYVAULT_URL'),
-                                     string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
-                                     string(credentialsId: 'mystikos-storage-mystikosciacc-connectionstring', variable: 'STANDARD_STORAGE_CONNECTION_STRING')]) {
+                                     string(credentialsId: 'mystikos-storage-account-connectionstring', variable: 'STANDARD_STORAGE_CONNECTION_STRING')]) {
                         sh """
                            ${JENKINS_SCRIPTS}/global/run-azure-tests.sh \
                              ${WORKSPACE}/tests/azure-sdk-for-cpp  \

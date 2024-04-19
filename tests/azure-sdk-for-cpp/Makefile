@@ -31,11 +31,11 @@ _tests: $(ROOTFS)
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/template/azure-template/test/azure-template-test
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-global-context-test
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/keyvault/azure-security-keyvault-keys/test/ut/azure-security-keyvault-keys-test
-	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/identity/azure-identity/test/live/azure-identity-livetest
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/keyvault/azure-security-keyvault-secrets/test/ut/azure-security-keyvault-secrets-test
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/fault-injector/azure-core-test-fault-injector
 
 	# Run partial test; the ones in the filter are disabled
+	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/identity/azure-identity/test/live/azure-identity-livetest --gtest_fitler=-*ClientSecret* # broken
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/core/azure-core/test/ut/azure-core-test --gtest_filter=-BearerTokenAuthenticationPolicy.RefreshNearExpiry:*BodyStream.Rewind:*BodyStream.BadInput:*Pre*ondition*:CurlConnectionPool.*onnectionClose*:*ExpectThrow*:Context.IsCancelled
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/identity/azure-identity/test/ut/azure-identity-test --gtest_filter=-*ClientSecret*:ManagedIdentityCredential* # timing problem
 	$(MYST_EXEC) $(OPTS) $(ROOTFS) /azure-sdk-for-cpp/build/sdk/storage/azure-storage-test --gtest_filter=-*ExpectThrow*:*Blob*:*ConcurrentUploadDownload:*DataLakeSasTest:*FileShare*:StoragetimeoutTest*:DataLake*ClientTest*:*ClientSecretCredentialWorks # needs fork & STANDARD_STORAGE_CONNECTION_STRING
