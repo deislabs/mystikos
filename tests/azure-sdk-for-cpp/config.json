@@ -10,5 +10,5 @@
     // Mystikos specific values
     "MemorySize": "256m",
     "HostApplicationParameters": true,
-    "HostEnvironmentVariables": ["AZURE_KEYVAULT_URL", "STANDARD_STORAGE_CONNECTION_STRING", "AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID"]
+    "HostEnvironmentVariables": ["AZURE_KEYVAULT_URL", "STANDARD_STORAGE_CONNECTION_STRING", "AZURE_TENANT_ID"]
 }

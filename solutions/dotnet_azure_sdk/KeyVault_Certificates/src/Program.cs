@@ -19,14 +19,17 @@ namespace Azure.Security.KeyVault.Certificates.Samples
             string keyVaultUrl = Environment.GetEnvironmentVariable("AZURE_KEYVAULT_URL");
 
             // Instantiate a certificate client that will be used to call the service. Notice that the client is using
-            // default Azure credentials. To make default credentials work, ensure that environment variables 'AZURE_CLIENT_ID',
-            // 'AZURE_CLIENT_KEY' and 'AZURE_TENANT_ID' are set with the service principal credentials.
-            CertificateClient client = new CertificateClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
+            // ManagedIdentityCrendetials. To make default credentials work, ensure that you have either a managed identity, or
+            // an app registration with environment variables 'AZURE_CLIENT_ID', 'AZURE_CLIENT_KEY' and 'AZURE_TENANT_ID' are
+            // set with the service principal credentials.
+            // Other authentication mechanisms can be used. For more information see
+            // See https://learn.microsoft.com/en-us/dotnet/api/overview/azure/identity-readme?view=azure-dotnet
+            CertificateClient client = new CertificateClient(new Uri(keyVaultUrl), new ManagedIdentityCredential());
 
             int repeat = 0; 
             const int total = 3;
             while (++repeat <= total)
-			{
+            {
                 Console.WriteLine("Repeat #{0}...", repeat);
                 try
                 {
@@ -41,16 +44,16 @@ namespace Azure.Security.KeyVault.Certificates.Samples
                     // known and within the scope of the application lifetime. In this case we are creating a self-signed certificate which
                     // should be issued in a relatively short amount of time.
                     Response<KeyVaultCertificateWithPolicy> certificateResponse = await certOp.WaitForCompletionAsync();
-                    KeyVaultCertificateWithPolicy certificate = certificateResponse.Value;
+                    KeyVaultCertificateWithPolicy createCertificate = certificateResponse.Value;
 
                     // At some time later we could get the created certificate along with its policy from the Key Vault.
-                    certificate = await client.GetCertificateAsync(certName);
+                    KeyVaultCertificateWithPolicy getCertificate = await client.GetCertificateAsync(certName);
 
-                    Console.WriteLine($"Certificate was returned with name {certificate.Name} which expires {certificate.Properties.ExpiresOn}");
+                    Console.WriteLine($"Certificate was returned with name {getCertificate.Name} which expires {getCertificate.Properties.ExpiresOn}");
 
                     // We find that the certificate has been compromised and we want to disable it so applications will no longer be able
                     // to access the compromised version of the certificate.
-                    CertificateProperties certificateProperties = certificate.Properties;
+                    CertificateProperties certificateProperties = getCertificate.Properties;
                     certificateProperties.Enabled = false;
 
                     Response<KeyVaultCertificate> updatedCertResponse = await client.UpdateCertificatePropertiesAsync(certificateProperties);
@@ -60,7 +63,7 @@ namespace Azure.Security.KeyVault.Certificates.Samples
                     // We need to create a new version of the certificate that applications can use to replace the compromised certificate.
                     // Creating a certificate with the same name and policy as the compromised certificate will create another version of the
                     // certificate with similar properties to the original certificate
-                    CertificateOperation newCertOp = await client.StartCreateCertificateAsync(certificate.Name, certificate.Policy);
+                    CertificateOperation newCertOp = await client.StartCreateCertificateAsync(getCertificate.Name, getCertificate.Policy);
 
                     KeyVaultCertificateWithPolicy newCert = await newCertOp.WaitForCompletionAsync();
 
