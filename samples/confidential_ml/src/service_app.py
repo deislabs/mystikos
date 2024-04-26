@@ -42,17 +42,38 @@ def evaluate_sample():
         output = alexnet.evaluate_formatted(name)
         return f"file inferenced successfully.\n{output}"
 
-def download_and_decrypt(url, path, key):
-    output = io.BytesIO()
-    cl = pycurl.Curl()
-    cl.setopt(cl.URL, url)
-    #cl.setopt(pycurl.VERBOSE, 1)
-    cl.setopt(pycurl.FOLLOWLOCATION, 1)
-    cl.setopt(pycurl.WRITEFUNCTION, output.write)
-    cl.perform()
-    cl.close()
+def download_and_decrypt(url, path, key, max_retries=3):
+    # enumerate 
+    for i in enumerate(range(max_retries)):
+        try:
+            output = io.BytesIO()
+            cl = pycurl.Curl()
+            cl.setopt(cl.URL, url)
+            #cl.setopt(pycurl.VERBOSE, 1)
+            cl.setopt(pycurl.FOLLOWLOCATION, 1)
+            cl.setopt(pycurl.WRITEFUNCTION, output.write)
+            cl.perform()
+            cl.close()
+            if output.getvalue():
+                # aes_obj.decrypt() expects input to be a multiple of 16 in length
+                # because AES encrypts in blocksize of 16 bytes.
+                if len(output.getvalue()) % 16 != 0:
+                    print(f"Retrieved value length {len(output.getvalue())} is not a multiple of 16. Retrying...")
+                    print(f"Retrieved value: {output.getvalue()}")
+                    print(f"Failed to retrieve from {url}")
 
+                    continue
+                else:
+                    break
+        except pycurl.error as e:
+            if i == max_retries - 1:  # If this was the last attempt, re-raise the exception
+                raise
+            else:
+                print(f"Attempt {i+1} failed with error: {e}. Retrying in {2 ** i} seconds...")
+                time.sleep(2 ** i)  # Exponential backoff (in seconds)
+                continue
     cipher_text = output.getvalue()
+
     aes_obj = AES.new(key, AES.MODE_CBC, iv)
     plain_text = aes_obj.decrypt(cipher_text)
 
@@ -70,7 +91,7 @@ if __name__ == "__main__":
         #print("Model key: ", key.hex())
 
         # Download the encrypted model and decrypt it with the AES key stored in model.key.
-        url = 'https://oejenkinspublicstorage.blob.core.windows.net/samples/alexnet-pretrained.pt.encrypted'
+        url = 'https://jenkinspublicstorage.blob.core.windows.net/mystikospublicsamples/alexnet-pretrained.pt.encrypted'
         download_and_decrypt(url, "/app/alexnet-pretrained.pt", key)
 
         print("Created AlexNet instance")
