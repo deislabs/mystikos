@@ -144,9 +144,7 @@ pipeline {
         stage('Run Azure SDK tests') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([string(credentialsId: 'Jenkins-CI-Tenant-Id', variable: 'AZURE_TENANT_ID'),
-                                     string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_KEYVAULT_URL'),
-                                     string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_TEST_KEYVAULT_URL'),
+                    withCredentials([string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_KEYVAULT_URL'),
                                      string(credentialsId: 'mystikos-storage-account-connectionstring', variable: 'STANDARD_STORAGE_CONNECTION_STRING')]) {
                         sh """
                            ${JENKINS_SCRIPTS}/global/run-azure-tests.sh \
