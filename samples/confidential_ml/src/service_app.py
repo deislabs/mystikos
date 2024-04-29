@@ -57,14 +57,14 @@ def download_and_decrypt(url, path, key, max_retries=3):
             if output.getvalue():
                 # aes_obj.decrypt() expects input to be a multiple of 16 in length
                 # because AES encrypts in blocksize of 16 bytes.
-                if len(output.getvalue()) % 16 != 0:
-                    print(f"Retrieved value length {len(output.getvalue())} is not a multiple of 16. Retrying...")
-                    print(f"Retrieved value: {output.getvalue()}")
-                    print(f"Failed to retrieve from {url}")
-
-                    continue
-                else:
+                if len(output.getvalue()) % 16 == 0:
+                    # Output is as expected, continue with the decryption
                     break
+                else:
+                    # Output is not a multiple of 16, print out debug information and retry
+                    print(f"Try {i+1}: Retrieved value: {output.getvalue()}")
+                    print(f"Try {i+1}: Retrieved value length {len(output.getvalue())} is not a multiple of 16.")
+                    continue
         except pycurl.error as e:
             if i == max_retries - 1:  # If this was the last attempt, re-raise the exception
                 raise
@@ -72,6 +72,7 @@ def download_and_decrypt(url, path, key, max_retries=3):
                 print(f"Attempt {i+1} failed with error: {e}. Retrying in {2 ** i} seconds...")
                 time.sleep(2 ** i)  # Exponential backoff (in seconds)
                 continue
+
     cipher_text = output.getvalue()
 
     aes_obj = AES.new(key, AES.MODE_CBC, iv)
