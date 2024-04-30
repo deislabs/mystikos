@@ -13,7 +13,9 @@ endif
 endif
 endif
 
+ifdef MHSM_AAD_URL
 DIRS += mhsm_ssr
+endif
 DIRS += msgpack_c
 
 DIRS += dotnet
