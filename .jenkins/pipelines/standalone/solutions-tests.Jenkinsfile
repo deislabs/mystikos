@@ -139,12 +139,7 @@ pipeline {
                                      string(credentialsId: "mystikos-sql-db-server-name-${REGION}", variable: 'DB_SERVER_NAME'),
                                      string(credentialsId: "mystikos-maa-url-${REGION}", variable: 'MAA_URL'),
                                      string(credentialsId: 'mystikos-sql-db-userid', variable: 'DB_USERID'),
-                                     string(credentialsId: 'mystikos-sql-db-password', variable: 'DB_PASSWORD'),
-                                     string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
-                                     string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
-                                     string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
-                                     string(credentialsId: 'mystikos-mhsm-aad-url', variable: 'MHSM_AAD_URL'),
-                                     string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
+                                     string(credentialsId: 'mystikos-sql-db-password', variable: 'DB_PASSWORD')
                     ]) {
                         sh """
                            echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
