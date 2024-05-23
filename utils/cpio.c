@@ -1172,14 +1172,9 @@ int myst_cpio_test(const char* path)
     int fd = -1;
     const char magic[] = MYST_CPIO_MAGIC_INITIALIZER;
     char buf[sizeof(magic)];
-    struct stat file_stat;
 
     if (!path)
         ERAISE(-EINVAL);
-
-    ret = stat(path, &file_stat);
-    if (ret != 0)
-        ERAISE(-ENOENT);
 
     if ((fd = open(path, O_RDONLY)) < 0)
     {
