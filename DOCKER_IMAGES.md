@@ -1,5 +1,6 @@
 | Name | Image:Tag | Mystikos Version | Open Enclave image tag | Intel SGX PSW version | Intel SGX DCAP version |
 | ---- | --------- | ---------------- | ---------------------- | --------------------- | ---------------------- |
+| Mystikos Base Ubuntu 20.04 | https://mystikos.azurecr.io/mystikos-focal:2024.06.0592 | 0.13.0 | 2024.06.03116 | 2.23.100.2-focal1 | 1.20.100.2-focal1 |
 | Mystikos Base Ubuntu 20.04 | https://mystikos.azurecr.io/mystikos-focal:2024.06.0391 | 0.13.0 | 2024.04.12111 | 2.23.100.2-focal1 | 1.20.100.2-focal1 |
 | Mystikos Base Ubuntu 20.04 | https://mystikos.azurecr.io/mystikos-focal:2024.06.0390 | 0.13.0 | 2024.02.26107 | 2.23.100.2-focal1 | 1.20.100.2-focal1 |
 | Mystikos Base Ubuntu 20.04 | https://mystikos.azurecr.io/mystikos-focal:2024.04.2585 | 0.13.0 | 2024.02.26107 | 2.23.100.2-focal1 | 1.20.100.2-focal1 |
