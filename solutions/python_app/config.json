@@ -20,5 +20,6 @@
     // The environment variables accessible inside the enclave.
     "EnvironmentVariables": [""],
     // The environment variables we get from the host
-    "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_ENDPOINT", "DB_USERID", "DB_PASSWORD"]
+    "HostEnvironmentVariables": ["DB_SERVER_NAME", "DB_NAME", "MAA_ENDPOINT", "DB_USERID", "DB_PASSWORD"],
+    "ThreadStackSize": "1m"
 }

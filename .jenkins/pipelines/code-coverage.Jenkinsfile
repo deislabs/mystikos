@@ -14,7 +14,6 @@ pipeline {
     parameters {
         string(name: 'REPOSITORY', defaultValue: 'deislabs/mystikos')
         string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build')
-        choice(name: 'REGION', choices:['useast', 'canadacentral'], description: 'Azure region for SQL solutions test')
         string(name: 'PULL_REQUEST_ID', defaultValue: '', description: 'If you are building a pull request, enter the pull request ID number here. (ex. 789)')
         string(name: 'PACKAGE_NAME', defaultValue: '', description: 'optional - release package to install (do not include extension)')
         choice(name: 'PACKAGE_EXTENSION', choices:['tar.gz', 'deb'], description: 'Extension of package given in PACKAGE_NAME')
@@ -75,8 +74,8 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'SERVICE_PRINCIPAL_ID'),
                                     string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'SERVICE_PRINCIPAL_PASSWORD'),
-                                    string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'TENANT_ID'),
-                                    string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID')]) {
+                                    string(credentialsId: 'Jenkins-CI-Tenant-Id', variable: 'TENANT_ID'),
+                                    string(credentialsId: 'Jenkins-CI-Subscription-Id', variable: 'AZURE_SUBSCRIPTION_ID')]) {
                     sh """
                         ${JENKINS_SCRIPTS}/azure-sdk/install-azure-cli.sh
                         ${JENKINS_SCRIPTS}/azure-sdk/login-azure-cli.sh
@@ -102,21 +101,13 @@ pipeline {
         stage('Run Solutions Tests') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([string(credentialsId: "mystikos-sql-db-name-${REGION}", variable: 'DB_NAME'),
-                                     string(credentialsId: "mystikos-sql-db-server-name-${REGION}", variable: 'DB_SERVER_NAME'),
-                                     string(credentialsId: "mystikos-maa-url-${REGION}", variable: 'MAA_URL'),
-                                     string(credentialsId: 'mystikos-sql-db-userid', variable: 'DB_USERID'),
-                                     string(credentialsId: 'mystikos-sql-db-password', variable: 'DB_PASSWORD'),
-                                     string(credentialsId: 'mystikos-mhsm-client-secret', variable: 'CLIENT_SECRET'),
-                                     string(credentialsId: 'mystikos-mhsm-client-id', variable: 'CLIENT_ID'),
-                                     string(credentialsId: 'mystikos-mhsm-app-id', variable: 'APP_ID'),
-                                     string(credentialsId: 'mystikos-mhsm-aad-url', variable: 'MHSM_AAD_URL'),
-                                     string(credentialsId: 'mystikos-mhsm-ssr-pkey', variable: 'SSR_PKEY')
+                    withCredentials([string(credentialsId: "mystikos-sql-db-name-useast2", variable: 'DB_NAME'),
+                                     string(credentialsId: "mystikos-sql-db-server-name-useast2", variable: 'DB_SERVER_NAME'),
+                                     string(credentialsId: "mystikos-maa-url-useast2", variable: 'MAA_URL')
                     ]) {
                         sh """
                            echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
                            echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
-                           echo "Running in ${REGION}"
                            make solutions_tests
                            echo "Running samples"
                            sudo make install
@@ -133,11 +124,11 @@ pipeline {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     withCredentials([string(credentialsId: 'Jenkins-ServicePrincipal-ID', variable: 'servicePrincipalId'),
-                                     string(credentialsId: 'ACC-Prod-Tenant-ID', variable: 'tenantId'),
                                      string(credentialsId: 'Jenkins-ServicePrincipal-Password', variable: 'servicePrincipalKey'),
                                      string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_KEYVAULT_URL'),
                                      string(credentialsId: 'mystikos-ci-keyvault-url', variable: 'AZURE_TEST_KEYVAULT_URL'),
-                                     string(credentialsId: 'ACC-Prod-Subscription-ID', variable: 'AZURE_SUBSCRIPTION_ID'),
+                                     string(credentialsId: 'Jenkins-CI-Tenant-Id', variable: 'TENANT_ID'),
+                                     string(credentialsId: 'Jenkins-CI-Subscription-Id', variable: 'AZURE_SUBSCRIPTION_ID'),
                                      string(credentialsId: 'mystikos-storage-mystikosciacc-connectionstring', variable: 'STANDARD_STORAGE_CONNECTION_STRING')]) {
                         sh """
                            ${JENKINS_SCRIPTS}/global/run-azure-tests.sh \
