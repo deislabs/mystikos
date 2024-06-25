@@ -18,7 +18,7 @@ all: myst app
 	$(MYST) mkcpio $(APPDIR) rootfs
 
 run: appdir
-	$(RUNTEST) $(MYST_EXEC) rootfs /odbc_app classic default $(OPTS)
+	$(RUNTEST) $(MYST_EXEC) rootfs /odbc_app msi default $(OPTS)
 
 myst:
 	$(MAKE) -C $(TOP)/tools/myst
@@ -26,7 +26,7 @@ myst:
 app:
 	rm -rf app/odbc_app $(APPDIR)
 	docker build -t sql_ae.alpine.build -f app-dockerfile .
-	docker run --rm -v $(CURDIR)/app:/app sql_ae.alpine.build bash -c "gcc -g -fshort-wchar -fPIC -o /app/cksp.so -shared /app/cksp.c -I/opt/microsoft/msodbcsql17/include; gcc -g -o /app/odbc_app -fshort-wchar /app/odbc_app.c /app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql17/include"
+	docker run --rm -v $(CURDIR)/app:/app sql_ae.alpine.build bash -c "gcc -g -fshort-wchar -fPIC -o /app/cksp.so -shared /app/cksp.c -I/opt/microsoft/msodbcsql18/include; gcc -g -o /app/odbc_app -fshort-wchar /app/odbc_app.c /app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql18/include"
 	sudo chown $(USER):$(GROUP) app/odbc_app
 	$(TOP)/scripts/appbuilder Dockerfile
 	cp app/odbc_app $(APPDIR)/odbc_app
@@ -35,8 +35,8 @@ app:
 	ls -l $(APPDIR)/odbc_app $(APPDIR)/cksp.so; date
 
 run-host:
-	gcc -g -fshort-wchar -fPIC -o cksp.so -shared app/cksp.c -I/opt/microsoft/msodbcsql17/include
-	gcc -g -o odbc_app -fshort-wchar app/odbc_app.c app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql17/include
+	gcc -g -fshort-wchar -fPIC -o cksp.so -shared app/cksp.c -I/opt/microsoft/msodbcsql18/include
+	gcc -g -o odbc_app -fshort-wchar app/odbc_app.c app/odbc_helper.c -lodbc -ldl -I/opt/microsoft/msodbcsql18/include
 	./odbc_app msi default
 
 clean:

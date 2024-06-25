@@ -11,7 +11,6 @@ pipeline {
         string(name: "REPOSITORY", defaultValue: "deislabs/mystikos")
         string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
         string(name: "PULL_REQUEST_ID", defaultValue: "", description: "If you are building a pull request, enter the pull request ID number here. (ex. 789)")
-        choice(name: "REGION", choices: ['useast', 'canadacentral'], description: "Azure region for the SQL solution tests")
         choice(name: "TEST_CONFIG", choices: ['None', 'Nightly', 'Code Coverage'], description: "Test configuration to execute")
         choice(name: "VM_GENERATION", choices: ['v3', 'v2'], description: "v3 for Ice Lake VMs; v2 for Coffee Lake")
         string(name: "COMMIT_SYNC", defaultValue: "", description: "optional - used to sync outputs of parallel jobs")
@@ -85,7 +84,23 @@ pipeline {
                         # Install global dependencies
                         ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
                         ${JENKINS_SCRIPTS}/global/init-install.sh
+
+                        ${JENKINS_SCRIPTS}/global/wait-dpkg.sh
+                        sudo apt-get install -y jq
+                        ${JENKINS_SCRIPTS}/azure-sdk/install-azure-cli.sh
                     """
+                    // Export UAMI's client id to use in another stage
+                    // This returns a JWT token from which we extract the appid
+                    script {
+                        sh 'az login --identity'
+                        UAMI_ID = sh(
+                            returnStdout: true,
+                            script: '''
+                                az account get-access-token --query "accessToken" -o tsv | cut -d '.' -f 2 | base64 --decode | jq '.appid' | sed 's/"//g'
+                            '''
+                        ).trim()
+                        sh 'echo $UAMI_ID'
+                    }
                 }
             }
         }
@@ -135,23 +150,23 @@ pipeline {
         stage('Run Solutions Tests') {
             steps {
                 catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                    withCredentials([string(credentialsId: "mystikos-sql-db-name-${REGION}", variable: 'DB_NAME'),
-                                     string(credentialsId: "mystikos-sql-db-server-name-${REGION}", variable: 'DB_SERVER_NAME'),
-                                     string(credentialsId: "mystikos-maa-url-${REGION}", variable: 'MAA_URL'),
-                                     string(credentialsId: 'mystikos-sql-db-userid', variable: 'DB_USERID'),
-                                     string(credentialsId: 'mystikos-sql-db-password', variable: 'DB_PASSWORD')
+                    withCredentials([string(credentialsId: "mystikos-sql-db-name-useast2", variable: 'DB_NAME'),
+                                     string(credentialsId: "mystikos-sql-db-server-name-useast2", variable: 'DB_SERVER_NAME'),
+                                     string(credentialsId: "mystikos-maa-url-useast2", variable: 'MAA_URL')
                     ]) {
-                        sh """
-                           echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
-                           echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
-                           echo "Running in ${REGION}"
-                           make solutions_tests
-                           echo "Running samples"
-                           sudo make install
-                           export PATH="/opt/mystikos/bin:$PATH"
-                           export MYSTIKOS_INSTALL_DIR="/opt/mystikos/"
-                           make -j -C ${WORKSPACE}/samples
-                           """
+                        withEnv(["DB_USERID=${UAMI_ID}"]) {
+                            sh """
+                                echo "DB_USERID is set to \${DB_USERID}"
+                                echo "MYST_NIGHTLY_TEST is set to \${MYST_NIGHTLY_TEST}"
+                                echo "MYST_SKIP_PR_TEST is set to \${MYST_SKIP_PR_TEST}"
+                                make solutions_tests
+                                echo "Running samples"
+                                sudo make install
+                                export PATH="/opt/mystikos/bin:$PATH"
+                                export MYSTIKOS_INSTALL_DIR="/opt/mystikos/"
+                                make -j -C ${WORKSPACE}/samples
+                            """
+                        }
                     }
                 }
             }

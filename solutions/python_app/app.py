@@ -9,12 +9,17 @@ import tty
 from logzero import logger
 from Crypto.Cipher import AES
 
-def test_pyodbc(server: str, database: str, uid: str, password: str, driver: str, query: str):
+def test_pyodbc(server: str, database: str, driver: str, query: str, uid: str = '', password: str = ''):
     connstr = "Driver=" + driver
     connstr += ";Server=" + server
     connstr += ";Database=" + database
-    connstr += ";UID=" + uid
-    connstr += ";PWD=" + password
+    if uid:
+        connstr += ";User ID=" + uid
+    # Use password authentication if password is provided, otherwise use Managed Identity
+    if password:
+        connstr += ";PWD=" + password
+    else:
+        connstr += ";Authentication=ActiveDirectoryMsi"
 
     try:
         conn = pyodbc.connect(connstr)
@@ -95,9 +100,9 @@ if __name__ == "__main__":
     test_pyodbc(
         server=os.getenv("DB_SERVER_NAME"),
         database=os.getenv("DB_NAME"),
-        uid = os.getenv("DB_USERID"),
-        password = os.getenv("DB_PASSWORD"),
-        driver="{ODBC Driver 17 for SQL Server}",
+        uid = os.getenv("DB_USERID", ""),
+        password = os.getenv("DB_PASSWORD", ""),
+        driver="{ODBC Driver 18 for SQL Server}",
         query="SELECT USER_NAME()")
 
     test_pandas()
