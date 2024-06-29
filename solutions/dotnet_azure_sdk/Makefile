@@ -2,7 +2,7 @@ TOP=$(abspath ../..)
 include $(TOP)/defs.mak
 
 DIRS = 
-DIRS += Identity_Resource_Management_and_Storage
+# DIRS += Identity_Resource_Management_and_Storage
 DIRS += KeyVault_Keys
 DIRS += KeyVault_Secrets
 DIRS += KeyVault_Certificates
