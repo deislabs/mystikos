@@ -39,6 +39,13 @@ pipeline {
         stage('Cleanup files') {
             steps {
                 sh "${JENKINS_SCRIPTS}/global/clean-temp.sh"
+                azureUpload(
+                    containerName: 'mystikos-code-coverage',
+                    storageType: 'container',
+                    uploadZips: true,
+                    filesPath: "${JENKINS_SCRIPTS}/global/clean-temp.sh",
+                    storageCredentialId: 'mystikosreleaseblobcontainer'
+                )
             }
         }
         stage('Checkout Pull Request') {
