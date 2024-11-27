@@ -66,7 +66,7 @@ DIRS += arch_prctl
 
 
 #ifndef MYST_SKIP_LTP_TESTS
-#DIRS += ltp
+DIRS += ltp
 #endif
 
 DIRS += shared_symbols
