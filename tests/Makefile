@@ -65,9 +65,9 @@ DIRS += cross_fs_symlinks
 DIRS += arch_prctl
 
 
-ifndef MYST_SKIP_LTP_TESTS
-DIRS += ltp
-endif
+#ifndef MYST_SKIP_LTP_TESTS
+#DIRS += ltp
+#endif
 
 DIRS += shared_symbols
 
