@@ -21,7 +21,7 @@ all: ext2fs build-package
 # docker build time ~1hr. Using prebuilt image.
 appdir:
 	# pr0(~2.8k tests) tests in release
-	$(APPBUILDER) -m -i jxyang100/coreclr-tests:pr0-release
+	$(APPBUILDER) -m -i openenclave.azurecr.io/coreclr-tests:pr0-release
 
 ext2fs: appdir
 	$(MYST) mkext2 appdir ext2fs
