@@ -25,7 +25,7 @@ endif
 # URL=https://github.com/linux-test-project/ltp
 # BRANCH=master
 
-URL=https://github.com/paulcallen/ltp
+URL=https://github.com/viktoo/ltp
 BRANCH=paulcallen/revert-fork
 
 OPTS += --app-config-path config.json
