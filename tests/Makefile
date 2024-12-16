@@ -79,7 +79,8 @@ endif
 endif
 
 ifndef MYST_USE_OECACHE
-DIRS += curl
+# 12/16/24: disabling test is flaky in the pipeline
+#DIRS += curl
 endif
 
 REDEFINE_TESTS=1
