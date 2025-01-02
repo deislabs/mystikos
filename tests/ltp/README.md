@@ -347,7 +347,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork04 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fork/fork04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork07 | 0 | 0 | 0 |
@@ -1331,8 +1331,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/utime/utime01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/utime/utime04 | 1 | 1 | 0 |
-| /ltp/testcases/kernel/syscalls/utime/utime05 | 1 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utime/utime06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimensat/utimensat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimes/utimes01 | 0 | 0 | 0 |

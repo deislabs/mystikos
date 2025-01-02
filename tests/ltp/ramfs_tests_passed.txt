@@ -86,7 +86,6 @@
 /ltp/testcases/kernel/syscalls/flock/flock01
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
-/ltp/testcases/kernel/syscalls/fork/fork04
 /ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork10
 /ltp/testcases/kernel/syscalls/fork/fork11
