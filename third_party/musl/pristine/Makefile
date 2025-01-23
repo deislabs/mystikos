@@ -42,7 +42,7 @@ ifdef MYST_USE_BUILD_CACHE
 endif
 
 clean:
-	rm -rf musl
+#	rm -rf musl
 
 distclean: clean
 
@@ -50,6 +50,6 @@ musl/config.mak:
 	( cd musl; ./configure --prefix=$(PREFIX) )
 
 musl:
-	git clone $(URL) -b $(BRANCH)
+#	git clone $(URL) -b $(BRANCH)
 
 tests:
