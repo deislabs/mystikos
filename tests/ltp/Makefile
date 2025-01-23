@@ -22,10 +22,10 @@ FS=ext2fs
 endif
 
 #original ltp source
-# URL=https://github.com/linux-test-project/ltp
-# BRANCH=master
+#URL=https://github.com/linux-test-project/ltp
+#BRANCH=master
 
-URL=https://github.com/paulcallen/ltp
+URL=https://github.com/vtikoo/ltp
 BRANCH=paulcallen/revert-fork
 
 OPTS += --app-config-path config.json

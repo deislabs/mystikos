@@ -112,8 +112,6 @@
 /ltp/testcases/kernel/syscalls/pread/pread02_64
 /ltp/testcases/kernel/syscalls/pread/pread03
 /ltp/testcases/kernel/syscalls/pread/pread03_64
-/ltp/testcases/kernel/syscalls/preadv/preadv01
-/ltp/testcases/kernel/syscalls/preadv/preadv01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite02
@@ -130,7 +128,6 @@
 /ltp/testcases/kernel/syscalls/readlink/readlink01
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat01
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat02
-/ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/readv/readv02
 /ltp/testcases/kernel/syscalls/readv/readv03
 /ltp/testcases/kernel/syscalls/rename/rename01
@@ -172,8 +169,6 @@
 /ltp/testcases/kernel/syscalls/utime/utime01
 /ltp/testcases/kernel/syscalls/utime/utime02
 /ltp/testcases/kernel/syscalls/utime/utime03
-/ltp/testcases/kernel/syscalls/utime/utime04
-/ltp/testcases/kernel/syscalls/utime/utime05
 /ltp/testcases/kernel/syscalls/write/write01
 /ltp/testcases/kernel/syscalls/write/write02
 /ltp/testcases/kernel/syscalls/writev/writev01

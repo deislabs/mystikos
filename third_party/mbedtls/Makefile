@@ -5,7 +5,8 @@ INSTALL_PREFIX=$(BUILDDIR)/mbedtls
 
 URL=https://github.com/ARMmbed/mbedtls
 
-BRANCH=v2.28.8
+
+BRANCH=v2.28.9
 
 # get the hash of the remote github repository (for the given branch)
 HASH=$(shell git ls-remote $(URL) -b $(BRANCH) | cut -f1 )

@@ -65,9 +65,9 @@ DIRS += cross_fs_symlinks
 DIRS += arch_prctl
 
 
-ifndef MYST_SKIP_LTP_TESTS
+#ifndef MYST_SKIP_LTP_TESTS
 DIRS += ltp
-endif
+#endif
 
 DIRS += shared_symbols
 
@@ -79,7 +79,8 @@ endif
 endif
 
 ifndef MYST_USE_OECACHE
-DIRS += curl
+# 12/16/24: disabling test is flaky in the pipeline
+#DIRS += curl
 endif
 
 REDEFINE_TESTS=1

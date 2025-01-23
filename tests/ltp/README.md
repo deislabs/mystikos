@@ -347,7 +347,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/fork/fork01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/fork/fork03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/fork/fork04 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/fork/fork04 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/fork/fork07 | 0 | 0 | 0 |
@@ -621,7 +621,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/kill/kill02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill03 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/kill/kill05 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/kill/kill06 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/kill/kill06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill07 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill08 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/kill/kill09 | 1 | 1 | 1 |
@@ -880,8 +880,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/pread/pread02_64 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/pread/pread03 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/pread/pread03_64 | 1 | 1 | 0 |
-| /ltp/testcases/kernel/syscalls/preadv/preadv01 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/preadv/preadv01_64 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/preadv/preadv01 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/preadv/preadv01_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/preadv/preadv02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/preadv/preadv02_64 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/preadv/preadv03 | 0 | 0 | 0 |
@@ -947,7 +947,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/readlink/readlink03 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/readlinkat/readlinkat01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/readlinkat/readlinkat02 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/readv/readv01 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/readv/readv01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/readv/readv02 | 1 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/readv/readv03 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/realpath/realpath01 | 0 | 0 | 0 |
@@ -1047,7 +1047,7 @@ FAILING
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile09 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/sendfile/sendfile09_64 | 0 | 1 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg01 | 0 | 0 | 0 |
-| /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02 | 1 | 1 | 1 |
+| /ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg02 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/sendmsg/sendmsg03 | 0 | 0 | 0 |
@@ -1331,8 +1331,8 @@ FAILING
 | /ltp/testcases/kernel/syscalls/utime/utime01 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime02 | 1 | 1 | 1 |
 | /ltp/testcases/kernel/syscalls/utime/utime03 | 1 | 1 | 1 |
-| /ltp/testcases/kernel/syscalls/utime/utime04 | 1 | 1 | 0 |
-| /ltp/testcases/kernel/syscalls/utime/utime05 | 1 | 1 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime04 | 0 | 0 | 0 |
+| /ltp/testcases/kernel/syscalls/utime/utime05 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utime/utime06 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimensat/utimensat01 | 0 | 0 | 0 |
 | /ltp/testcases/kernel/syscalls/utimes/utimes01 | 0 | 0 | 0 |

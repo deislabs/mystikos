@@ -52,9 +52,10 @@ int main(int argc, char** argv)
                     CONNSTR_MAX_LEN,
                     "Server=%s;Database=%s;"
                     "Authentication=ActiveDirectoryMsi;"
-                    "Driver={ODBC Driver 17 for SQL Server};"
+                    "Driver={ODBC Driver 18 for SQL Server};"
                     "ColumnEncryption=SGX-AAS,%s/attest/"
-                    "SgxEnclave?api-version=2018-09-01-preview",
+                    "SgxEnclave?api-version=2018-09-01-preview"
+                    "Encrypt=Yes;TrustServerCertificate=Yes",
                     db_server,
                     db_name,
                     maa_url) >= CONNSTR_MAX_LEN)
@@ -70,10 +71,11 @@ int main(int argc, char** argv)
                     CONNSTR_MAX_LEN,
                     "Server=%s;Database=%s;"
                     "Authentication=ActiveDirectoryMsi;"
-                    "UID=%s;"
-                    "Driver={ODBC Driver 17 for SQL Server};"
+                    "User Id=%s;"
+                    "Driver={ODBC Driver 18 for SQL Server};"
                     "ColumnEncryption=SGX-AAS,%s/attest/"
-                    "SgxEnclave?api-version=2018-09-01-preview",
+                    "SgxEnclave?api-version=2018-09-01-preview"
+                    "Encrypt=Yes;TrustServerCertificate=Yes",
                     db_server,
                     db_name,
                     db_uid,
@@ -102,9 +104,10 @@ int main(int argc, char** argv)
                 CONNSTR_MAX_LEN,
                 "Server=%s;Database=%s;"
                 "UID=%s;PWD=%s;"
-                "Driver={ODBC Driver 17 for SQL Server};"
+                "Driver={ODBC Driver 18 for SQL Server};"
                 "ColumnEncryption=SGX-AAS,%s/attest/"
-                "SgxEnclave?api-version=2018-09-01-preview",
+                "SgxEnclave?api-version=2018-09-01-preview"
+                "Encrypt=Yes;TrustServerCertificate=Yes",
                 db_server,
                 db_name,
                 db_uid,

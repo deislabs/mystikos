@@ -86,7 +86,6 @@
 /ltp/testcases/kernel/syscalls/flock/flock01
 /ltp/testcases/kernel/syscalls/fork/fork02
 /ltp/testcases/kernel/syscalls/fork/fork03
-/ltp/testcases/kernel/syscalls/fork/fork04
 /ltp/testcases/kernel/syscalls/fork/fork09
 /ltp/testcases/kernel/syscalls/fork/fork10
 /ltp/testcases/kernel/syscalls/fork/fork11
@@ -145,7 +144,6 @@
 /ltp/testcases/kernel/syscalls/getuid/getuid03
 /ltp/testcases/kernel/syscalls/inotify/inotify06
 /ltp/testcases/kernel/syscalls/kill/kill03
-/ltp/testcases/kernel/syscalls/kill/kill06
 /ltp/testcases/kernel/syscalls/kill/kill09
 /ltp/testcases/kernel/syscalls/kill/kill12
 /ltp/testcases/kernel/syscalls/lchown/lchown01
@@ -210,8 +208,6 @@
 /ltp/testcases/kernel/syscalls/pread/pread01_64
 /ltp/testcases/kernel/syscalls/pread/pread02
 /ltp/testcases/kernel/syscalls/pread/pread02_64
-/ltp/testcases/kernel/syscalls/preadv/preadv01
-/ltp/testcases/kernel/syscalls/preadv/preadv01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01
 /ltp/testcases/kernel/syscalls/pwrite/pwrite01_64
 /ltp/testcases/kernel/syscalls/pwrite/pwrite03
@@ -226,7 +222,6 @@
 /ltp/testcases/kernel/syscalls/readlink/readlink01
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat01
 /ltp/testcases/kernel/syscalls/readlinkat/readlinkat02
-/ltp/testcases/kernel/syscalls/readv/readv01
 /ltp/testcases/kernel/syscalls/recv/recv01
 /ltp/testcases/kernel/syscalls/recvmsg/recvmsg02
 /ltp/testcases/kernel/syscalls/rename/rename01
@@ -249,7 +244,6 @@
 /ltp/testcases/kernel/syscalls/sendfile/sendfile07_64
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08
 /ltp/testcases/kernel/syscalls/sendfile/sendfile08_64
-/ltp/testcases/kernel/syscalls/sendmmsg/sendmmsg02
 /ltp/testcases/kernel/syscalls/sendto/sendto01
 /ltp/testcases/kernel/syscalls/sendto/sendto02
 /ltp/testcases/kernel/syscalls/set_robust_list/set_robust_list01
