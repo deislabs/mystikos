@@ -10,12 +10,12 @@ TGZ=libc-test.tgz
 all: libc-test
 
 libc-test:
-	wget --quiet -O $(TGZ) $(URL)
-	tar zxf $(TGZ)
-	mv libc-test-* libc-test
-	rm -rf $(TGZ)
+#	wget --quiet -O $(TGZ) $(URL)
+#	tar zxf $(TGZ)
+#	mv libc-test-* libc-test
+#	rm -rf $(TGZ)
 
 clean:
 
 distclean:
-	rm -rf libc-test $(TGZ) libc-test-*
+#	rm -rf libc-test $(TGZ) libc-test-*
