@@ -1,7 +1,3 @@
-TOP = $(abspath ../..)
-include $(TOP)/defs.mak
-
-APPBUILDER    = $(TOP)/scripts/appbuilder
 APP_NAME      = python3
 
 APP_PATH      = /usr/local/bin/python3
@@ -13,12 +9,12 @@ SHUTDOWN_WAIT = 2
 all: $(PACKAGE)
 
 appdir:
-	$(APPBUILDER) -m -d Dockerfile
+	@myst-appbuilder -m -d Dockerfile
 
 $(PACKAGE): appdir package.pem
-	$(MYST) mkext2 appdir rootfs
-	$(MYST) fssig --roothash rootfs > roothash
-	$(MYST) package-sgx --roothash=roothash package.pem config.json
+	@myst mkext2 appdir rootfs
+	@myst fssig --roothash rootfs > roothash
+	@myst package-sgx --roothash=roothash package.pem config.json
 
 server:
 	./$(PACKAGE) --rootfs=rootfs
